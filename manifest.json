@@ -1,0 +1,434 @@
+{
+  "run_id": "20260214-141943",
+  "generated_at": "2026-02-14T19:19:43.500592Z",
+  "library_version": "d16bd3b",
+  "composition_snapshot": {
+    "project": {
+      "name": "RepoMirrorKit",
+      "slug": "repomirrorkit",
+      "output_root": "./generated-projects",
+      "output_folder": null
+    },
+    "stacks": [
+      {
+        "id": "clean-code",
+        "order": 0
+      },
+      {
+        "id": "devops",
+        "order": 1
+      },
+      {
+        "id": "python",
+        "order": 2
+      },
+      {
+        "id": "python-qt-pyside6",
+        "order": 3
+      },
+      {
+        "id": "security",
+        "order": 4
+      }
+    ],
+    "team": {
+      "personas": [
+        {
+          "id": "architect",
+          "include_agent": true,
+          "include_templates": true,
+          "strictness": "standard"
+        },
+        {
+          "id": "ba",
+          "include_agent": true,
+          "include_templates": true,
+          "strictness": "standard"
+        },
+        {
+          "id": "code-quality-reviewer",
+          "include_agent": true,
+          "include_templates": true,
+          "strictness": "standard"
+        },
+        {
+          "id": "developer",
+          "include_agent": true,
+          "include_templates": true,
+          "strictness": "standard"
+        },
+        {
+          "id": "devops-release",
+          "include_agent": true,
+          "include_templates": true,
+          "strictness": "standard"
+        },
+        {
+          "id": "integrator-merge-captain",
+          "include_agent": true,
+          "include_templates": true,
+          "strictness": "standard"
+        },
+        {
+          "id": "security-engineer",
+          "include_agent": true,
+          "include_templates": true,
+          "strictness": "standard"
+        },
+        {
+          "id": "team-lead",
+          "include_agent": true,
+          "include_templates": true,
+          "strictness": "standard"
+        },
+        {
+          "id": "tech-qa",
+          "include_agent": true,
+          "include_templates": true,
+          "strictness": "standard"
+        },
+        {
+          "id": "ux-ui-designer",
+          "include_agent": true,
+          "include_templates": true,
+          "strictness": "standard"
+        }
+      ]
+    },
+    "architecture": {
+      "patterns": [
+        "monolith"
+      ],
+      "cloud_providers": []
+    },
+    "hooks": {
+      "posture": "baseline",
+      "packs": [
+        {
+          "id": "git-commit-branch",
+          "category": "git",
+          "enabled": true,
+          "mode": "enforcing"
+        },
+        {
+          "id": "git-generate-pr",
+          "category": "git",
+          "enabled": true,
+          "mode": "enforcing"
+        },
+        {
+          "id": "git-merge-to-prod",
+          "category": "git",
+          "enabled": true,
+          "mode": "enforcing"
+        },
+        {
+          "id": "git-merge-to-test",
+          "category": "git",
+          "enabled": true,
+          "mode": "enforcing"
+        },
+        {
+          "id": "git-push-feature",
+          "category": "git",
+          "enabled": true,
+          "mode": "enforcing"
+        },
+        {
+          "id": "az-limited-ops",
+          "category": "az",
+          "enabled": true,
+          "mode": "enforcing"
+        },
+        {
+          "id": "az-read-only",
+          "category": "az",
+          "enabled": true,
+          "mode": "enforcing"
+        },
+        {
+          "id": "compliance-gate",
+          "category": "code-quality",
+          "enabled": true,
+          "mode": "enforcing"
+        },
+        {
+          "id": "post-task-qa",
+          "category": "code-quality",
+          "enabled": true,
+          "mode": "enforcing"
+        },
+        {
+          "id": "pre-commit-lint",
+          "category": "code-quality",
+          "enabled": true,
+          "mode": "enforcing"
+        },
+        {
+          "id": "security-scan",
+          "category": "code-quality",
+          "enabled": true,
+          "mode": "enforcing"
+        },
+        {
+          "id": "hook-policy",
+          "category": "",
+          "enabled": true,
+          "mode": "enforcing"
+        }
+      ]
+    },
+    "generation": {
+      "seed_tasks": true,
+      "seed_mode": "detailed",
+      "write_manifest": true,
+      "write_diff_report": false
+    },
+    "safety": {
+      "git": {
+        "allow_push": true,
+        "allow_force_push": false,
+        "allow_branch_delete": false,
+        "protected_branches": [
+          "main",
+          "master"
+        ]
+      },
+      "shell": {
+        "allow_shell": true,
+        "blocked_commands": [],
+        "blocked_patterns": []
+      },
+      "filesystem": {
+        "allow_write": true,
+        "allow_delete": false,
+        "protected_paths": [],
+        "allowed_extensions": []
+      },
+      "network": {
+        "allow_network": true,
+        "allowed_domains": [],
+        "blocked_domains": []
+      },
+      "secrets": {
+        "scan_for_secrets": true,
+        "block_on_secret": true,
+        "secret_patterns": []
+      },
+      "destructive_ops": {
+        "allow_destructive": false,
+        "require_confirmation": true,
+        "blocked_operations": []
+      }
+    }
+  },
+  "stages": {
+    "scaffold": {
+      "wrote": [
+        ".",
+        ".claude/agents",
+        ".claude/commands",
+        ".claude/hooks",
+        "ai/context",
+        "ai/outputs",
+        "ai/beans",
+        "ai/tasks",
+        "ai/outputs/architect",
+        "ai/outputs/ba",
+        "ai/outputs/code-quality-reviewer",
+        "ai/outputs/developer",
+        "ai/outputs/devops-release",
+        "ai/outputs/integrator-merge-captain",
+        "ai/outputs/security-engineer",
+        "ai/outputs/team-lead",
+        "ai/outputs/tech-qa",
+        "ai/outputs/ux-ui-designer"
+      ],
+      "warnings": []
+    },
+    "compile": {
+      "wrote": [
+        "CLAUDE.md"
+      ],
+      "warnings": [
+        "Stack 'clean-code' missing conventions.md",
+        "Stack 'devops' missing conventions.md",
+        "Stack 'security' missing conventions.md",
+        "Unresolved placeholders in CLAUDE.md: strictness"
+      ]
+    },
+    "agent_writer": {
+      "wrote": [
+        ".claude/agents/architect.md",
+        ".claude/agents/ba.md",
+        ".claude/agents/code-quality-reviewer.md",
+        ".claude/agents/developer.md",
+        ".claude/agents/devops-release.md",
+        ".claude/agents/integrator-merge-captain.md",
+        ".claude/agents/security-engineer.md",
+        ".claude/agents/team-lead.md",
+        ".claude/agents/tech-qa.md",
+        ".claude/agents/ux-ui-designer.md"
+      ],
+      "warnings": []
+    },
+    "copy_assets": {
+      "wrote": [
+        "ai/outputs/architect/adr.md",
+        "ai/outputs/architect/api-contract.md",
+        "ai/outputs/architect/architecture-review-checklist.md",
+        "ai/outputs/architect/design-spec.md",
+        "ai/outputs/architect/system-context.md",
+        "ai/outputs/ba/acceptance-criteria.md",
+        "ai/outputs/ba/bug-report.md",
+        "ai/outputs/ba/epic-brief.md",
+        "ai/outputs/ba/requirements-traceability.md",
+        "ai/outputs/ba/stakeholder-notes.md",
+        "ai/outputs/ba/user-story.md",
+        "ai/outputs/code-quality-reviewer/review-comments.md",
+        "ai/outputs/code-quality-reviewer/ship-no-ship-checklist.md",
+        "ai/outputs/code-quality-reviewer/style-consistency-checklist.md",
+        "ai/outputs/code-quality-reviewer/suggested-diffs.md",
+        "ai/outputs/developer/code-review-checklist.md",
+        "ai/outputs/developer/debugging-notes.md",
+        "ai/outputs/developer/dev-design-decision.md",
+        "ai/outputs/developer/implementation-plan.md",
+        "ai/outputs/developer/pr-description.md",
+        "ai/outputs/devops-release/environment-matrix.md",
+        "ai/outputs/devops-release/pipeline-yaml-review.md",
+        "ai/outputs/devops-release/release-runbook.md",
+        "ai/outputs/devops-release/rollback-runbook.md",
+        "ai/outputs/devops-release/secrets-rotation-plan.md",
+        "ai/outputs/integrator-merge-captain/conflict-resolution-notes.md",
+        "ai/outputs/integrator-merge-captain/cutover-plan.md",
+        "ai/outputs/integrator-merge-captain/integration-plan.md",
+        "ai/outputs/integrator-merge-captain/merge-checklist.md",
+        "ai/outputs/integrator-merge-captain/release-notes.md",
+        "ai/outputs/security-engineer/hardening-checklist.md",
+        "ai/outputs/security-engineer/mitigations-plan.md",
+        "ai/outputs/security-engineer/secure-design-review.md",
+        "ai/outputs/security-engineer/security-test-checklist.md",
+        "ai/outputs/security-engineer/threat-model-stride.md",
+        "ai/outputs/team-lead/decision-log.md",
+        "ai/outputs/team-lead/status-report.md",
+        "ai/outputs/team-lead/synthesis-memo.md",
+        "ai/outputs/team-lead/task-seeding-plan.md",
+        "ai/outputs/team-lead/task-spec.md",
+        "ai/outputs/tech-qa/bug-report-wrapper.md",
+        "ai/outputs/tech-qa/manual-test-case.md",
+        "ai/outputs/tech-qa/regression-checklist.md",
+        "ai/outputs/tech-qa/test-charter.md",
+        "ai/outputs/tech-qa/test-plan.md",
+        "ai/outputs/tech-qa/test-report.md",
+        "ai/outputs/tech-qa/traceability-matrix.md",
+        "ai/outputs/ux-ui-designer/accessibility-checklist.md",
+        "ai/outputs/ux-ui-designer/component-spec.md",
+        "ai/outputs/ux-ui-designer/content-style-guide.md",
+        "ai/outputs/ux-ui-designer/user-flows.md",
+        "ai/outputs/ux-ui-designer/ux-acceptance-criteria.md",
+        "ai/outputs/ux-ui-designer/wireframes-text.md",
+        ".claude/commands/backlog-consolidate.md",
+        ".claude/commands/backlog-refinement.md",
+        ".claude/commands/bean-status.md",
+        ".claude/commands/build-traceability.md",
+        ".claude/commands/compile-team.md",
+        ".claude/commands/deploy.md",
+        ".claude/commands/handoff.md",
+        ".claude/commands/long-run.md",
+        ".claude/commands/merge-bean.md",
+        ".claude/commands/new-adr.md",
+        ".claude/commands/new-bean.md",
+        ".claude/commands/new-dev-decision.md",
+        ".claude/commands/new-work.md",
+        ".claude/commands/notes-to-stories.md",
+        ".claude/commands/pick-bean.md",
+        ".claude/commands/release-notes.md",
+        ".claude/commands/review-beans.md",
+        ".claude/commands/review-pr.md",
+        ".claude/commands/run.md",
+        ".claude/commands/scaffold-project.md",
+        ".claude/commands/seed-tasks.md",
+        ".claude/commands/show-backlog.md",
+        ".claude/commands/spawn-bean.md",
+        ".claude/commands/status-report.md",
+        ".claude/commands/telemetry-report.md",
+        ".claude/commands/threat-model.md",
+        ".claude/commands/trello-load.md",
+        ".claude/commands/update-docs.md",
+        ".claude/commands/validate-config.md",
+        ".claude/commands/validate-repo.md",
+        ".claude/hooks/az-limited-ops.md",
+        ".claude/hooks/az-read-only.md",
+        ".claude/hooks/compliance-gate.md",
+        ".claude/hooks/git-commit-branch.md",
+        ".claude/hooks/git-generate-pr.md",
+        ".claude/hooks/git-merge-to-prod.md",
+        ".claude/hooks/git-merge-to-test.md",
+        ".claude/hooks/git-push-feature.md",
+        ".claude/hooks/hook-policy.md",
+        ".claude/hooks/post-task-qa.md",
+        ".claude/hooks/pre-commit-lint.md",
+        ".claude/hooks/security-scan.md",
+        ".claude/hooks/telemetry-stamp.py",
+        ".claude/skills/backlog-consolidate/SKILL.md",
+        ".claude/skills/backlog-refinement/SKILL.md",
+        ".claude/skills/bean-status/SKILL.md",
+        ".claude/skills/build-traceability/SKILL.md",
+        ".claude/skills/close-loop/SKILL.md",
+        ".claude/skills/compile-team/SKILL.md",
+        ".claude/skills/deploy/SKILL.md",
+        ".claude/skills/handoff/SKILL.md",
+        ".claude/skills/long-run/SKILL.md",
+        ".claude/skills/merge-bean/SKILL.md",
+        ".claude/skills/new-adr/SKILL.md",
+        ".claude/skills/new-bean/SKILL.md",
+        ".claude/skills/new-dev-decision/SKILL.md",
+        ".claude/skills/new-work/SKILL.md",
+        ".claude/skills/notes-to-stories/SKILL.md",
+        ".claude/skills/pick-bean/SKILL.md",
+        ".claude/skills/release-notes/SKILL.md",
+        ".claude/skills/review-beans/SKILL.md",
+        ".claude/skills/review-pr/SKILL.md",
+        ".claude/skills/run/SKILL.md",
+        ".claude/skills/scaffold-project/SKILL.md",
+        ".claude/skills/seed-tasks/SKILL.md",
+        ".claude/skills/telemetry-report/SKILL.md",
+        ".claude/skills/threat-model/SKILL.md",
+        ".claude/skills/trello-load/SKILL.md",
+        ".claude/skills/update-docs/SKILL.md",
+        ".claude/skills/validate-config/SKILL.md",
+        ".claude/skills/validate-repo/SKILL.md",
+        ".claude/settings.json",
+        ".claude/settings.local.json",
+        "ai/beans/_bean-template.md",
+        "ai/beans/_index.md",
+        "ai/context/bean-workflow.md"
+      ],
+      "warnings": []
+    },
+    "mcp_config": {
+      "wrote": [
+        ".claude/mcp.json"
+      ],
+      "warnings": []
+    },
+    "seed_tasks": {
+      "wrote": [
+        "ai/tasks/_index.md"
+      ],
+      "warnings": [
+        "No seed task templates for persona 'code-quality-reviewer'",
+        "No seed task templates for persona 'devops-release'",
+        "No seed task templates for persona 'integrator-merge-captain'",
+        "No seed task templates for persona 'security-engineer'",
+        "No seed task templates for persona 'ux-ui-designer'"
+      ]
+    },
+    "safety": {
+      "wrote": [
+        ".claude/settings.json"
+      ],
+      "warnings": []
+    }
+  }
+}

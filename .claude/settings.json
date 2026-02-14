@@ -1,0 +1,39 @@
+{
+  "safety": {
+    "git": {
+      "allow_push": true,
+      "allow_force_push": false,
+      "allow_branch_delete": false,
+      "protected_branches": [
+        "main",
+        "master"
+      ]
+    },
+    "shell": {
+      "allow_shell": true,
+      "blocked_commands": [],
+      "blocked_patterns": []
+    },
+    "filesystem": {
+      "allow_write": true,
+      "allow_delete": false,
+      "protected_paths": [],
+      "allowed_extensions": []
+    },
+    "network": {
+      "allow_network": true,
+      "allowed_domains": [],
+      "blocked_domains": []
+    },
+    "secrets": {
+      "scan_for_secrets": true,
+      "block_on_secret": true,
+      "secret_patterns": []
+    },
+    "destructive_ops": {
+      "allow_destructive": false,
+      "require_confirmation": true,
+      "blocked_operations": []
+    }
+  }
+}
