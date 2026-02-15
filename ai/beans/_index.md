@@ -38,8 +38,8 @@
 | BEAN-014 | Svelte Detector | App | Medium | Done | team-lead |
 | BEAN-015 | Node API Detector | App | High | Done | team-lead |
 | BEAN-016 | Python API Detector | App | High | In Progress | team-lead |
-| BEAN-017 | .NET API Detector | App | Medium | In Progress | team-lead |
-| BEAN-018 | SQL/ORM Data Detector | App | High | In Progress | team-lead |
+| BEAN-017 | .NET API Detector | App | Medium | Done | team-lead |
+| BEAN-018 | SQL/ORM Data Detector | App | High | Done | team-lead |
 | BEAN-019 | Surface Data Model | App | High | Done | team-lead |
 | BEAN-020 | Route & Page Analyzer | App | High | Approved | (unassigned) |
 | BEAN-021 | Component Analyzer | App | High | Approved | (unassigned) |
