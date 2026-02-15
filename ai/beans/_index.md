@@ -32,7 +32,7 @@
 | BEAN-008 | Clone & Normalize (Stage A) | App | High | Done | team-lead |
 | BEAN-009 | File Inventory (Stage B) | App | High | Done | team-lead |
 | BEAN-010 | Detector Framework | App | High | Done | team-lead |
-| BEAN-011 | React Detector | App | High | In Progress | team-lead |
+| BEAN-011 | React Detector | App | High | Done | team-lead |
 | BEAN-012 | Next.js Detector | App | High | Done | team-lead |
 | BEAN-013 | Vue Detector | App | Medium | Done | team-lead |
 | BEAN-014 | Svelte Detector | App | Medium | Done | team-lead |
