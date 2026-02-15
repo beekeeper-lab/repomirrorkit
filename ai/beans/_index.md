@@ -46,12 +46,12 @@
 | BEAN-022 | API Endpoint Analyzer | App | High | Done | team-lead |
 | BEAN-023 | Model & Entity Analyzer | App | High | Done | team-lead |
 | BEAN-024 | Auth & Security Analyzer | App | High | Done | team-lead |
-| BEAN-025 | Config & Env Var Analyzer | App | High | In Progress | team-lead |
-| BEAN-026 | Cross-cutting Concerns Analyzer | App | Medium | In Progress | team-lead |
-| BEAN-027 | Traceability Graph Builder (Stage D) | App | High | Approved | (unassigned) |
+| BEAN-025 | Config & Env Var Analyzer | App | High | Done | team-lead |
+| BEAN-026 | Cross-cutting Concerns Analyzer | App | Medium | Done | team-lead |
+| BEAN-027 | Traceability Graph Builder (Stage D) | App | High | In Progress | team-lead |
 | BEAN-028 | Bean Templates | App | High | Done | team-lead |
-| BEAN-029 | Bean Writer & Indexer (Stage E) | App | High | Approved | (unassigned) |
+| BEAN-029 | Bean Writer & Indexer (Stage E) | App | High | In Progress | team-lead |
 | BEAN-030 | Coverage Gates & Gap Analysis (Stage F) | App | High | Approved | (unassigned) |
-| BEAN-031 | Surface Map Report | App | High | Approved | (unassigned) |
+| BEAN-031 | Surface Map Report | App | High | In Progress | team-lead |
 | BEAN-032 | Pipeline Orchestrator | App | High | Approved | (unassigned) |
 | BEAN-033 | Harvest Button & Progress UI | App | High | Approved | (unassigned) |
