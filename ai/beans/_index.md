@@ -25,3 +25,33 @@
 | BEAN-001 | Project Scaffold | App | High | Done | team-lead |
 | BEAN-002 | Clone Form Window | App | High | Done | team-lead |
 | BEAN-003 | Enforce Mandatory Tech QA in Long-Run Skill | Process | High | Done | team-lead |
+| BEAN-004 | Harvester Package Setup | App | High | Approved | (unassigned) |
+| BEAN-005 | CLI Entry Point & Configuration | App | High | Approved | (unassigned) |
+| BEAN-006 | State Management & Resume | App | High | Approved | (unassigned) |
+| BEAN-007 | Logging & Progress Heartbeat | App | Medium | Approved | (unassigned) |
+| BEAN-008 | Clone & Normalize (Stage A) | App | High | Approved | (unassigned) |
+| BEAN-009 | File Inventory (Stage B) | App | High | Approved | (unassigned) |
+| BEAN-010 | Detector Framework | App | High | Approved | (unassigned) |
+| BEAN-011 | React Detector | App | High | Approved | (unassigned) |
+| BEAN-012 | Next.js Detector | App | High | Approved | (unassigned) |
+| BEAN-013 | Vue Detector | App | Medium | Approved | (unassigned) |
+| BEAN-014 | Svelte Detector | App | Medium | Approved | (unassigned) |
+| BEAN-015 | Node API Detector | App | High | Approved | (unassigned) |
+| BEAN-016 | Python API Detector | App | High | Approved | (unassigned) |
+| BEAN-017 | .NET API Detector | App | Medium | Approved | (unassigned) |
+| BEAN-018 | SQL/ORM Data Detector | App | High | Approved | (unassigned) |
+| BEAN-019 | Surface Data Model | App | High | Approved | (unassigned) |
+| BEAN-020 | Route & Page Analyzer | App | High | Approved | (unassigned) |
+| BEAN-021 | Component Analyzer | App | High | Approved | (unassigned) |
+| BEAN-022 | API Endpoint Analyzer | App | High | Approved | (unassigned) |
+| BEAN-023 | Model & Entity Analyzer | App | High | Approved | (unassigned) |
+| BEAN-024 | Auth & Security Analyzer | App | High | Approved | (unassigned) |
+| BEAN-025 | Config & Env Var Analyzer | App | High | Approved | (unassigned) |
+| BEAN-026 | Cross-cutting Concerns Analyzer | App | Medium | Approved | (unassigned) |
+| BEAN-027 | Traceability Graph Builder (Stage D) | App | High | Approved | (unassigned) |
+| BEAN-028 | Bean Templates | App | High | Approved | (unassigned) |
+| BEAN-029 | Bean Writer & Indexer (Stage E) | App | High | Approved | (unassigned) |
+| BEAN-030 | Coverage Gates & Gap Analysis (Stage F) | App | High | Approved | (unassigned) |
+| BEAN-031 | Surface Map Report | App | High | Approved | (unassigned) |
+| BEAN-032 | Pipeline Orchestrator | App | High | Approved | (unassigned) |
+| BEAN-033 | Harvest Button & Progress UI | App | High | Approved | (unassigned) |
