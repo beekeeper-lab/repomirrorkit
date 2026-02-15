@@ -48,7 +48,7 @@
 | BEAN-024 | Auth & Security Analyzer | App | High | Done | team-lead |
 | BEAN-025 | Config & Env Var Analyzer | App | High | Done | team-lead |
 | BEAN-026 | Cross-cutting Concerns Analyzer | App | Medium | Done | team-lead |
-| BEAN-027 | Traceability Graph Builder (Stage D) | App | High | In Progress | team-lead |
+| BEAN-027 | Traceability Graph Builder (Stage D) | App | High | Done | team-lead |
 | BEAN-028 | Bean Templates | App | High | Done | team-lead |
 | BEAN-029 | Bean Writer & Indexer (Stage E) | App | High | Done | team-lead |
 | BEAN-030 | Coverage Gates & Gap Analysis (Stage F) | App | High | In Progress | team-lead |
