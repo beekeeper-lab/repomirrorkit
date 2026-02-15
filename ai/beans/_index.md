@@ -31,12 +31,12 @@
 | BEAN-007 | Logging & Progress Heartbeat | App | Medium | Done | team-lead |
 | BEAN-008 | Clone & Normalize (Stage A) | App | High | Done | team-lead |
 | BEAN-009 | File Inventory (Stage B) | App | High | Done | team-lead |
-| BEAN-010 | Detector Framework | App | High | In Progress | team-lead |
-| BEAN-011 | React Detector | App | High | Approved | (unassigned) |
-| BEAN-012 | Next.js Detector | App | High | Approved | (unassigned) |
-| BEAN-013 | Vue Detector | App | Medium | Approved | (unassigned) |
-| BEAN-014 | Svelte Detector | App | Medium | Approved | (unassigned) |
-| BEAN-015 | Node API Detector | App | High | Approved | (unassigned) |
+| BEAN-010 | Detector Framework | App | High | Done | team-lead |
+| BEAN-011 | React Detector | App | High | In Progress | team-lead |
+| BEAN-012 | Next.js Detector | App | High | In Progress | team-lead |
+| BEAN-013 | Vue Detector | App | Medium | In Progress | team-lead |
+| BEAN-014 | Svelte Detector | App | Medium | In Progress | team-lead |
+| BEAN-015 | Node API Detector | App | High | In Progress | team-lead |
 | BEAN-016 | Python API Detector | App | High | Approved | (unassigned) |
 | BEAN-017 | .NET API Detector | App | Medium | Approved | (unassigned) |
 | BEAN-018 | SQL/ORM Data Detector | App | High | Approved | (unassigned) |
