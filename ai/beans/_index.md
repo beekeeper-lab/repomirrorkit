@@ -27,7 +27,7 @@
 | BEAN-003 | Enforce Mandatory Tech QA in Long-Run Skill | Process | High | Done | team-lead |
 | BEAN-004 | Harvester Package Setup | App | High | Done | team-lead |
 | BEAN-005 | CLI Entry Point & Configuration | App | High | Done | team-lead |
-| BEAN-006 | State Management & Resume | App | High | In Progress | team-lead |
+| BEAN-006 | State Management & Resume | App | High | Done | team-lead |
 | BEAN-007 | Logging & Progress Heartbeat | App | Medium | Done | team-lead |
 | BEAN-008 | Clone & Normalize (Stage A) | App | High | Approved | (unassigned) |
 | BEAN-009 | File Inventory (Stage B) | App | High | Approved | (unassigned) |
