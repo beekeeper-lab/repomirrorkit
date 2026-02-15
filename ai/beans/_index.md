@@ -37,15 +37,15 @@
 | BEAN-013 | Vue Detector | App | Medium | Done | team-lead |
 | BEAN-014 | Svelte Detector | App | Medium | Done | team-lead |
 | BEAN-015 | Node API Detector | App | High | Done | team-lead |
-| BEAN-016 | Python API Detector | App | High | In Progress | team-lead |
+| BEAN-016 | Python API Detector | App | High | Done | team-lead |
 | BEAN-017 | .NET API Detector | App | Medium | Done | team-lead |
 | BEAN-018 | SQL/ORM Data Detector | App | High | Done | team-lead |
 | BEAN-019 | Surface Data Model | App | High | Done | team-lead |
-| BEAN-020 | Route & Page Analyzer | App | High | Approved | (unassigned) |
-| BEAN-021 | Component Analyzer | App | High | Approved | (unassigned) |
-| BEAN-022 | API Endpoint Analyzer | App | High | Approved | (unassigned) |
-| BEAN-023 | Model & Entity Analyzer | App | High | Approved | (unassigned) |
-| BEAN-024 | Auth & Security Analyzer | App | High | Approved | (unassigned) |
+| BEAN-020 | Route & Page Analyzer | App | High | In Progress | team-lead |
+| BEAN-021 | Component Analyzer | App | High | In Progress | team-lead |
+| BEAN-022 | API Endpoint Analyzer | App | High | In Progress | team-lead |
+| BEAN-023 | Model & Entity Analyzer | App | High | In Progress | team-lead |
+| BEAN-024 | Auth & Security Analyzer | App | High | In Progress | team-lead |
 | BEAN-025 | Config & Env Var Analyzer | App | High | Approved | (unassigned) |
 | BEAN-026 | Cross-cutting Concerns Analyzer | App | Medium | Approved | (unassigned) |
 | BEAN-027 | Traceability Graph Builder (Stage D) | App | High | Approved | (unassigned) |
