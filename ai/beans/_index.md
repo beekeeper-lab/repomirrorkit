@@ -25,7 +25,7 @@
 | BEAN-001 | Project Scaffold | App | High | Done | team-lead |
 | BEAN-002 | Clone Form Window | App | High | Done | team-lead |
 | BEAN-003 | Enforce Mandatory Tech QA in Long-Run Skill | Process | High | Done | team-lead |
-| BEAN-004 | Harvester Package Setup | App | High | Approved | (unassigned) |
+| BEAN-004 | Harvester Package Setup | App | High | In Progress | team-lead |
 | BEAN-005 | CLI Entry Point & Configuration | App | High | Approved | (unassigned) |
 | BEAN-006 | State Management & Resume | App | High | Approved | (unassigned) |
 | BEAN-007 | Logging & Progress Heartbeat | App | Medium | Approved | (unassigned) |
