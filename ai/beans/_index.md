@@ -44,7 +44,7 @@
 | BEAN-020 | Route & Page Analyzer | App | High | Done | team-lead |
 | BEAN-021 | Component Analyzer | App | High | Done | team-lead |
 | BEAN-022 | API Endpoint Analyzer | App | High | Done | team-lead |
-| BEAN-023 | Model & Entity Analyzer | App | High | In Progress | team-lead |
+| BEAN-023 | Model & Entity Analyzer | App | High | Done | team-lead |
 | BEAN-024 | Auth & Security Analyzer | App | High | Done | team-lead |
 | BEAN-025 | Config & Env Var Analyzer | App | High | In Progress | team-lead |
 | BEAN-026 | Cross-cutting Concerns Analyzer | App | Medium | In Progress | team-lead |
