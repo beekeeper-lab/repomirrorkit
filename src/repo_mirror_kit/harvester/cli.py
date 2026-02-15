@@ -139,7 +139,23 @@ def harvest(
         click.echo(f"Error: {exc}", err=True)
         sys.exit(EXIT_INVALID_INPUT)
 
-    # Pipeline execution will be implemented in BEAN-032.
-    # For now, validate inputs and confirm the config was built.
-    click.echo(f"Harvest configured for: {config.repo}")
+    from repo_mirror_kit.harvester.pipeline import HarvestPipeline
+
+    pipeline = HarvestPipeline()
+    result = pipeline.run(config)
+
+    if not result.success:
+        click.echo(
+            f"Pipeline failed at stage {result.error_stage}: {result.error_message}",
+            err=True,
+        )
+        sys.exit(EXIT_UNEXPECTED)
+
+    click.echo(f"Beans generated: {result.bean_count}")
+    click.echo(f"Gaps found: {result.gap_count}")
+    click.echo(f"Coverage gates: {'PASSED' if result.coverage_passed else 'FAILED'}")
+
+    if not result.coverage_passed and fail_on_gaps:
+        sys.exit(EXIT_GAPS_FOUND)
+
     sys.exit(EXIT_SUCCESS)
