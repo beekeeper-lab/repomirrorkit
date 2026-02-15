@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from repo_mirror_kit.harvester.analyzers.apis import analyze_api_endpoints
 from repo_mirror_kit.harvester.analyzers.surfaces import (
     ApiSurface,
     AuthSurface,
@@ -26,4 +27,5 @@ __all__ = [
     "SourceRef",
     "Surface",
     "SurfaceCollection",
+    "analyze_api_endpoints",
 ]
