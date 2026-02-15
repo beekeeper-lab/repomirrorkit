@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-019 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -43,25 +43,30 @@ Define a set of Python dataclasses representing each surface type (`RouteSurface
 
 ## Acceptance Criteria
 
-- [ ] All 7 surface dataclasses are defined with typed fields
-- [ ] Common `Surface` base includes `source_refs`, `name`, `surface_type`
-- [ ] `RouteSurface` includes path, method, component refs, API refs
-- [ ] `ComponentSurface` includes name, props, outputs, usage locations
-- [ ] `ApiSurface` includes method, path, auth, request/response hints
-- [ ] `ModelSurface` includes entity name, fields, relationships, persistence
-- [ ] `AuthSurface` includes roles, permissions, protected endpoints
-- [ ] `ConfigSurface` includes env var name, default, required flag
-- [ ] `CrosscuttingSurface` includes concern type and description
-- [ ] `SurfaceCollection` holds all surfaces and supports iteration
-- [ ] All surfaces serialize to JSON via a `to_dict()` method or equivalent
-- [ ] Unit tests cover creation, serialization, and collection operations
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] All 7 surface dataclasses are defined with typed fields
+- [x] Common `Surface` base includes `source_refs`, `name`, `surface_type`
+- [x] `RouteSurface` includes path, method, component refs, API refs
+- [x] `ComponentSurface` includes name, props, outputs, usage locations
+- [x] `ApiSurface` includes method, path, auth, request/response hints
+- [x] `ModelSurface` includes entity name, fields, relationships, persistence
+- [x] `AuthSurface` includes roles, permissions, protected endpoints
+- [x] `ConfigSurface` includes env var name, default, required flag
+- [x] `CrosscuttingSurface` includes concern type and description
+- [x] `SurfaceCollection` holds all surfaces and supports iteration
+- [x] All surfaces serialize to JSON via a `to_dict()` method or equivalent
+- [x] Unit tests cover creation, serialization, and collection operations
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Define Surface base dataclass and SourceRef | Developer | — | Done |
+| 2 | Define 7 surface dataclasses (Route, Component, Api, Model, Auth, Config, Crosscutting) | Developer | 1 | Done |
+| 3 | Define SurfaceCollection container with iteration support | Developer | 2 | Done |
+| 4 | Implement to_dict() JSON serialization on all surfaces | Developer | 2 | Done |
+| 5 | Write unit tests for creation, serialization, and collection | Tech-QA | 1-4 | Done |
+| 6 | Run ruff check, ruff format --check, mypy, pytest | Tech-QA | 5 | Done |
 
 ## Notes
 
