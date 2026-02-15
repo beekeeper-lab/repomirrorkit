@@ -9,6 +9,7 @@ description = "A desktop tool for mirroring git repositories"
 requires-python = ">=3.12"
 dependencies = [
     "PySide6>=6.7",
+    "click>=8.1",
 ]
 
 [project.optional-dependencies]
