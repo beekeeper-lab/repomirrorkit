@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-001 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
 | **Started** | — |
 | **Completed** | — |
 | **Duration** | — |
-| **Owner** | (unassigned) |
+| **Owner** | team-lead |
 | **Category** | App |
 
 ## Problem Statement
@@ -52,24 +52,22 @@ A runnable PySide6 desktop application skeleton that launches an empty main wind
 
 ## Acceptance Criteria
 
-- [ ] `uv venv` creates a working virtual environment
-- [ ] `uv pip install -e ".[dev]"` installs the package and all dev dependencies without errors
-- [ ] `python -m repo_mirror_kit` launches a PySide6 window with the title "RepoMirrorKit" and exits cleanly when closed
-- [ ] `ruff check src/ tests/` reports zero issues
-- [ ] `ruff format --check src/ tests/` reports no formatting changes needed
-- [ ] `mypy src/` passes in strict mode with zero errors
-- [ ] `pytest tests/` passes with at least one smoke test (app creates without crashing)
-- [ ] Project follows `src/` layout with `from __future__ import annotations` in every module
-- [ ] No hardcoded secrets, credentials, or environment-specific values in any file
+- [x] `uv venv` creates a working virtual environment
+- [x] `uv pip install -e ".[dev]"` installs the package and all dev dependencies without errors
+- [x] `python -m repo_mirror_kit` launches a PySide6 window with the title "RepoMirrorKit" and exits cleanly when closed
+- [x] `ruff check src/ tests/` reports zero issues
+- [x] `ruff format --check src/ tests/` reports no formatting changes needed
+- [x] `mypy src/` passes in strict mode with zero errors
+- [x] `pytest tests/` passes with at least one smoke test (app creates without crashing)
+- [x] Project follows `src/` layout with `from __future__ import annotations` in every module
+- [x] No hardcoded secrets, credentials, or environment-specific values in any file
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
-
-> Tasks are populated by the Team Lead during decomposition.
-> Task files go in `tasks/` subdirectory.
+| 1 | Implement project scaffold | Developer | — | Done |
+| 2 | Verify project scaffold | Tech-QA | Task 1 | Done |
 
 ## Notes
 
@@ -77,6 +75,8 @@ A runnable PySide6 desktop application skeleton that launches an empty main wind
 - Follow Python stack conventions: `uv`, `hatchling`, `ruff`, `mypy` strict, Google-style docstrings.
 - Follow PySide6 conventions: signals/slots, layout managers, no fixed pixel positioning.
 - Package name: `repo_mirror_kit` (snake_case per Python conventions).
+- **Skipped BA:** Requirements fully specified in bean — no elicitation needed.
+- **Skipped Architect:** No architectural decisions — conventions defined in stack docs.
 
 ## Telemetry
 

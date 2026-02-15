@@ -22,6 +22,6 @@
 
 | Bean ID | Title | Category | Priority | Status | Owner |
 |---------|-------|----------|----------|--------|-------|
-| BEAN-001 | Project Scaffold | App | High | Unapproved | (unassigned) |
-| BEAN-002 | Clone Form Window | App | High | Unapproved | (unassigned) |
+| BEAN-001 | Project Scaffold | App | High | Done | team-lead |
+| BEAN-002 | Clone Form Window | App | High | Done | team-lead |
 | BEAN-003 | Enforce Mandatory Tech QA in Long-Run Skill | Process | High | Done | team-lead |
