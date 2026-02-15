@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-003 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
 | **Started** | — |
 | **Completed** | — |
 | **Duration** | — |
-| **Owner** | (unassigned) |
+| **Owner** | team-lead |
 | **Category** | Process |
 
 ## Problem Statement
@@ -36,28 +36,28 @@ Update the `/long-run` SKILL.md so that Tech QA is mandatory for all App and Inf
 
 ## Acceptance Criteria
 
-- [ ] Step 10 (Decomposition) explicitly states Tech QA is mandatory for App and Infra beans and may only be skipped for Process-only beans that modify no code
-- [ ] Step 10 states BA and Architect may be skipped when not needed, with skip reasons documented in Notes
-- [ ] Step 13 (Wave Execution) reinforces that Tech QA must never be skipped for App or Infra beans and explains why (independent verification of acceptance criteria, tests, lint)
-- [ ] Step 13 states only BA and Architect may be skipped, with skip reasons in Notes
-- [ ] Parallel mode worker spawn prompt includes the mandatory Tech QA rule (same policy as sequential)
-- [ ] No other sections of SKILL.md are changed beyond the three targeted areas
-- [ ] All changes are consistent — same policy stated in decomposition, execution, and parallel mode
+- [x] Step 10 (Decomposition) explicitly states Tech QA is mandatory for App and Infra beans and may only be skipped for Process-only beans that modify no code
+- [x] Step 10 states BA and Architect may be skipped when not needed, with skip reasons documented in Notes
+- [x] Step 13 (Wave Execution) reinforces that Tech QA must never be skipped for App or Infra beans and explains why (independent verification of acceptance criteria, tests, lint)
+- [x] Step 13 states only BA and Architect may be skipped, with skip reasons in Notes
+- [x] Parallel mode worker spawn prompt includes the mandatory Tech QA rule (same policy as sequential)
+- [x] No other sections of SKILL.md are changed beyond the three targeted areas
+- [x] All changes are consistent — same policy stated in decomposition, execution, and parallel mode
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
-
-> Tasks are populated by the Team Lead during decomposition.
-> Task files go in `tasks/` subdirectory.
+| 1 | Update /long-run SKILL.md with mandatory Tech QA policy | Developer | — | Done |
+| 2 | Verify mandatory Tech QA policy edits | Tech-QA | Task 1 | Done |
 
 ## Notes
 
 - Target file: `.claude/skills/long-run/SKILL.md`
 - Three edit locations: Step 10 (line ~70-71), Step 13 (line ~83-84), Parallel worker prompt (line ~179)
 - This is a Process bean that modifies no application code — only a skill definition file
+- **Skipped BA:** Requirements are fully specified in the bean — no elicitation or clarification needed
+- **Skipped Architect:** No architectural decisions — this is a text edit to a skill definition
 
 ## Telemetry
 
