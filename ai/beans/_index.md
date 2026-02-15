@@ -49,7 +49,7 @@
 | BEAN-025 | Config & Env Var Analyzer | App | High | Approved | (unassigned) |
 | BEAN-026 | Cross-cutting Concerns Analyzer | App | Medium | Approved | (unassigned) |
 | BEAN-027 | Traceability Graph Builder (Stage D) | App | High | Approved | (unassigned) |
-| BEAN-028 | Bean Templates | App | High | In Progress | team-lead |
+| BEAN-028 | Bean Templates | App | High | Done | team-lead |
 | BEAN-029 | Bean Writer & Indexer (Stage E) | App | High | Approved | (unassigned) |
 | BEAN-030 | Coverage Gates & Gap Analysis (Stage F) | App | High | Approved | (unassigned) |
 | BEAN-031 | Surface Map Report | App | High | Approved | (unassigned) |
