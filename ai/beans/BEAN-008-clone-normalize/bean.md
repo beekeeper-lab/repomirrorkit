@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-008 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
+| **Duration** | <1 day |
+| **Owner** | Developer |
 | **Category** | App |
 
 ## Problem Statement
@@ -42,23 +42,25 @@ Implement Stage A of the harvester pipeline: a `git_ops.py` module that clones a
 
 ## Acceptance Criteria
 
-- [ ] `git_ops.clone_repository(url, ref, workdir)` clones to the specified temp directory
-- [ ] If `--ref` is provided, the specified ref is checked out after clone
-- [ ] If `--ref` is not provided, the default branch is used
-- [ ] Invalid ref produces a clear error (not a cryptic git message)
-- [ ] Line endings are normalized to LF in the working copy
-- [ ] Symlinks pointing outside the repo are identified and skipped (not followed)
-- [ ] Missing `git` on PATH produces a clear error message
-- [ ] Clone progress is logged via structlog
-- [ ] State checkpoint is written after successful Stage A completion
-- [ ] Unit tests cover: successful clone, ref checkout, missing git, invalid ref, symlink safety
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `git_ops.clone_repository(url, ref, workdir)` clones to the specified temp directory
+- [x] If `--ref` is provided, the specified ref is checked out after clone
+- [x] If `--ref` is not provided, the default branch is used
+- [x] Invalid ref produces a clear error (not a cryptic git message)
+- [x] Line endings are normalized to LF in the working copy
+- [x] Symlinks pointing outside the repo are identified and skipped (not followed)
+- [x] Missing `git` on PATH produces a clear error message
+- [x] Clone progress is logged via structlog
+- [x] State checkpoint is written after successful Stage A completion
+- [x] Unit tests cover: successful clone, ref checkout, missing git, invalid ref, symlink safety
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement git_ops.py | Developer | BEAN-004, BEAN-006 | Done |
+| 2 | Unit tests for git_ops | Developer | Task 1 | Done |
+| 3 | Tech QA verification | Tech QA | Task 1, 2 | Done |
 
 ## Notes
 
@@ -72,11 +74,13 @@ Implement Stage A of the harvester pipeline: a `git_ops.py` module that clones a
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Implement git_ops.py | Developer | — | — | — |
+| 2 | Unit tests | Developer | — | — | — |
+| 3 | Tech QA | Tech QA | — | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
+| **Total Tasks** | 3 |
 | **Total Duration** | — |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |
