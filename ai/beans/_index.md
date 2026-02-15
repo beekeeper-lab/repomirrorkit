@@ -24,3 +24,4 @@
 |---------|-------|----------|----------|--------|-------|
 | BEAN-001 | Project Scaffold | App | High | Unapproved | (unassigned) |
 | BEAN-002 | Clone Form Window | App | High | Unapproved | (unassigned) |
+| BEAN-003 | Enforce Mandatory Tech QA in Long-Run Skill | Process | High | Approved | (unassigned) |
