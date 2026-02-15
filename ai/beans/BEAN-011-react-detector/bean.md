@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-011 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -41,22 +41,24 @@ Implement a React detector that identifies React projects by examining `package.
 
 ## Acceptance Criteria
 
-- [ ] `ReactDetector` implements the `Detector` interface from BEAN-010
-- [ ] Detects React via `package.json` dependency check
-- [ ] Detects React via `.jsx`/`.tsx` file presence
-- [ ] Detects React via import pattern matching
-- [ ] Confidence score reflects strength of evidence (multiple signals = higher confidence)
-- [ ] Evidence list includes the specific files/paths that triggered detection
-- [ ] Registered in the detector registry
-- [ ] Returns empty signals for non-React repos (no false positives)
-- [ ] Unit tests cover: React repo detection, non-React repo, partial signals
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `ReactDetector` implements the `Detector` interface from BEAN-010
+- [x] Detects React via `package.json` dependency check
+- [x] Detects React via `.jsx`/`.tsx` file presence
+- [x] Detects React via import pattern matching
+- [x] Confidence score reflects strength of evidence (multiple signals = higher confidence)
+- [x] Evidence list includes the specific files/paths that triggered detection
+- [x] Registered in the detector registry
+- [x] Returns empty signals for non-React repos (no false positives)
+- [x] Unit tests cover: React repo detection, non-React repo, partial signals
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement ReactDetector class | Developer | BEAN-010 | Done |
+| 2 | Write unit tests (37 tests) | Tech-QA | 1 | Done |
+| 3 | Run QA verification (ruff, mypy, pytest) | Tech-QA | 2 | Done |
 
 ## Notes
 
