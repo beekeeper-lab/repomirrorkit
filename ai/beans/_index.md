@@ -53,5 +53,5 @@
 | BEAN-029 | Bean Writer & Indexer (Stage E) | App | High | Done | team-lead |
 | BEAN-030 | Coverage Gates & Gap Analysis (Stage F) | App | High | Done | team-lead |
 | BEAN-031 | Surface Map Report | App | High | Done | team-lead |
-| BEAN-032 | Pipeline Orchestrator | App | High | In Progress | team-lead |
-| BEAN-033 | Harvest Button & Progress UI | App | High | Approved | (unassigned) |
+| BEAN-032 | Pipeline Orchestrator | App | High | Done | team-lead |
+| BEAN-033 | Harvest Button & Progress UI | App | High | In Progress | team-lead |
