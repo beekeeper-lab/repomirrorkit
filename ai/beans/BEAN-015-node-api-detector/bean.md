@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-015 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -44,21 +44,23 @@ Implement a Node API detector that identifies Express, Fastify, and basic NestJS
 
 ## Acceptance Criteria
 
-- [ ] `NodeApiDetector` implements the `Detector` interface
-- [ ] Detects Express via dependency and usage patterns
-- [ ] Detects Fastify via dependency and usage patterns
-- [ ] Detects NestJS via dependency and decorator patterns
-- [ ] Signal includes the specific framework name(s) detected
-- [ ] Confidence scoring based on evidence strength
-- [ ] No false positives on frontend-only Node projects
-- [ ] Unit tests cover: Express repo, Fastify repo, NestJS repo, frontend-only repo
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `NodeApiDetector` implements the `Detector` interface
+- [x] Detects Express via dependency and usage patterns
+- [x] Detects Fastify via dependency and usage patterns
+- [x] Detects NestJS via dependency and decorator patterns
+- [x] Signal includes the specific framework name(s) detected
+- [x] Confidence scoring based on evidence strength
+- [x] No false positives on frontend-only Node projects
+- [x] Unit tests cover: Express repo, Fastify repo, NestJS repo, frontend-only repo
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement NodeApiDetector | Developer | BEAN-010 | Done |
+| 2 | Write unit tests (31 tests) | Developer | 1 | Done |
+| 3 | QA: ruff, mypy, pytest verification | Tech-QA | 2 | Done |
 
 ## Notes
 
