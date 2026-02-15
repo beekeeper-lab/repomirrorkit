@@ -5,13 +5,17 @@ import pytest
 try:
     from PySide6.QtWidgets import QApplication
 
-    @pytest.fixture(scope="session")
-    def qapp() -> QApplication:
-        """Provide a QApplication instance for the test session."""
-        app = QApplication.instance()
-        if app is None:
-            app = QApplication([])
-        return app
-
+    _HAS_QT = True
 except ImportError:
-    pass
+    _HAS_QT = False
+
+
+@pytest.fixture(scope="session")
+def qapp() -> QApplication:
+    """Provide a QApplication instance for the test session."""
+    if not _HAS_QT:
+        pytest.skip("PySide6 not available")
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    return app  # type: ignore[return-value]
