@@ -33,6 +33,7 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101"]
+"src/repo_mirror_kit/services/clone_service.py" = ["S603", "S607"]
 
 [tool.ruff.format]
 quote-style = "double"
