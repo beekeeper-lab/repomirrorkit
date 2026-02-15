@@ -50,8 +50,8 @@
 | BEAN-026 | Cross-cutting Concerns Analyzer | App | Medium | Done | team-lead |
 | BEAN-027 | Traceability Graph Builder (Stage D) | App | High | In Progress | team-lead |
 | BEAN-028 | Bean Templates | App | High | Done | team-lead |
-| BEAN-029 | Bean Writer & Indexer (Stage E) | App | High | In Progress | team-lead |
-| BEAN-030 | Coverage Gates & Gap Analysis (Stage F) | App | High | Approved | (unassigned) |
-| BEAN-031 | Surface Map Report | App | High | In Progress | team-lead |
+| BEAN-029 | Bean Writer & Indexer (Stage E) | App | High | Done | team-lead |
+| BEAN-030 | Coverage Gates & Gap Analysis (Stage F) | App | High | In Progress | team-lead |
+| BEAN-031 | Surface Map Report | App | High | Done | team-lead |
 | BEAN-032 | Pipeline Orchestrator | App | High | Approved | (unassigned) |
 | BEAN-033 | Harvest Button & Progress UI | App | High | Approved | (unassigned) |
