@@ -29,8 +29,8 @@
 | BEAN-005 | CLI Entry Point & Configuration | App | High | Done | team-lead |
 | BEAN-006 | State Management & Resume | App | High | Done | team-lead |
 | BEAN-007 | Logging & Progress Heartbeat | App | Medium | Done | team-lead |
-| BEAN-008 | Clone & Normalize (Stage A) | App | High | In Progress | team-lead |
-| BEAN-009 | File Inventory (Stage B) | App | High | Approved | (unassigned) |
+| BEAN-008 | Clone & Normalize (Stage A) | App | High | Done | team-lead |
+| BEAN-009 | File Inventory (Stage B) | App | High | In Progress | team-lead |
 | BEAN-010 | Detector Framework | App | High | Approved | (unassigned) |
 | BEAN-011 | React Detector | App | High | Approved | (unassigned) |
 | BEAN-012 | Next.js Detector | App | High | Approved | (unassigned) |
