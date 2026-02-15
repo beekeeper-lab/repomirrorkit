@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-013 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -41,20 +41,23 @@ Implement a basic Vue detector that identifies Vue.js projects by examining depe
 
 ## Acceptance Criteria
 
-- [ ] `VueDetector` implements the `Detector` interface
-- [ ] Detects Vue via `package.json` dependency
-- [ ] Detects Vue via `.vue` file presence
-- [ ] Detects Vue via Vite config with Vue plugin
-- [ ] Confidence scoring based on evidence strength
-- [ ] No false positives on React or Svelte projects
-- [ ] Unit tests cover: Vue repo, non-Vue repo
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `VueDetector` implements the `Detector` interface
+- [x] Detects Vue via `package.json` dependency
+- [x] Detects Vue via `.vue` file presence
+- [x] Detects Vue via Vite config with Vue plugin
+- [x] Confidence scoring based on evidence strength
+- [x] No false positives on React or Svelte projects
+- [x] Unit tests cover: Vue repo, non-Vue repo
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement VueDetector with 4 signal types in vue.py | Developer | — | Done |
+| 2 | Register VueDetector with detector registry | Developer | 1 | Done |
+| 3 | Write unit tests (26 tests: interface, signals, false positives, registry) | Tech-QA | 2 | Done |
+| 4 | QA verification: ruff, mypy, pytest (382 tests pass, 0 regressions) | Tech-QA | 3 | Done |
 
 ## Notes
 
