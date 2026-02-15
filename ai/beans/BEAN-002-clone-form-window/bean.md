@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-002 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
 | **Started** | — |
 | **Completed** | — |
 | **Duration** | — |
-| **Owner** | (unassigned) |
+| **Owner** | team-lead |
 | **Category** | App |
 
 ## Problem Statement
@@ -58,30 +58,28 @@ A functional main window where the user can enter a project name and git URL, cl
 
 ## Acceptance Criteria
 
-- [ ] User can type a project name and a git URL into labeled text fields
-- [ ] Clicking Fetch with empty project name shows an inline validation error and does not start cloning
-- [ ] Clicking Fetch with empty URL shows an inline validation error and does not start cloning
-- [ ] Clicking Fetch with valid inputs clones the repository to `./projects/<project-name>/`
-- [ ] The `./projects/` directory is created automatically if it does not exist
-- [ ] The Fetch button is disabled while a clone is in progress
-- [ ] The status label updates to "Cloning..." when a clone starts
-- [ ] Git clone output appears in the log area in real time (not only after completion)
-- [ ] On successful clone, the status label shows "Clone complete" and the button re-enables
-- [ ] On failed clone (e.g., invalid URL, network error), the status label shows the error and the button re-enables
-- [ ] The UI remains responsive (not frozen) during the clone operation
-- [ ] Cloning a URL that is not a GitHub URL works (e.g., GitLab, Bitbucket, any git remote)
-- [ ] If the target directory already exists, the clone fails gracefully with an appropriate error message
-- [ ] All new code has unit tests; clone worker and service are tested
-- [ ] `ruff check` and `mypy` pass with zero errors on all new files
+- [x] User can type a project name and a git URL into labeled text fields
+- [x] Clicking Fetch with empty project name shows an inline validation error and does not start cloning
+- [x] Clicking Fetch with empty URL shows an inline validation error and does not start cloning
+- [x] Clicking Fetch with valid inputs clones the repository to `./projects/<project-name>/`
+- [x] The `./projects/` directory is created automatically if it does not exist
+- [x] The Fetch button is disabled while a clone is in progress
+- [x] The status label updates to "Cloning..." when a clone starts
+- [x] Git clone output appears in the log area in real time (not only after completion)
+- [x] On successful clone, the status label shows "Clone complete" and the button re-enables
+- [x] On failed clone (e.g., invalid URL, network error), the status label shows the error and the button re-enables
+- [x] The UI remains responsive (not frozen) during the clone operation
+- [x] Cloning a URL that is not a GitHub URL works (e.g., GitLab, Bitbucket, any git remote)
+- [x] If the target directory already exists, the clone fails gracefully with an appropriate error message
+- [x] All new code has unit tests; clone worker and service are tested
+- [x] `ruff check` and `mypy` pass with zero errors on all new files
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
-
-> Tasks are populated by the Team Lead during decomposition.
-> Task files go in `tasks/` subdirectory.
+| 1 | Implement clone form window | Developer | — | Done |
+| 2 | Verify clone form window | Tech-QA | Task 1 | Done |
 
 ## Notes
 
@@ -90,6 +88,8 @@ A functional main window where the user can enter a project name and git URL, cl
 - Follow PySide6 conventions: all UI updates happen on the main thread via signal/slot connections from the worker.
 - The collapsible log area should default to expanded during an active clone and retain its state afterward.
 - `git` must be available on the system PATH; the app should check for this and show a clear error if git is not found.
+- **Skipped BA:** Requirements fully specified in bean with 15 detailed acceptance criteria — no elicitation needed.
+- **Skipped Architect:** PySide6 conventions define all patterns (QThread workers, signals/slots). No architectural decisions required.
 
 ## Telemetry
 
