@@ -3,12 +3,12 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-031 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
+| **Duration** | ~1 cycle |
 | **Owner** | (unassigned) |
 | **Category** | App |
 
@@ -46,26 +46,31 @@ Implement the surface map report generator that produces `reports/surface-map.md
 
 ## Acceptance Criteria
 
-- [ ] `reports/surface-map.md` contains sections for all 7 surface types
-- [ ] Each section lists discovered items with key metadata (path, name, count)
-- [ ] Summary section shows detected stacks and total counts
-- [ ] `reports/surfaces.json` contains all surfaces in structured JSON format
-- [ ] Empty sections (no surfaces of that type) show "None detected" rather than being omitted
-- [ ] Report is generated from `SurfaceCollection` input
-- [ ] Unit tests verify report structure and content with sample data
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `reports/surface-map.md` contains sections for all 7 surface types
+- [x] Each section lists discovered items with key metadata (path, name, count)
+- [x] Summary section shows detected stacks and total counts
+- [x] `reports/surfaces.json` contains all surfaces in structured JSON format
+- [x] Empty sections (no surfaces of that type) show "None detected" rather than being omitted
+- [x] Report is generated from `SurfaceCollection` input
+- [x] Unit tests verify report structure and content with sample data
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement `surface_map.py` — markdown + JSON report generator | Developer | — | Done |
+| 2 | Update `reports/__init__.py` exports | Developer | 1 | Done |
+| 3 | Unit tests for report generation (28 tests) | Tech-QA | 1 | Done |
+| 4 | Verify linting, type-checking, and all tests pass | Tech-QA | 1,2,3 | Done |
 
 ## Notes
 
 - Depends on BEAN-020–BEAN-026 (analyzers produce surfaces), BEAN-019 (surface data model).
 - Reference: Spec sections 4.2 (`reports/surface-map.md`), 6 Stage C (deliver `reports/surfaces.json`).
 - The surface map is generated after Stage C (surface extraction) completes.
+- **BA SKIP:** Requirements are fully specified in the bean — clear acceptance criteria, well-defined inputs (`SurfaceCollection`, `StackProfile`), and output formats (Markdown + JSON). No ambiguity requiring BA elaboration.
+- **Architect SKIP:** No new architectural decisions needed. This is a pure report generator consuming an existing data model (`SurfaceCollection`) and writing files. No new components, APIs, or integration boundaries.
 
 ## Telemetry
 

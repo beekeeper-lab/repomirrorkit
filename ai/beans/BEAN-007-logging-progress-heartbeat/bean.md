@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-007 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -40,21 +40,24 @@ A logging module that provides structured logging for the harvester pipeline and
 
 ## Acceptance Criteria
 
-- [ ] Structured logging is configured via `structlog` with static event names and keyword args
-- [ ] `--log-level` controls verbosity (debug shows file-level detail, info shows stage progress)
-- [ ] Progress tracker maintains accurate counters for each surface type
-- [ ] Progress heartbeat logs at regular intervals during long operations
-- [ ] `reports/progress.md` is generated with current progress summary
-- [ ] Log output does not include secrets, tokens, or PII
-- [ ] Progress tracker can be queried for current state (for GUI integration)
-- [ ] Unit tests cover progress counting, log level filtering
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] Structured logging is configured via `structlog` with static event names and keyword args
+- [x] `--log-level` controls verbosity (debug shows file-level detail, info shows stage progress)
+- [x] Progress tracker maintains accurate counters for each surface type
+- [x] Progress heartbeat logs at regular intervals during long operations
+- [x] `reports/progress.md` is generated with current progress summary
+- [x] Log output does not include secrets, tokens, or PII
+- [x] Progress tracker can be queried for current state (for GUI integration)
+- [x] Unit tests cover progress counting, log level filtering
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Add structlog dependency | Developer | — | Done |
+| 2 | Implement harvest_logging.py | Developer | 1 | Done |
+| 3 | Unit tests | Developer | 2 | Done |
+| 4 | QA verification | Tech QA | 3 | Done |
 
 ## Notes
 

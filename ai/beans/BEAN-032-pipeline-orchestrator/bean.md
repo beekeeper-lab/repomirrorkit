@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-032 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -45,24 +45,35 @@ Implement the pipeline orchestrator that sequences Stages A through F, coordinat
 
 ## Acceptance Criteria
 
-- [ ] `HarvestPipeline.run()` executes Stages A through F in order
-- [ ] Each stage completion triggers a state checkpoint
-- [ ] Resume mode skips completed stages and continues from the last incomplete stage
-- [ ] Stage errors are caught, reported, and leave the pipeline in a resumable state
-- [ ] Progress callback fires events: `stage_start`, `stage_complete`, `stage_error`, `progress_update`
-- [ ] Worklist iteration is deterministic and complete (no items skipped without reason)
-- [ ] `HarvestResult` contains: success/failure, coverage pass/fail, bean count, gap count
-- [ ] CLI `harvest` command runs the full pipeline and returns correct exit codes
-- [ ] `--resume` flag triggers resume mode in the pipeline
-- [ ] The pipeline handles the case where no surfaces are found (empty repo) gracefully
-- [ ] Unit tests cover: full pipeline flow (mocked stages), resume from each stage, error in each stage
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `HarvestPipeline.run()` executes Stages A through F in order
+- [x] Each stage completion triggers a state checkpoint
+- [x] Resume mode skips completed stages and continues from the last incomplete stage
+- [x] Stage errors are caught, reported, and leave the pipeline in a resumable state
+- [x] Progress callback fires events: `stage_start`, `stage_complete`, `stage_error`, `progress_update`
+- [x] Worklist iteration is deterministic and complete (no items skipped without reason)
+- [x] `HarvestResult` contains: success/failure, coverage pass/fail, bean count, gap count
+- [x] CLI `harvest` command runs the full pipeline and returns correct exit codes
+- [x] `--resume` flag triggers resume mode in the pipeline
+- [x] The pipeline handles the case where no surfaces are found (empty repo) gracefully
+- [x] Unit tests cover: full pipeline flow (mocked stages), resume from each stage, error in each stage
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement HarvestResult dataclass and PipelineEvent callback protocol | Developer | — | Done |
+| 2 | Implement HarvestPipeline class with stage sequencing, resume, error handling | Developer | 1 | Done |
+| 3 | Wire CLI harvest command to HarvestPipeline | Developer | 2 | Done |
+| 4 | Write unit tests for pipeline (full flow, resume, errors, callbacks) | Developer | 2 | Done |
+| 5 | Run linting, type checking, and full test suite | Tech-QA | 3,4 | Done |
+
+## Wave Decisions
+
+- **BA**: Skipped — acceptance criteria already precise and testable in the bean definition.
+- **Architect**: Skipped — no new component boundaries, API contracts, or technology decisions. The pipeline wires existing modules with well-defined signatures.
+- **Developer**: Required — core implementation.
+- **Tech-QA**: Required — mandatory for App category beans.
 
 ## Notes
 

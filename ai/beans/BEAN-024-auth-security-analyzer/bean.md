@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-024 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -44,16 +44,16 @@ Implement an auth analyzer that discovers authentication and authorization patte
 
 ## Acceptance Criteria
 
-- [ ] Detects Express/Node auth middleware patterns
-- [ ] Detects FastAPI/Flask auth dependency and decorator patterns
-- [ ] Detects Next.js middleware and NextAuth configuration
-- [ ] Detects .NET `[Authorize]` and role-based authorization patterns
-- [ ] Each auth pattern produces an `AuthSurface` with roles, permissions, protected endpoints
-- [ ] Token/session type is identified when visible (JWT, session, cookie)
-- [ ] Auth requirements are correlated with specific routes/API endpoints
-- [ ] Analyzer only runs for detected frameworks
-- [ ] Unit tests cover each framework's auth pattern extraction
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] Detects Express/Node auth middleware patterns
+- [x] Detects FastAPI/Flask auth dependency and decorator patterns
+- [x] Detects Next.js middleware and NextAuth configuration
+- [x] Detects .NET `[Authorize]` and role-based authorization patterns
+- [x] Each auth pattern produces an `AuthSurface` with roles, permissions, protected endpoints
+- [x] Token/session type is identified when visible (JWT, session, cookie)
+- [x] Auth requirements are correlated with specific routes/API endpoints
+- [x] Analyzer only runs for detected frameworks
+- [x] Unit tests cover each framework's auth pattern extraction
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 

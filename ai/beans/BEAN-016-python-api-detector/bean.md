@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-016 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
-| **Owner** | (unassigned) |
+| **Owner** | Claude |
 | **Category** | App |
 
 ## Problem Statement
@@ -43,21 +43,23 @@ Implement a Python API detector that identifies FastAPI and Flask projects by ex
 
 ## Acceptance Criteria
 
-- [ ] `PythonApiDetector` implements the `Detector` interface
-- [ ] Detects FastAPI via dependency and decorator patterns
-- [ ] Detects Flask via dependency and decorator patterns
-- [ ] Parses both `pyproject.toml` and `requirements.txt` for dependencies
-- [ ] Signal includes the specific framework name(s) detected
-- [ ] Confidence scoring based on evidence strength
-- [ ] No false positives on non-API Python projects (e.g., CLI tools, libraries)
-- [ ] Unit tests cover: FastAPI repo, Flask repo, non-API Python repo
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `PythonApiDetector` implements the `Detector` interface
+- [x] Detects FastAPI via dependency and decorator patterns
+- [x] Detects Flask via dependency and decorator patterns
+- [x] Parses both `pyproject.toml` and `requirements.txt` for dependencies
+- [x] Signal includes the specific framework name(s) detected
+- [x] Confidence scoring based on evidence strength
+- [x] No false positives on non-API Python projects (e.g., CLI tools, libraries)
+- [x] Unit tests cover: FastAPI repo, Flask repo, non-API Python repo
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement PythonApiDetector | Claude | BEAN-010 | Done |
+| 2 | Write unit tests (35 tests) | Claude | 1 | Done |
+| 3 | Tech QA: ruff, mypy, pytest | Claude | 2 | Done |
 
 ## Notes
 

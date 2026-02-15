@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-025 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
+| **Duration** | < 1 day |
+| **Owner** | Claude |
 | **Category** | App |
 
 ## Problem Statement
@@ -45,23 +45,28 @@ Implement a config/env var analyzer that discovers all environment variable refe
 
 ## Acceptance Criteria
 
-- [ ] Extracts env vars from `process.env` patterns in JS/TS files
-- [ ] Extracts env vars from `os.environ` / `os.getenv` patterns in Python files
-- [ ] Extracts env vars from `.env` and `.env.example` files
-- [ ] Extracts configuration keys from `appsettings.json`
-- [ ] Each config reference produces a `ConfigSurface` with name, default, required flag, usage locations
-- [ ] Feature flags are identified by naming convention
-- [ ] External service dependencies are identified (DATABASE_URL, REDIS_URL, etc.)
-- [ ] Duplicate var names across files are consolidated into one surface
-- [ ] Analyzer runs across all detected ecosystems (not framework-specific)
-- [ ] Unit tests cover each ecosystem's config patterns
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] Extracts env vars from `process.env` patterns in JS/TS files
+- [x] Extracts env vars from `os.environ` / `os.getenv` patterns in Python files
+- [x] Extracts env vars from `.env` and `.env.example` files
+- [x] Extracts configuration keys from `appsettings.json`
+- [x] Each config reference produces a `ConfigSurface` with name, default, required flag, usage locations
+- [x] Feature flags are identified by naming convention
+- [x] External service dependencies are identified (DATABASE_URL, REDIS_URL, etc.)
+- [x] Duplicate var names across files are consolidated into one surface
+- [x] Analyzer runs across all detected ecosystems (not framework-specific)
+- [x] Unit tests cover each ecosystem's config patterns
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | BA: Validate requirements | Claude | — | Done (skip: ACs well-defined) |
+| 2 | Architect: Design config_env module | Claude | 1 | Done (skip: established pattern) |
+| 3 | Developer: Implement config_env.py | Claude | 2 | Done |
+| 4 | Developer: Write unit tests | Claude | 3 | Done |
+| 5 | Developer: Update __init__.py exports | Claude | 3 | Done |
+| 6 | Tech-QA: Verify all gates pass | Claude | 3,4,5 | Done |
 
 ## Notes
 
@@ -69,16 +74,24 @@ Implement a config/env var analyzer that discovers all environment variable refe
 - Reference: Spec section 6, Stage C (Config/env vars/feature flags).
 - Coverage gate: `env_vars.documented == env_vars.total` — 100% required (spec section 7.2).
 - Gap hunt: "Env vars referenced but not in envvar report" (spec section 7.3).
+- BA and Architect waves were lightweight: the bean had well-defined ACs and the analyzer pattern is well-established from auth.py and apis.py.
+- All 38 new tests pass. Full regression suite (870 tests) passes with zero regressions.
+- Quality gates: ruff check PASS, ruff format --check PASS, mypy PASS, pytest PASS.
 
 ## Telemetry
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | BA: Validate requirements | Claude | 1m | — | — |
+| 2 | Architect: Design | Claude | 1m | — | — |
+| 3 | Developer: Implement | Claude | 10m | — | — |
+| 4 | Developer: Tests | Claude | 5m | — | — |
+| 5 | Developer: Exports | Claude | 1m | — | — |
+| 6 | Tech-QA: Verify | Claude | 5m | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
+| **Total Tasks** | 6 |
+| **Total Duration** | ~23m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-017 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -44,15 +44,15 @@ Implement a .NET API detector that identifies ASP.NET and minimal API projects b
 
 ## Acceptance Criteria
 
-- [ ] `DotnetApiDetector` implements the `Detector` interface
-- [ ] Detects .NET via `.csproj` with web SDK reference
-- [ ] Detects .NET via `Program.cs` patterns
-- [ ] Detects .NET via controller file patterns
-- [ ] Detects minimal API patterns
-- [ ] Confidence scoring based on evidence strength
-- [ ] No false positives on .NET library or console app projects
-- [ ] Unit tests cover: ASP.NET repo, minimal API repo, non-web .NET repo
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `DotnetApiDetector` implements the `Detector` interface
+- [x] Detects .NET via `.csproj` with web SDK reference
+- [x] Detects .NET via `Program.cs` patterns
+- [x] Detects .NET via controller file patterns
+- [x] Detects minimal API patterns
+- [x] Confidence scoring based on evidence strength
+- [x] No false positives on .NET library or console app projects
+- [x] Unit tests cover: ASP.NET repo, minimal API repo, non-web .NET repo
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 

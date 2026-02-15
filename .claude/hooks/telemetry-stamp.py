@@ -23,7 +23,7 @@ import json
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 SENTINEL = "—"
@@ -109,7 +109,7 @@ def git_branch_duration() -> str | None:
     try:
         # Get current branch name
         branch = subprocess.run(
-            ["git", "branch", "--show-current"],
+            ["git", "branch", "--show-current"],  # noqa: S607 — hardcoded git path
             capture_output=True, text=True, timeout=5,
         ).stdout.strip()
 
@@ -118,8 +118,8 @@ def git_branch_duration() -> str | None:
 
         # Find the merge base with test (or main as fallback)
         for base in ("test", "main"):
-            result = subprocess.run(
-                ["git", "merge-base", base, "HEAD"],
+            result = subprocess.run(  # noqa: S603 — hardcoded git command
+                ["git", "merge-base", base, "HEAD"],  # noqa: S607 — hardcoded git path
                 capture_output=True, text=True, timeout=5,
             )
             if result.returncode == 0:
@@ -129,8 +129,8 @@ def git_branch_duration() -> str | None:
             return None
 
         # Get timestamp of first commit after merge base
-        result = subprocess.run(
-            ["git", "log", "--format=%aI", "--reverse", f"{merge_base}..HEAD"],
+        result = subprocess.run(  # noqa: S603 — hardcoded git command
+            ["git", "log", "--format=%aI", "--reverse", f"{merge_base}..HEAD"],  # noqa: S607 — hardcoded git path
             capture_output=True, text=True, timeout=5,
         )
         if result.returncode != 0 or not result.stdout.strip():
@@ -138,10 +138,10 @@ def git_branch_duration() -> str | None:
 
         first_commit_ts = result.stdout.strip().split("\n")[0]
         dt_start = datetime.fromisoformat(first_commit_ts)
-        dt_now = datetime.now(timezone.utc)
+        dt_now = datetime.now(UTC)
         # Ensure both are offset-aware for comparison
         if dt_start.tzinfo is None:
-            dt_start = dt_start.replace(tzinfo=timezone.utc)
+            dt_start = dt_start.replace(tzinfo=UTC)
         delta = (dt_now - dt_start).total_seconds()
         return format_seconds(max(0, delta))
 

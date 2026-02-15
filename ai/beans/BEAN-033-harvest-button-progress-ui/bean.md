@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-033 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -50,24 +50,27 @@ Add a "Generate Requirements" button to the main window that triggers the harves
 
 ## Acceptance Criteria
 
-- [ ] "Generate Requirements" button appears after a successful clone
-- [ ] Button is disabled before clone completes and during harvest
-- [ ] Clicking the button starts the harvest pipeline on the cloned repo path
-- [ ] Status label updates with current pipeline stage name
-- [ ] Log area shows real-time progress (surface counts, stage transitions)
-- [ ] On success: status shows bean count and coverage percentage
-- [ ] On failure: status shows error message and gap count
-- [ ] UI remains responsive during harvest (no freezing)
-- [ ] Button re-enables after harvest completes (success or failure)
-- [ ] Clone form fields are disabled during harvest
-- [ ] Unit tests cover: button state, worker signal emission, UI updates
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] "Generate Requirements" button appears after a successful clone
+- [x] Button is disabled before clone completes and during harvest
+- [x] Clicking the button starts the harvest pipeline on the cloned repo path
+- [x] Status label updates with current pipeline stage name
+- [x] Log area shows real-time progress (surface counts, stage transitions)
+- [x] On success: status shows bean count and coverage percentage
+- [x] On failure: status shows error message and gap count
+- [x] UI remains responsive during harvest (no freezing)
+- [x] Button re-enables after harvest completes (success or failure)
+- [x] Clone form fields are disabled during harvest
+- [x] Unit tests cover: button state, worker signal emission, UI updates
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Create `harvest_worker.py` — QThread worker bridging PipelineCallback to Qt signals | Developer | — | Done |
+| 2 | Update `main_window.py` — Add Generate Requirements button, wire harvest worker, manage state | Developer | 1 | Done |
+| 3 | Write unit tests for worker signals, button states, UI updates | Tech-QA | 1, 2 | Done |
+| 4 | Run quality gates (ruff, mypy, pytest) — 1206/1206 pass | Tech-QA | 3 | Done |
 
 ## Notes
 
@@ -76,16 +79,21 @@ Add a "Generate Requirements" button to the main window that triggers the harves
 - The harvest worker pattern mirrors the existing `clone_worker.py` pattern from BEAN-002.
 - The button should use the clone form's project directory (`./projects/<project-name>/`) as the harvest target.
 - Default `HarvestConfig`: out=`<project>/ai`, fail-on-gaps=true, log-level=info.
+- **BA SKIP:** Bean spec already provides detailed acceptance criteria in testable format, clear scope, and defined interfaces. No additional requirements elicitation needed.
+- **Architect SKIP:** Architecture prescribed by bean spec — QThread worker following existing clone_worker.py pattern, signal/slot bridge to PipelineCallback, integration into existing MainWindow. No new architectural decisions needed.
 
 ## Telemetry
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Create harvest_worker.py | Developer | — | — | — |
+| 2 | Update main_window.py | Developer | — | — | — |
+| 3 | Write unit tests | Tech-QA | — | — | — |
+| 4 | Quality gates | Tech-QA | — | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
+| **Total Tasks** | 4 |
 | **Total Duration** | — |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

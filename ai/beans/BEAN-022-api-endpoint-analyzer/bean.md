@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-022 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -46,16 +46,16 @@ Implement an API endpoint analyzer that discovers all backend API endpoints acro
 
 ## Acceptance Criteria
 
-- [ ] Extracts endpoints from Express route definitions
-- [ ] Extracts endpoints from FastAPI/Flask decorators
-- [ ] Extracts endpoints from Next.js API route files
-- [ ] Extracts endpoints from .NET controller attributes and minimal API calls
-- [ ] Each endpoint produces an `ApiSurface` with method, path, source ref
-- [ ] Auth hints are extracted when visible (middleware, decorators)
-- [ ] Request/response type hints extracted (best effort from type annotations)
-- [ ] Analyzer only runs for detected backend frameworks
-- [ ] Unit tests cover each framework's endpoint extraction
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] Extracts endpoints from Express route definitions
+- [x] Extracts endpoints from FastAPI/Flask decorators
+- [x] Extracts endpoints from Next.js API route files
+- [x] Extracts endpoints from .NET controller attributes and minimal API calls
+- [x] Each endpoint produces an `ApiSurface` with method, path, source ref
+- [x] Auth hints are extracted when visible (middleware, decorators)
+- [x] Request/response type hints extracted (best effort from type annotations)
+- [x] Analyzer only runs for detected backend frameworks
+- [x] Unit tests cover each framework's endpoint extraction
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 

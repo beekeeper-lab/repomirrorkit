@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-010 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -39,22 +39,27 @@ Implement the detector framework: a base `Detector` class, a `Signal` data model
 
 ## Acceptance Criteria
 
-- [ ] `Detector` ABC defines `detect(inventory) -> list[Signal]` method
-- [ ] `Signal` dataclass has: stack_name, confidence (float 0–1), evidence (list of file paths)
-- [ ] `StackProfile` holds aggregated detection results with per-stack confidence
-- [ ] Detectors can be registered via `register_detector()` and retrieved via `get_all_detectors()`
-- [ ] `run_detection()` runs all registered detectors and aggregates signals
-- [ ] Stacks below minimum confidence threshold are excluded from the profile
-- [ ] Multiple detectors can contribute signals for the same stack (confidences combine)
-- [ ] Framework works with zero registered detectors (returns empty profile)
-- [ ] Unit tests cover: registration, detection, aggregation, confidence filtering, empty state
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `Detector` ABC defines `detect(inventory) -> list[Signal]` method
+- [x] `Signal` dataclass has: stack_name, confidence (float 0–1), evidence (list of file paths)
+- [x] `StackProfile` holds aggregated detection results with per-stack confidence
+- [x] Detectors can be registered via `register_detector()` and retrieved via `get_all_detectors()`
+- [x] `run_detection()` runs all registered detectors and aggregates signals
+- [x] Stacks below minimum confidence threshold are excluded from the profile
+- [x] Multiple detectors can contribute signals for the same stack (confidences combine)
+- [x] Framework works with zero registered detectors (returns empty profile)
+- [x] Unit tests cover: registration, detection, aggregation, confidence filtering, empty state
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement Signal, StackProfile, Detector ABC in base.py | Developer | — | Done |
+| 2 | Implement registry (register_detector, get_all_detectors, clear_registry) | Developer | 1 | Done |
+| 3 | Implement run_detection aggregation with confidence filtering | Developer | 1,2 | Done |
+| 4 | Update detectors/__init__.py with public API re-exports | Developer | 1,2,3 | Done |
+| 5 | Write unit tests (28 tests: Signal, StackProfile, ABC, registry, aggregation) | Tech-QA | 4 | Done |
+| 6 | QA verification: ruff, mypy, pytest (374 tests pass, 0 regressions) | Tech-QA | 5 | Done |
 
 ## Notes
 
