@@ -28,7 +28,7 @@
 | BEAN-004 | Harvester Package Setup | App | High | Done | team-lead |
 | BEAN-005 | CLI Entry Point & Configuration | App | High | Done | team-lead |
 | BEAN-006 | State Management & Resume | App | High | Done | team-lead |
-| BEAN-007 | Logging & Progress Heartbeat | App | Medium | Done | team-lead |
+| BEAN-007 | Logging & Progress Heartbeat | App | High | Done | team-lead |
 | BEAN-008 | Clone & Normalize (Stage A) | App | High | Done | team-lead |
 | BEAN-009 | File Inventory (Stage B) | App | High | Done | team-lead |
 | BEAN-010 | Detector Framework | App | High | Done | team-lead |
@@ -47,7 +47,7 @@
 | BEAN-023 | Model & Entity Analyzer | App | High | Done | team-lead |
 | BEAN-024 | Auth & Security Analyzer | App | High | Done | team-lead |
 | BEAN-025 | Config & Env Var Analyzer | App | High | Done | team-lead |
-| BEAN-026 | Cross-cutting Concerns Analyzer | App | Medium | Done | team-lead |
+| BEAN-026 | Cross-cutting Concerns Analyzer | App | High | Done | team-lead |
 | BEAN-027 | Traceability Graph Builder (Stage D) | App | High | Done | team-lead |
 | BEAN-028 | Bean Templates | App | High | Done | team-lead |
 | BEAN-029 | Bean Writer & Indexer (Stage E) | App | High | Done | team-lead |

@@ -100,7 +100,7 @@ Detects and resolves duplicates, scope overlaps, contradictions, missing depende
       — Recommend: merge into one bean.
 
    HIGH:
-   2. SCOPE OVERLAP: BEAN-073 and BEAN-076 both modify the project's generator service
+   2. SCOPE OVERLAP: BEAN-073 and BEAN-076 both modify `foundry_app/services/generator.py`
       — BEAN-073 In Scope: "Add overlay mode to generator"
       — BEAN-076 In Scope: "Refactor generator pipeline stages"
       — Recommend: add dependency (073 before 076) or merge scope.
@@ -223,7 +223,7 @@ The agent reads prose and applies judgment. These heuristics guide the analysis:
 
 - **Duplicate detection**: Compare Problem Statements and Goals word by word. If two beans describe the same problem using different words but share the same key nouns (module names, feature names, user actions), flag as duplicate. Examples: "Add user authentication" ≈ "Implement auth system", "Fix generator overlay" ≈ "Repair overlay mode in generator".
 
-- **Scope overlap**: Extract file paths, module names (`generator`, `compiler`), service names (`Scaffold Service`), and feature areas (`wizard pages`, `CLI`) from In Scope sections. If two beans reference the same items, evaluate whether the overlap is incidental (both mention `_index.md` because they add beans) or substantive (both modify the same service logic).
+- **Scope overlap**: Extract file paths (`foundry_app/services/generator.py`), module names (`generator`, `compiler`), service names (`Scaffold Service`), and feature areas (`wizard pages`, `CLI`) from In Scope sections. If two beans reference the same items, evaluate whether the overlap is incidental (both mention `_index.md` because they add beans) or substantive (both modify the same service logic).
 
 - **Contradictions**: Look for opposing verbs applied to the same target. Key patterns: "add X" vs "remove X", "replace X with Y" vs "enhance X", "consolidate" vs "split", "simplify" vs "extend". Check both Acceptance Criteria and Scope sections.
 
