@@ -266,11 +266,127 @@ def find_auth_checks_without_bean(
     return entries
 
 
+def find_state_mgmt_without_bean(
+    surfaces: SurfaceCollection,
+    beans: list[WrittenBean],
+) -> list[GapEntry]:
+    """Find state management surfaces with no corresponding bean.
+
+    Args:
+        surfaces: Extracted surfaces.
+        beans: Written bean records.
+
+    Returns:
+        List of gap entries for uncovered state management surfaces.
+    """
+    covered_names = {b.title for b in beans if b.surface_type == "state_mgmt"}
+    entries: list[GapEntry] = []
+    for sm in surfaces.state_mgmt:
+        if sm.name not in covered_names:
+            file_path = sm.source_refs[0].file_path if sm.source_refs else "unknown"
+            entries.append(
+                GapEntry(
+                    category="State management with no bean",
+                    description=f"State store '{sm.name}' ({sm.pattern}) has no corresponding bean",
+                    file_path=file_path,
+                    recommended_action=f"Create a state_mgmt bean for '{sm.name}'",
+                )
+            )
+    return entries
+
+
+def find_middleware_without_bean(
+    surfaces: SurfaceCollection,
+    beans: list[WrittenBean],
+) -> list[GapEntry]:
+    """Find middleware surfaces with no corresponding bean.
+
+    Args:
+        surfaces: Extracted surfaces.
+        beans: Written bean records.
+
+    Returns:
+        List of gap entries for uncovered middleware surfaces.
+    """
+    covered_names = {b.title for b in beans if b.surface_type == "middleware"}
+    entries: list[GapEntry] = []
+    for mw in surfaces.middleware:
+        if mw.name not in covered_names:
+            file_path = mw.source_refs[0].file_path if mw.source_refs else "unknown"
+            entries.append(
+                GapEntry(
+                    category="Middleware with no bean",
+                    description=f"Middleware '{mw.name}' ({mw.middleware_type}) has no corresponding bean",
+                    file_path=file_path,
+                    recommended_action=f"Create a middleware bean for '{mw.name}'",
+                )
+            )
+    return entries
+
+
+def find_integrations_without_bean(
+    surfaces: SurfaceCollection,
+    beans: list[WrittenBean],
+) -> list[GapEntry]:
+    """Find integration surfaces with no corresponding bean.
+
+    Args:
+        surfaces: Extracted surfaces.
+        beans: Written bean records.
+
+    Returns:
+        List of gap entries for uncovered integration surfaces.
+    """
+    covered_names = {b.title for b in beans if b.surface_type == "integration"}
+    entries: list[GapEntry] = []
+    for integ in surfaces.integrations:
+        if integ.name not in covered_names:
+            file_path = integ.source_refs[0].file_path if integ.source_refs else "unknown"
+            entries.append(
+                GapEntry(
+                    category="Integrations with no bean",
+                    description=f"Integration '{integ.name}' ({integ.integration_type}) has no corresponding bean",
+                    file_path=file_path,
+                    recommended_action=f"Create an integration bean for '{integ.name}'",
+                )
+            )
+    return entries
+
+
+def find_ui_flows_without_bean(
+    surfaces: SurfaceCollection,
+    beans: list[WrittenBean],
+) -> list[GapEntry]:
+    """Find UI flow surfaces with no corresponding bean.
+
+    Args:
+        surfaces: Extracted surfaces.
+        beans: Written bean records.
+
+    Returns:
+        List of gap entries for uncovered UI flow surfaces.
+    """
+    covered_names = {b.title for b in beans if b.surface_type == "ui_flow"}
+    entries: list[GapEntry] = []
+    for flow in surfaces.ui_flows:
+        if flow.name not in covered_names:
+            file_path = flow.source_refs[0].file_path if flow.source_refs else "unknown"
+            entries.append(
+                GapEntry(
+                    category="UI flows with no bean",
+                    description=f"UI flow '{flow.name}' ({flow.flow_type}) has no corresponding bean",
+                    file_path=file_path,
+                    recommended_action=f"Create a ui_flow bean for '{flow.name}'",
+                )
+            )
+    return entries
+
+
 def run_all_gap_queries(
     surfaces: SurfaceCollection,
     beans: list[WrittenBean],
 ) -> GapReport:
-    """Run all 6 gap hunt queries and return a consolidated report.
+    """Run all 10 gap hunt queries and return a consolidated report.
 
     Args:
         surfaces: Extracted surfaces from analyzers.
@@ -286,6 +402,10 @@ def run_all_gap_queries(
     entries.extend(find_models_referenced_but_undocumented(surfaces, beans))
     entries.extend(find_env_vars_not_in_report(surfaces, beans))
     entries.extend(find_auth_checks_without_bean(surfaces, beans))
+    entries.extend(find_state_mgmt_without_bean(surfaces, beans))
+    entries.extend(find_middleware_without_bean(surfaces, beans))
+    entries.extend(find_integrations_without_bean(surfaces, beans))
+    entries.extend(find_ui_flows_without_bean(surfaces, beans))
 
     logger.info("gap_queries_complete", total_gaps=len(entries))
     return GapReport(entries=entries)

@@ -18,9 +18,13 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ComponentSurface,
     ConfigSurface,
     CrosscuttingSurface,
+    IntegrationSurface,
+    MiddlewareSurface,
     ModelSurface,
     RouteSurface,
+    StateMgmtSurface,
     SurfaceCollection,
+    UIFlowSurface,
 )
 from repo_mirror_kit.harvester.detectors.base import StackProfile
 
@@ -50,6 +54,10 @@ def generate_surface_map_markdown(
     sections.append(_build_auth_section(surfaces.auth))
     sections.append(_build_config_section(surfaces.config))
     sections.append(_build_crosscutting_section(surfaces.crosscutting))
+    sections.append(_build_state_mgmt_section(surfaces.state_mgmt))
+    sections.append(_build_middleware_section(surfaces.middleware))
+    sections.append(_build_integrations_section(surfaces.integrations))
+    sections.append(_build_ui_flows_section(surfaces.ui_flows))
     return "\n".join(sections)
 
 
@@ -78,6 +86,10 @@ def generate_surface_map_json(
                 "auth": len(surfaces.auth),
                 "config": len(surfaces.config),
                 "crosscutting": len(surfaces.crosscutting),
+                "state_mgmt": len(surfaces.state_mgmt),
+                "middleware": len(surfaces.middleware),
+                "integrations": len(surfaces.integrations),
+                "ui_flows": len(surfaces.ui_flows),
             },
         },
         "surfaces": surfaces.to_dict(),
@@ -146,6 +158,10 @@ def _build_summary_section(
     lines.append(f"| Auth Patterns | {len(surfaces.auth)} |")
     lines.append(f"| Config / Env Vars | {len(surfaces.config)} |")
     lines.append(f"| Cross-cutting Concerns | {len(surfaces.crosscutting)} |")
+    lines.append(f"| State Management | {len(surfaces.state_mgmt)} |")
+    lines.append(f"| Middleware | {len(surfaces.middleware)} |")
+    lines.append(f"| Integrations | {len(surfaces.integrations)} |")
+    lines.append(f"| UI Flows | {len(surfaces.ui_flows)} |")
     lines.append("")
     return "\n".join(lines)
 
@@ -246,7 +262,7 @@ def _build_config_section(config: list[ConfigSurface]) -> str:
     for cfg in config:
         var_name = cfg.env_var_name or cfg.name
         required = "Yes" if cfg.required else "No"
-        default = cfg.default_value if cfg.default_value is not None else "—"
+        default = cfg.default_value if cfg.default_value is not None else "\u2014"
         lines.append(f"| `{var_name}` | {required} | {default} |")
     lines.append("")
     return "\n".join(lines)
@@ -266,5 +282,74 @@ def _build_crosscutting_section(
         lines.append(f"- **{concern}**: {item.description}")
         if item.affected_files:
             lines.append(f"  - Affected files: {len(item.affected_files)}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _build_state_mgmt_section(state_mgmt: list[StateMgmtSurface]) -> str:
+    """Build the state management section."""
+    lines: list[str] = ["## State Management\n"]
+    if not state_mgmt:
+        lines.append(_NONE_DETECTED)
+        return "\n".join(lines)
+
+    lines.append("| Name | Store | Pattern | Actions | Selectors |")
+    lines.append("|---|---|---|---|---|")
+    for sm in state_mgmt:
+        store = sm.store_name or sm.name
+        lines.append(
+            f"| {sm.name} | {store} | {sm.pattern} | {len(sm.actions)} | {len(sm.selectors)} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _build_middleware_section(middleware: list[MiddlewareSurface]) -> str:
+    """Build the middleware section."""
+    lines: list[str] = ["## Middleware\n"]
+    if not middleware:
+        lines.append(_NONE_DETECTED)
+        return "\n".join(lines)
+
+    lines.append("| Name | Type | Order | Applies To |")
+    lines.append("|---|---|---|---|")
+    for mw in middleware:
+        order = str(mw.execution_order) if mw.execution_order is not None else "\u2014"
+        applies = ", ".join(mw.applies_to) if mw.applies_to else "all"
+        lines.append(f"| {mw.name} | {mw.middleware_type} | {order} | {applies} |")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _build_integrations_section(integrations: list[IntegrationSurface]) -> str:
+    """Build the integrations section."""
+    lines: list[str] = ["## Integrations\n"]
+    if not integrations:
+        lines.append(_NONE_DETECTED)
+        return "\n".join(lines)
+
+    lines.append("| Name | Type | Target | Protocol |")
+    lines.append("|---|---|---|---|")
+    for integ in integrations:
+        lines.append(
+            f"| {integ.name} | {integ.integration_type} | {integ.target_service} | {integ.protocol} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _build_ui_flows_section(ui_flows: list[UIFlowSurface]) -> str:
+    """Build the UI flows section."""
+    lines: list[str] = ["## UI Flows\n"]
+    if not ui_flows:
+        lines.append(_NONE_DETECTED)
+        return "\n".join(lines)
+
+    lines.append("| Name | Type | Steps | Entry Point |")
+    lines.append("|---|---|---|---|")
+    for flow in ui_flows:
+        lines.append(
+            f"| {flow.name} | {flow.flow_type} | {len(flow.steps)} | {flow.entry_point} |"
+        )
     lines.append("")
     return "\n".join(lines)

@@ -2,7 +2,8 @@
 
 Renders Surface dataclass instances into well-formed markdown beans
 with YAML frontmatter. Each bean type has a dedicated render function
-producing the sections defined in the spec (8.3-8.9).
+producing the sections defined in the spec (8.3-8.9), upgraded with
+behavioral requirements when LLM enrichment data is available.
 """
 
 from __future__ import annotations
@@ -16,10 +17,14 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ComponentSurface,
     ConfigSurface,
     CrosscuttingSurface,
+    IntegrationSurface,
+    MiddlewareSurface,
     ModelSurface,
     RouteSurface,
     SourceRef,
+    StateMgmtSurface,
     Surface,
+    UIFlowSurface,
 )
 
 
@@ -29,6 +34,7 @@ def _render_frontmatter(
     title: str,
     source_refs: list[SourceRef],
     traceability: list[str] | None = None,
+    enrichment: dict[str, Any] | None = None,
 ) -> str:
     """Render YAML frontmatter block for a bean.
 
@@ -38,6 +44,7 @@ def _render_frontmatter(
         title: Human-readable title.
         source_refs: Source code references.
         traceability: Optional traceability links.
+        enrichment: Optional enrichment data for priority/dependencies.
 
     Returns:
         A YAML frontmatter string delimited by ``---``.
@@ -52,6 +59,11 @@ def _render_frontmatter(
         refs_list.append(entry)
 
     trace = traceability if traceability is not None else []
+    priority = "unassessed"
+    dependencies: list[str] = []
+    if enrichment:
+        priority = enrichment.get("priority", "unassessed")
+        dependencies = enrichment.get("dependencies", [])
 
     lines = [
         "---",
@@ -60,6 +72,8 @@ def _render_frontmatter(
         f"title: {json.dumps(title)}",
         f"source_refs: {json.dumps(refs_list)}",
         f"traceability: {json.dumps(trace)}",
+        f"priority: {priority}",
+        f"dependencies: {json.dumps(dependencies)}",
         "status: draft",
         "---",
     ]
@@ -73,12 +87,66 @@ def _bullet_list(items: list[str], empty_msg: str = "- (none)") -> str:
     return "\n".join(f"- {item}" for item in items)
 
 
+def _render_enrichment_sections(surface: Surface) -> str:
+    """Render behavioral enrichment sections shared across all renderers.
+
+    If enrichment data is available, renders Behavioral Description,
+    Acceptance Criteria (Given/When/Then), and Data Flow sections.
+    Otherwise renders structured TODO placeholders.
+
+    Args:
+        surface: Any Surface subclass with optional enrichment dict.
+
+    Returns:
+        Markdown string with enrichment sections.
+    """
+    enrichment = surface.enrichment
+    lines: list[str] = []
+
+    # Behavioral description
+    lines.append("## Behavioral description")
+    lines.append("")
+    if enrichment and enrichment.get("behavioral_description"):
+        lines.append(enrichment["behavioral_description"])
+    else:
+        lines.append("TODO: Describe the expected behavior from a user/system perspective.")
+    lines.append("")
+
+    # Inferred intent
+    if enrichment and enrichment.get("inferred_intent"):
+        lines.append("## Inferred intent")
+        lines.append("")
+        lines.append(enrichment["inferred_intent"])
+        lines.append("")
+
+    # Given/When/Then acceptance criteria
+    lines.append("## Acceptance criteria (Given/When/Then)")
+    lines.append("")
+    gwt_list = enrichment.get("given_when_then", []) if enrichment else []
+    if gwt_list:
+        for criterion in gwt_list:
+            given = criterion.get("given", "")
+            when = criterion.get("when", "")
+            then = criterion.get("then", "")
+            lines.append(f"- [ ] **Given** {given} **When** {when} **Then** {then}")
+    else:
+        lines.append("- [ ] TODO: Define Given/When/Then acceptance criteria.")
+    lines.append("")
+
+    # Data flow
+    lines.append("## Data flow")
+    lines.append("")
+    if enrichment and enrichment.get("data_flow"):
+        lines.append(enrichment["data_flow"])
+    else:
+        lines.append("TODO: Describe the data flow for this surface.")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
 def render_route_bean(surface: RouteSurface, bean_id: str) -> str:
     """Render a Page/Route bean (spec 8.3).
-
-    Produces 8 required sections: Overview, User stories, Functional
-    requirements, UI elements, Data & API interactions, Validation &
-    error states, Acceptance criteria, Open questions.
 
     Args:
         surface: A RouteSurface instance.
@@ -92,6 +160,7 @@ def render_route_bean(surface: RouteSurface, bean_id: str) -> str:
         bean_type="page",
         title=surface.name,
         source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
     )
 
     body = f"""
@@ -101,6 +170,7 @@ def render_route_bean(surface: RouteSurface, bean_id: str) -> str:
 
 Route `{surface.path}` ({surface.method}).
 
+{_render_enrichment_sections(surface)}
 ## User stories
 
 - As a user, I can access `{surface.path}` to interact with the {surface.name} page.
@@ -122,7 +192,7 @@ Route `{surface.path}` ({surface.method}).
 
 - TODO: Define validation rules and error states for this route.
 
-## Acceptance criteria
+## Structural acceptance criteria
 
 - [ ] Route `{surface.path}` responds to {surface.method} requests.
 - [ ] All referenced components render correctly.
@@ -138,9 +208,6 @@ Route `{surface.path}` ({surface.method}).
 def render_component_bean(surface: ComponentSurface, bean_id: str) -> str:
     """Render a Component bean (spec 8.4).
 
-    Produces 6 required sections: Purpose, Props/inputs contract,
-    Outputs/events, States, Usage locations, Acceptance criteria.
-
     Args:
         surface: A ComponentSurface instance.
         bean_id: Unique bean identifier.
@@ -153,6 +220,7 @@ def render_component_bean(surface: ComponentSurface, bean_id: str) -> str:
         bean_type="component",
         title=surface.name,
         source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
     )
 
     body = f"""
@@ -162,6 +230,7 @@ def render_component_bean(surface: ComponentSurface, bean_id: str) -> str:
 
 UI component: {surface.name}.
 
+{_render_enrichment_sections(surface)}
 ## Props/inputs contract
 
 {_bullet_list([f"`{p}`" for p in surface.props], "- No props defined.")}
@@ -178,7 +247,7 @@ UI component: {surface.name}.
 
 {_bullet_list(surface.usage_locations, "- No usage locations identified.")}
 
-## Acceptance criteria
+## Structural acceptance criteria
 
 - [ ] Component renders in all defined states.
 - [ ] All props are accepted and applied correctly.
@@ -189,9 +258,6 @@ UI component: {surface.name}.
 
 def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
     """Render an API bean (spec 8.5).
-
-    Produces 8 required sections: Endpoints, Auth, Request schema,
-    Response schema, Errors, Side effects, Acceptance criteria, Examples.
 
     Args:
         surface: An ApiSurface instance.
@@ -205,6 +271,7 @@ def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
         bean_type="api",
         title=surface.name,
         source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
     )
 
     req_schema = (
@@ -225,6 +292,7 @@ def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
 
 - `{surface.method} {surface.path}`
 
+{_render_enrichment_sections(surface)}
 ## Auth
 
 - {surface.auth if surface.auth else "No auth requirement specified."}
@@ -249,7 +317,7 @@ def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
 
 {_bullet_list(surface.side_effects, "- No side effects identified.")}
 
-## Acceptance criteria
+## Structural acceptance criteria
 
 - [ ] Endpoint `{surface.method} {surface.path}` responds correctly.
 - [ ] Auth requirements are enforced.
@@ -270,9 +338,6 @@ def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
 def render_model_bean(surface: ModelSurface, bean_id: str) -> str:
     """Render a Model bean (spec 8.6).
 
-    Produces 6 required sections: Entity description, Fields,
-    Relationships, Persistence, Validation rules, Acceptance criteria.
-
     Args:
         surface: A ModelSurface instance.
         bean_id: Unique bean identifier.
@@ -285,6 +350,7 @@ def render_model_bean(surface: ModelSurface, bean_id: str) -> str:
         bean_type="model",
         title=surface.name,
         source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
     )
 
     field_lines: list[str] = []
@@ -299,6 +365,7 @@ def render_model_bean(surface: ModelSurface, bean_id: str) -> str:
 
 Model entity: {surface.entity_name if surface.entity_name else surface.name}.
 
+{_render_enrichment_sections(surface)}
 ## Fields
 
 {chr(10).join(field_lines) if field_lines else "- No fields defined."}
@@ -315,7 +382,7 @@ Model entity: {surface.entity_name if surface.entity_name else surface.name}.
 
 - TODO: Define validation rules for this model.
 
-## Acceptance criteria
+## Structural acceptance criteria
 
 - [ ] All fields are persisted correctly.
 - [ ] Relationships are maintained on create/update/delete.
@@ -326,9 +393,6 @@ Model entity: {surface.entity_name if surface.entity_name else surface.name}.
 
 def render_auth_bean(surface: AuthSurface, bean_id: str) -> str:
     """Render an Auth bean (spec 8.7).
-
-    Produces 4 required sections: Roles/permissions/rules, Protected
-    routes/endpoints map, Token/session assumptions, Acceptance criteria.
 
     Args:
         surface: An AuthSurface instance.
@@ -342,11 +406,13 @@ def render_auth_bean(surface: AuthSurface, bean_id: str) -> str:
         bean_type="auth",
         title=surface.name,
         source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
     )
 
     body = f"""
 # {surface.name}
 
+{_render_enrichment_sections(surface)}
 ## Roles/permissions/rules
 
 ### Roles
@@ -369,7 +435,7 @@ def render_auth_bean(surface: AuthSurface, bean_id: str) -> str:
 
 - TODO: Define token/session handling assumptions.
 
-## Acceptance criteria
+## Structural acceptance criteria
 
 - [ ] Roles are enforced at all protected endpoints.
 - [ ] Permissions are checked correctly.
@@ -380,9 +446,6 @@ def render_auth_bean(surface: AuthSurface, bean_id: str) -> str:
 
 def render_config_bean(surface: ConfigSurface, bean_id: str) -> str:
     """Render a Config bean (spec 8.8).
-
-    Produces 4 required sections: Env vars + defaults, Feature flags,
-    Required external services, Acceptance criteria.
 
     Args:
         surface: A ConfigSurface instance.
@@ -396,6 +459,7 @@ def render_config_bean(surface: ConfigSurface, bean_id: str) -> str:
         bean_type="config",
         title=surface.name,
         source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
     )
 
     default_display = (
@@ -406,6 +470,7 @@ def render_config_bean(surface: ConfigSurface, bean_id: str) -> str:
     body = f"""
 # {surface.name}
 
+{_render_enrichment_sections(surface)}
 ## Env vars + defaults
 
 | Variable | Default | Required |
@@ -423,7 +488,7 @@ Usage locations:
 
 - TODO: Identify external services that depend on this configuration.
 
-## Acceptance criteria
+## Structural acceptance criteria
 
 - [ ] Application starts with default value when env var is not set.
 - [ ] Application reads the env var correctly when set.
@@ -434,8 +499,6 @@ Usage locations:
 
 def render_crosscutting_bean(surface: CrosscuttingSurface, bean_id: str) -> str:
     """Render a Crosscutting bean (spec 8.9).
-
-    Produces concern-specific sections based on the concern_type.
 
     Args:
         surface: A CrosscuttingSurface instance.
@@ -449,6 +512,7 @@ def render_crosscutting_bean(surface: CrosscuttingSurface, bean_id: str) -> str:
         bean_type="crosscutting",
         title=surface.name,
         source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
     )
 
     body = f"""
@@ -462,14 +526,192 @@ def render_crosscutting_bean(surface: CrosscuttingSurface, bean_id: str) -> str:
 
 {surface.description if surface.description else "TODO: Describe this cross-cutting concern."}
 
+{_render_enrichment_sections(surface)}
 ## Affected files
 
 {_bullet_list(surface.affected_files, "- No affected files identified.")}
 
-## Acceptance criteria
+## Structural acceptance criteria
 
 - [ ] Cross-cutting concern is applied consistently across all affected files.
 - [ ] No regressions introduced in affected components.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
+def render_state_mgmt_bean(surface: StateMgmtSurface, bean_id: str) -> str:
+    """Render a State Management bean.
+
+    Args:
+        surface: A StateMgmtSurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="state_mgmt",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    body = f"""
+# {surface.name}
+
+## Store overview
+
+- **Store name:** {surface.store_name or surface.name}
+- **Pattern:** {surface.pattern or "unidentified"}
+
+{_render_enrichment_sections(surface)}
+## Actions
+
+{_bullet_list([f"`{a}`" for a in surface.actions], "- No actions identified.")}
+
+## Selectors
+
+{_bullet_list([f"`{s}`" for s in surface.selectors], "- No selectors identified.")}
+
+## Structural acceptance criteria
+
+- [ ] Store initializes with correct default state.
+- [ ] All actions produce expected state transitions.
+- [ ] Selectors return correct derived state.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
+def render_middleware_bean(surface: MiddlewareSurface, bean_id: str) -> str:
+    """Render a Middleware bean.
+
+    Args:
+        surface: A MiddlewareSurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="middleware",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    order_str = str(surface.execution_order) if surface.execution_order is not None else "unspecified"
+
+    body = f"""
+# {surface.name}
+
+## Middleware overview
+
+- **Type:** {surface.middleware_type or "unidentified"}
+- **Execution order:** {order_str}
+
+{_render_enrichment_sections(surface)}
+## Applies to
+
+{_bullet_list(surface.applies_to, "- All routes/endpoints (default).")}
+
+## Transforms
+
+{_bullet_list(surface.transforms, "- No transforms identified.")}
+
+## Structural acceptance criteria
+
+- [ ] Middleware executes in the correct order in the pipeline.
+- [ ] Middleware applies only to intended routes/endpoints.
+- [ ] Request/response transformations are correct.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
+def render_integration_bean(surface: IntegrationSurface, bean_id: str) -> str:
+    """Render an Integration bean.
+
+    Args:
+        surface: An IntegrationSurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="integration",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    body = f"""
+# {surface.name}
+
+## Integration overview
+
+- **Type:** {surface.integration_type or "unidentified"}
+- **Target service:** {surface.target_service or "unknown"}
+- **Protocol:** {surface.protocol or "unspecified"}
+
+{_render_enrichment_sections(surface)}
+## Data exchanged
+
+{_bullet_list(surface.data_exchanged, "- No data exchange patterns identified.")}
+
+## Structural acceptance criteria
+
+- [ ] Integration connects to the target service successfully.
+- [ ] Data is exchanged in the correct format.
+- [ ] Error handling covers connection failures and timeouts.
+- [ ] Retry/backoff strategy is implemented where appropriate.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
+def render_ui_flow_bean(surface: UIFlowSurface, bean_id: str) -> str:
+    """Render a UI Flow bean.
+
+    Args:
+        surface: A UIFlowSurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="ui_flow",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    body = f"""
+# {surface.name}
+
+## Flow overview
+
+- **Flow type:** {surface.flow_type or "unidentified"}
+- **Entry point:** {surface.entry_point or "unspecified"}
+
+{_render_enrichment_sections(surface)}
+## Steps
+
+{_bullet_list([f"Step: {s}" for s in surface.steps], "- No steps identified.")}
+
+## Exit points
+
+{_bullet_list(surface.exit_points, "- No exit points identified.")}
+
+## Structural acceptance criteria
+
+- [ ] Flow starts from the defined entry point.
+- [ ] All steps are reachable and navigable.
+- [ ] All exit points lead to valid destinations.
+- [ ] Back navigation works correctly through the flow.
 """
     return fm + "\n" + body.lstrip("\n")
 
@@ -482,6 +724,10 @@ _RENDERERS: dict[str, Any] = {
     "auth": render_auth_bean,
     "config": render_config_bean,
     "crosscutting": render_crosscutting_bean,
+    "state_mgmt": render_state_mgmt_bean,
+    "middleware": render_middleware_bean,
+    "integration": render_integration_bean,
+    "ui_flow": render_ui_flow_bean,
 }
 
 

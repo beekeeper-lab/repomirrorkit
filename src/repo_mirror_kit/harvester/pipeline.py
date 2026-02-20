@@ -1,8 +1,9 @@
 """Pipeline orchestrator for the requirements harvester.
 
-Sequences Stages A through F, manages checkpoints, handles errors,
-and provides a callback interface for progress reporting. Both the CLI
-and GUI entry points delegate to ``HarvestPipeline.run()``.
+Sequences Stages A through F (with optional C2 for LLM enrichment),
+manages checkpoints, handles errors, and provides a callback interface
+for progress reporting. Both the CLI and GUI entry points delegate to
+``HarvestPipeline.run()``.
 """
 
 from __future__ import annotations
@@ -22,8 +23,12 @@ from repo_mirror_kit.harvester.analyzers import (
     analyze_components,
     analyze_config,
     analyze_crosscutting,
+    analyze_integrations,
+    analyze_middleware,
     analyze_models,
     analyze_routes,
+    analyze_state_management,
+    analyze_ui_flows,
 )
 from repo_mirror_kit.harvester.beans.writer import WrittenBean, write_beans
 from repo_mirror_kit.harvester.config import HarvestConfig
@@ -49,7 +54,7 @@ from repo_mirror_kit.harvester.state import StateManager
 logger = structlog.get_logger()
 
 # Ordered stage names matching the spec
-STAGE_NAMES: list[str] = ["A", "B", "C", "D", "E", "F"]
+STAGE_NAMES: list[str] = ["A", "B", "C", "C2", "D", "E", "F"]
 
 
 class PipelineEventType(StrEnum):
@@ -266,6 +271,26 @@ class HarvestPipeline:
                     output_dir=output_dir,
                 )
 
+            # --- Stage C2: LLM Enrichment (optional) ---
+            if not state.is_stage_done("C2"):
+                self._emit(
+                    PipelineEventType.STAGE_START,
+                    "C2",
+                    "Enriching surfaces with LLM",
+                )
+                try:
+                    surfaces = self._run_stage_c2(surfaces, config, workdir)
+                except Exception as exc:
+                    return self._handle_stage_error("C2", exc, state, output_dir)
+                state.complete_stage("C2")
+                self._emit(
+                    PipelineEventType.STAGE_COMPLETE,
+                    "C2",
+                    "LLM enrichment complete",
+                )
+            else:
+                logger.info("stage_skipped_resume", stage="C2")
+
             # --- Stage D: Traceability ---
             if not state.is_stage_done("D"):
                 self._emit(
@@ -467,6 +492,34 @@ class HarvestPipeline:
             f"Crosscutting: {len(crosscutting)} found",
         )
 
+        state_mgmt = analyze_state_management(inventory, profile, workdir)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"State management: {len(state_mgmt)} found",
+        )
+
+        middleware = analyze_middleware(inventory, profile, workdir)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Middleware: {len(middleware)} found",
+        )
+
+        integrations = analyze_integrations(inventory, profile, workdir)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Integrations: {len(integrations)} found",
+        )
+
+        ui_flows = analyze_ui_flows(inventory, profile, workdir)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"UI flows: {len(ui_flows)} found",
+        )
+
         surfaces = SurfaceCollection(
             routes=routes,
             components=components,
@@ -475,11 +528,26 @@ class HarvestPipeline:
             auth=auth,
             config=config_surfaces,
             crosscutting=crosscutting,
+            state_mgmt=state_mgmt,
+            middleware=middleware,
+            integrations=integrations,
+            ui_flows=ui_flows,
         )
 
         write_surface_map(output_dir, surfaces, profile)
 
         return surfaces
+
+    def _run_stage_c2(
+        self,
+        surfaces: SurfaceCollection,
+        config: HarvestConfig,
+        workdir: Path,
+    ) -> SurfaceCollection:
+        """Stage C2: enrich surfaces with LLM-generated behavioral data."""
+        from repo_mirror_kit.harvester.llm import enrich_surfaces
+
+        return enrich_surfaces(surfaces, config, workdir, self._callback)
 
     def _run_stage_d(
         self,

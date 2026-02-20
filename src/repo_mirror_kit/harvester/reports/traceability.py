@@ -2,8 +2,9 @@
 
 Builds link maps from extracted surfaces and emits human-readable
 markdown tables documenting relationships between surface types:
-routes to components, routes to APIs, APIs to models, and env vars
-to files.
+routes to components, routes to APIs, APIs to models, env vars
+to files, middleware to routes, state to components, and
+integrations to APIs.
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ def build_traceability_maps(
 ) -> list[Path]:
     """Build all traceability maps and write them to output_dir/traceability/.
 
-    Cross-references surfaces using field-level refs to produce four
+    Cross-references surfaces using field-level refs to produce
     markdown documents linking related surface types.
 
     Args:
@@ -42,6 +43,9 @@ def build_traceability_maps(
         ("routes_to_apis.md", _build_routes_to_apis(surfaces)),
         ("apis_to_models.md", _build_apis_to_models(surfaces)),
         ("envvars_to_files.md", _build_envvars_to_files(surfaces)),
+        ("middleware_to_routes.md", _build_middleware_to_routes(surfaces)),
+        ("state_to_components.md", _build_state_to_components(surfaces)),
+        ("integrations_to_apis.md", _build_integrations_to_apis(surfaces)),
     ]
 
     written: list[Path] = []
@@ -91,13 +95,13 @@ def _build_routes_to_components(surfaces: SurfaceCollection) -> str:
             comp_files_list: list[str] = []
             for ref in route.component_refs:
                 comp_files_list.extend(component_files.get(ref, []))
-            comp_files_str = ", ".join(f"`{f}`" for f in comp_files_list) or "—"
+            comp_files_str = ", ".join(f"`{f}`" for f in comp_files_list) or "\u2014"
             lines.append(
                 f"| {route_label} | {route.method} | {comp_names} | {comp_files_str} |"
             )
         else:
             orphaned_routes.append(route.path)
-            lines.append(f"| {route_label} | {route.method} | — | — |")
+            lines.append(f"| {route_label} | {route.method} | \u2014 | \u2014 |")
 
     lines.append("")
 
@@ -164,7 +168,7 @@ def _build_routes_to_apis(surfaces: SurfaceCollection) -> str:
             lines.append(f"| {route_label} | {route.method} | {apis_str} |")
         else:
             orphaned_routes.append(route.path)
-            lines.append(f"| {route_label} | {route.method} | — |")
+            lines.append(f"| {route_label} | {route.method} | \u2014 |")
 
     lines.append("")
 
@@ -230,7 +234,7 @@ def _build_apis_to_models(surfaces: SurfaceCollection) -> str:
             lines.append(f"| {api_label} | {api.method} | {models_str} |")
         else:
             orphaned_apis.append(f"{api.method} {api.path}")
-            lines.append(f"| {api_label} | {api.method} | — |")
+            lines.append(f"| {api_label} | {api.method} | \u2014 |")
 
     lines.append("")
 
@@ -284,7 +288,7 @@ def _build_envvars_to_files(surfaces: SurfaceCollection) -> str:
     for cfg in surfaces.config:
         var_name = f"`{cfg.env_var_name}`"
         required = "Yes" if cfg.required else "No"
-        default = f"`{cfg.default_value}`" if cfg.default_value else "—"
+        default = f"`{cfg.default_value}`" if cfg.default_value else "\u2014"
 
         # Combine usage_locations and source_refs for file list
         files: set[str] = set()
@@ -297,7 +301,7 @@ def _build_envvars_to_files(surfaces: SurfaceCollection) -> str:
             files_str = ", ".join(f"`{f}`" for f in sorted(files))
         else:
             orphaned_vars.append(cfg.env_var_name)
-            files_str = "—"
+            files_str = "\u2014"
 
         lines.append(f"| {var_name} | {required} | {default} | {files_str} |")
 
@@ -312,4 +316,105 @@ def _build_envvars_to_files(surfaces: SurfaceCollection) -> str:
             lines.append(f"- `{v}`")
         lines.append("")
 
+    return "\n".join(lines)
+
+
+def _build_middleware_to_routes(surfaces: SurfaceCollection) -> str:
+    """Build a markdown table mapping middleware to the routes they apply to."""
+    lines: list[str] = [
+        "# Middleware to Routes",
+        "",
+        "Maps each middleware to the routes/endpoints it applies to.",
+        "",
+    ]
+
+    if not surfaces.middleware:
+        lines.append("No middleware found.")
+        lines.append("")
+        return "\n".join(lines)
+
+    lines.append("| Middleware | Type | Applies To |")
+    lines.append("|-----------|------|------------|")
+
+    for mw in surfaces.middleware:
+        applies = ", ".join(f"`{a}`" for a in mw.applies_to) if mw.applies_to else "all routes"
+        lines.append(f"| {mw.name} | {mw.middleware_type} | {applies} |")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _build_state_to_components(surfaces: SurfaceCollection) -> str:
+    """Build a markdown table mapping state stores to components that use them."""
+    lines: list[str] = [
+        "# State Management to Components",
+        "",
+        "Maps each state store to the components that consume its state.",
+        "",
+    ]
+
+    if not surfaces.state_mgmt:
+        lines.append("No state management surfaces found.")
+        lines.append("")
+        return "\n".join(lines)
+
+    # Build component lookup by source file
+    file_to_components: dict[str, list[str]] = {}
+    for comp in surfaces.components:
+        for ref in comp.source_refs:
+            if ref.file_path not in file_to_components:
+                file_to_components[ref.file_path] = []
+            file_to_components[ref.file_path].append(comp.name)
+
+    lines.append("| Store | Pattern | Source File | Nearby Components |")
+    lines.append("|-------|---------|-------------|-------------------|")
+
+    for sm in surfaces.state_mgmt:
+        store = sm.store_name or sm.name
+        nearby: list[str] = []
+        for ref in sm.source_refs:
+            nearby.extend(file_to_components.get(ref.file_path, []))
+        components_str = ", ".join(f"`{c}`" for c in nearby) if nearby else "\u2014"
+        source_file = sm.source_refs[0].file_path if sm.source_refs else "\u2014"
+        lines.append(f"| {store} | {sm.pattern} | `{source_file}` | {components_str} |")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _build_integrations_to_apis(surfaces: SurfaceCollection) -> str:
+    """Build a markdown table mapping integrations to related API endpoints."""
+    lines: list[str] = [
+        "# Integrations to APIs",
+        "",
+        "Maps each external integration to related internal API endpoints.",
+        "",
+    ]
+
+    if not surfaces.integrations:
+        lines.append("No integrations found.")
+        lines.append("")
+        return "\n".join(lines)
+
+    # Build API lookup by source file
+    file_to_apis: dict[str, list[str]] = {}
+    for api in surfaces.apis:
+        for ref in api.source_refs:
+            if ref.file_path not in file_to_apis:
+                file_to_apis[ref.file_path] = []
+            file_to_apis[ref.file_path].append(f"{api.method} {api.path}")
+
+    lines.append("| Integration | Type | Target | Related APIs |")
+    lines.append("|-------------|------|--------|--------------|")
+
+    for integ in surfaces.integrations:
+        related: list[str] = []
+        for ref in integ.source_refs:
+            related.extend(file_to_apis.get(ref.file_path, []))
+        apis_str = ", ".join(f"`{a}`" for a in related) if related else "\u2014"
+        lines.append(
+            f"| {integ.name} | {integ.integration_type} | {integ.target_service} | {apis_str} |"
+        )
+
+    lines.append("")
     return "\n".join(lines)

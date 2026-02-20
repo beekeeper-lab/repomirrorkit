@@ -31,6 +31,10 @@ THRESHOLD_APIS: float = 95.0
 THRESHOLD_MODELS: float = 95.0
 THRESHOLD_COMPONENTS: float = 85.0
 THRESHOLD_ENV_VARS: float = 100.0
+THRESHOLD_STATE_MGMT: float = 80.0
+THRESHOLD_MIDDLEWARE: float = 80.0
+THRESHOLD_INTEGRATIONS: float = 85.0
+THRESHOLD_UI_FLOWS: float = 75.0
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +89,10 @@ class CoverageMetrics:
         models: Model coverage.
         env_vars: Environment variable documentation coverage.
         auth_surfaces: Auth surface documentation coverage.
+        state_mgmt: State management coverage.
+        middleware: Middleware coverage.
+        integrations: Integration coverage.
+        ui_flows: UI flow coverage.
     """
 
     files: FileMetrics
@@ -94,6 +102,10 @@ class CoverageMetrics:
     models: MetricPair
     env_vars: MetricPair
     auth_surfaces: MetricPair
+    state_mgmt: MetricPair
+    middleware: MetricPair
+    integrations: MetricPair
+    ui_flows: MetricPair
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dictionary."""
@@ -116,6 +128,22 @@ class CoverageMetrics:
             "auth_surfaces": {
                 "total": self.auth_surfaces.total,
                 "documented": self.auth_surfaces.covered,
+            },
+            "state_mgmt": {
+                "total": self.state_mgmt.total,
+                "with_bean": self.state_mgmt.covered,
+            },
+            "middleware": {
+                "total": self.middleware.total,
+                "with_bean": self.middleware.covered,
+            },
+            "integrations": {
+                "total": self.integrations.total,
+                "with_bean": self.integrations.covered,
+            },
+            "ui_flows": {
+                "total": self.ui_flows.total,
+                "with_bean": self.ui_flows.covered,
             },
         }
 
@@ -176,7 +204,7 @@ def compute_metrics(
         inventory: File inventory result for file-level metrics.
 
     Returns:
-        A CoverageMetrics instance with all 7 metric categories.
+        A CoverageMetrics instance with all 11 metric categories.
     """
     bean_counts: dict[str, int] = {}
     for bean in beans:
@@ -212,6 +240,22 @@ def compute_metrics(
             total=len(surfaces.auth),
             covered=bean_counts.get("auth", 0),
         ),
+        state_mgmt=MetricPair(
+            total=len(surfaces.state_mgmt),
+            covered=bean_counts.get("state_mgmt", 0),
+        ),
+        middleware=MetricPair(
+            total=len(surfaces.middleware),
+            covered=bean_counts.get("middleware", 0),
+        ),
+        integrations=MetricPair(
+            total=len(surfaces.integrations),
+            covered=bean_counts.get("integration", 0),
+        ),
+        ui_flows=MetricPair(
+            total=len(surfaces.ui_flows),
+            covered=bean_counts.get("ui_flow", 0),
+        ),
     )
 
 
@@ -238,6 +282,10 @@ def evaluate_thresholds(metrics: CoverageMetrics) -> CoverageEvaluation:
         _evaluate_gate("Models", metrics.models, THRESHOLD_MODELS),
         _evaluate_gate("Components", metrics.shared_components, THRESHOLD_COMPONENTS),
         _evaluate_gate("Env Vars", metrics.env_vars, THRESHOLD_ENV_VARS),
+        _evaluate_gate("State Mgmt", metrics.state_mgmt, THRESHOLD_STATE_MGMT),
+        _evaluate_gate("Middleware", metrics.middleware, THRESHOLD_MIDDLEWARE),
+        _evaluate_gate("Integrations", metrics.integrations, THRESHOLD_INTEGRATIONS),
+        _evaluate_gate("UI Flows", metrics.ui_flows, THRESHOLD_UI_FLOWS),
     ]
     return CoverageEvaluation(metrics=metrics, gates=gates)
 
@@ -310,6 +358,10 @@ def generate_coverage_markdown(evaluation: CoverageEvaluation) -> str:
         f"| Models | {m.models.total} | {m.models.covered} | {m.models.percentage:.1f}% |",
         f"| Env Vars | {m.env_vars.total} | {m.env_vars.covered} | {m.env_vars.percentage:.1f}% |",
         f"| Auth Surfaces | {m.auth_surfaces.total} | {m.auth_surfaces.covered} | {m.auth_surfaces.percentage:.1f}% |",
+        f"| State Mgmt | {m.state_mgmt.total} | {m.state_mgmt.covered} | {m.state_mgmt.percentage:.1f}% |",
+        f"| Middleware | {m.middleware.total} | {m.middleware.covered} | {m.middleware.percentage:.1f}% |",
+        f"| Integrations | {m.integrations.total} | {m.integrations.covered} | {m.integrations.percentage:.1f}% |",
+        f"| UI Flows | {m.ui_flows.total} | {m.ui_flows.covered} | {m.ui_flows.percentage:.1f}% |",
         "",
         "## Coverage Gates",
         "",

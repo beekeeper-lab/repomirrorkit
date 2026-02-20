@@ -166,7 +166,7 @@ class TestRouteBeanTemplate:
         assert "## UI elements" in result
         assert "## Data & API interactions" in result
         assert "## Validation & error states" in result
-        assert "## Acceptance criteria" in result
+        assert "## Structural acceptance criteria" in result
         assert "## Open questions" in result
 
     def test_contains_route_path(self) -> None:
@@ -204,7 +204,7 @@ class TestComponentBeanTemplate:
         assert "## Outputs/events" in result
         assert "## States" in result
         assert "## Usage locations" in result
-        assert "## Acceptance criteria" in result
+        assert "## Structural acceptance criteria" in result
 
     def test_contains_props(self) -> None:
         result = render_component_bean(_make_component(), "BEAN-002")
@@ -241,7 +241,7 @@ class TestApiBeanTemplate:
         assert "## Response schema" in result
         assert "## Errors" in result
         assert "## Side effects" in result
-        assert "## Acceptance criteria" in result
+        assert "## Structural acceptance criteria" in result
         assert "## Examples" in result
 
     def test_contains_endpoint_info(self) -> None:
@@ -282,7 +282,7 @@ class TestModelBeanTemplate:
         assert "## Relationships" in result
         assert "## Persistence" in result
         assert "## Validation rules" in result
-        assert "## Acceptance criteria" in result
+        assert "## Structural acceptance criteria" in result
 
     def test_contains_fields(self) -> None:
         result = render_model_bean(_make_model(), "BEAN-004")
@@ -322,7 +322,7 @@ class TestAuthBeanTemplate:
         assert "## Roles/permissions/rules" in result
         assert "## Protected routes/endpoints map" in result
         assert "## Token/session assumptions" in result
-        assert "## Acceptance criteria" in result
+        assert "## Structural acceptance criteria" in result
 
     def test_contains_roles(self) -> None:
         result = render_auth_bean(_make_auth(), "BEAN-005")
@@ -361,7 +361,7 @@ class TestConfigBeanTemplate:
         assert "## Env vars + defaults" in result
         assert "## Feature flags" in result
         assert "## Required external services" in result
-        assert "## Acceptance criteria" in result
+        assert "## Structural acceptance criteria" in result
 
     def test_contains_env_var(self) -> None:
         result = render_config_bean(_make_config(), "BEAN-006")
@@ -408,7 +408,7 @@ class TestCrosscuttingBeanTemplate:
         assert "## Concern type" in result
         assert "## Description" in result
         assert "## Affected files" in result
-        assert "## Acceptance criteria" in result
+        assert "## Structural acceptance criteria" in result
 
     def test_contains_concern_type(self) -> None:
         result = render_crosscutting_bean(_make_crosscutting(), "BEAN-007")

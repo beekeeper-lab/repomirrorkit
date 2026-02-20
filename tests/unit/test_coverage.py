@@ -10,10 +10,14 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     AuthSurface,
     ComponentSurface,
     ConfigSurface,
+    IntegrationSurface,
+    MiddlewareSurface,
     ModelSurface,
     RouteSurface,
     SourceRef,
+    StateMgmtSurface,
     SurfaceCollection,
+    UIFlowSurface,
 )
 from repo_mirror_kit.harvester.beans.writer import WrittenBean
 from repo_mirror_kit.harvester.inventory import InventoryResult
@@ -21,8 +25,12 @@ from repo_mirror_kit.harvester.reports.coverage import (
     THRESHOLD_APIS,
     THRESHOLD_COMPONENTS,
     THRESHOLD_ENV_VARS,
+    THRESHOLD_INTEGRATIONS,
+    THRESHOLD_MIDDLEWARE,
     THRESHOLD_MODELS,
     THRESHOLD_ROUTES,
+    THRESHOLD_STATE_MGMT,
+    THRESHOLD_UI_FLOWS,
     MetricPair,
     compute_metrics,
     evaluate_thresholds,
@@ -73,6 +81,10 @@ def _make_collection(
     models: int = 0,
     auth: int = 0,
     config: int = 0,
+    state_mgmt: int = 0,
+    middleware: int = 0,
+    integrations: int = 0,
+    ui_flows: int = 0,
 ) -> SurfaceCollection:
     """Create a SurfaceCollection with given counts."""
     ref = SourceRef(file_path="src/app.py", start_line=1)
@@ -102,6 +114,22 @@ def _make_collection(
                 name=f"config_{i}", env_var_name=f"CONFIG_{i}", source_refs=[ref]
             )
             for i in range(config)
+        ],
+        state_mgmt=[
+            StateMgmtSurface(name=f"store_{i}", store_name=f"store_{i}", pattern="redux", source_refs=[ref])
+            for i in range(state_mgmt)
+        ],
+        middleware=[
+            MiddlewareSurface(name=f"mw_{i}", middleware_type="express", source_refs=[ref])
+            for i in range(middleware)
+        ],
+        integrations=[
+            IntegrationSurface(name=f"integ_{i}", integration_type="rest_client", source_refs=[ref])
+            for i in range(integrations)
+        ],
+        ui_flows=[
+            UIFlowSurface(name=f"flow_{i}", flow_type="wizard", source_refs=[ref])
+            for i in range(ui_flows)
         ],
     )
 
@@ -340,16 +368,19 @@ class TestEvaluateThresholds:
         assert len(failing) >= 3
 
     def test_gate_count(self) -> None:
-        """Should have exactly 5 gates matching spec section 7.2."""
+        """Should have exactly 9 gates matching spec section 7.2."""
         collection = _make_collection()
         inventory = _make_inventory()
         metrics = compute_metrics(collection, [], inventory)
 
         evaluation = evaluate_thresholds(metrics)
 
-        assert len(evaluation.gates) == 5
+        assert len(evaluation.gates) == 9
         gate_names = {g.name for g in evaluation.gates}
-        assert gate_names == {"Routes", "APIs", "Models", "Components", "Env Vars"}
+        assert gate_names == {
+            "Routes", "APIs", "Models", "Components", "Env Vars",
+            "State Mgmt", "Middleware", "Integrations", "UI Flows",
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -391,6 +422,10 @@ class TestCoverageJson:
             "models",
             "env_vars",
             "auth_surfaces",
+            "state_mgmt",
+            "middleware",
+            "integrations",
+            "ui_flows",
         }
         assert set(data["metrics"].keys()) == expected_keys
 
@@ -535,3 +570,15 @@ class TestThresholdConstants:
 
     def test_env_vars_threshold(self) -> None:
         assert THRESHOLD_ENV_VARS == 100.0
+
+    def test_state_mgmt_threshold(self) -> None:
+        assert THRESHOLD_STATE_MGMT == 80.0
+
+    def test_middleware_threshold(self) -> None:
+        assert THRESHOLD_MIDDLEWARE == 80.0
+
+    def test_integrations_threshold(self) -> None:
+        assert THRESHOLD_INTEGRATIONS == 85.0
+
+    def test_ui_flows_threshold(self) -> None:
+        assert THRESHOLD_UI_FLOWS == 75.0

@@ -111,6 +111,24 @@ def main() -> None:
     help="Logging level: debug, info, warn, error (case-insensitive).",
     show_default=True,
 )
+@click.option(
+    "--llm-enabled",
+    is_flag=True,
+    default=False,
+    help="Enable LLM enrichment of surfaces using Claude.",
+)
+@click.option(
+    "--llm-api-key",
+    default=None,
+    envvar="ANTHROPIC_API_KEY",
+    help="Anthropic API key for LLM enrichment. Defaults to ANTHROPIC_API_KEY env var.",
+)
+@click.option(
+    "--llm-model",
+    default="claude-sonnet-4-20250514",
+    help="Claude model to use for LLM enrichment.",
+    show_default=True,
+)
 def harvest(
     repo: str,
     ref: str | None,
@@ -121,6 +139,9 @@ def harvest(
     resume: bool,
     fail_on_gaps: bool,
     log_level: str,
+    llm_enabled: bool,
+    llm_api_key: str | None,
+    llm_model: str,
 ) -> None:
     """Run the requirements harvester against a repository."""
     try:
@@ -134,6 +155,9 @@ def harvest(
             resume=resume,
             fail_on_gaps=fail_on_gaps,
             log_level=log_level,
+            llm_enabled=llm_enabled,
+            llm_api_key=llm_api_key,
+            llm_model=llm_model,
         )
     except ConfigValidationError as exc:
         click.echo(f"Error: {exc}", err=True)

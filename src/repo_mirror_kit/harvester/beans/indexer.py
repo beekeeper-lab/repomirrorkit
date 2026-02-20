@@ -16,8 +16,12 @@ from repo_mirror_kit.harvester.beans.templates import (
     render_component_bean,
     render_config_bean,
     render_crosscutting_bean,
+    render_integration_bean,
+    render_middleware_bean,
     render_model_bean,
     render_route_bean,
+    render_state_mgmt_bean,
+    render_ui_flow_bean,
 )
 from repo_mirror_kit.harvester.beans.writer import WrittenBean
 
@@ -32,6 +36,10 @@ _TEMPLATE_DESCRIPTIONS: dict[str, str] = {
     "auth": "Auth bean template (spec 8.7)",
     "config": "Config bean template (spec 8.8)",
     "crosscutting": "Crosscutting bean template (spec 8.9)",
+    "state_mgmt": "State Management bean template",
+    "middleware": "Middleware bean template",
+    "integration": "Integration bean template",
+    "ui_flow": "UI Flow bean template",
 }
 
 # Map surface type to its render function's docstring for template content.
@@ -43,6 +51,10 @@ _TEMPLATE_FUNCTIONS: dict[str, str] = {
     "auth": render_auth_bean.__doc__ or "",
     "config": render_config_bean.__doc__ or "",
     "crosscutting": render_crosscutting_bean.__doc__ or "",
+    "state_mgmt": render_state_mgmt_bean.__doc__ or "",
+    "middleware": render_middleware_bean.__doc__ or "",
+    "integration": render_integration_bean.__doc__ or "",
+    "ui_flow": render_ui_flow_bean.__doc__ or "",
 }
 
 

@@ -33,21 +33,28 @@ class SourceRef:
 class Surface:
     """Base class for all surface types.
 
-    Every surface has a name, a type discriminator, and one or more
-    references to the source code locations where it was found.
+    Every surface has a name, a type discriminator, one or more
+    references to the source code locations where it was found,
+    and an optional enrichment dict populated by LLM analysis.
     """
 
     name: str
     surface_type: str = ""
     source_refs: list[SourceRef] = field(default_factory=list)
+    enrichment: dict[str, Any] = field(default_factory=dict)
+    # Keys when populated: behavioral_description, inferred_intent,
+    # given_when_then (list of {given, when, then}), data_flow, priority, dependencies
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dictionary."""
-        return {
+        result: dict[str, Any] = {
             "name": self.name,
             "surface_type": self.surface_type,
             "source_refs": [ref.to_dict() for ref in self.source_refs],
         }
+        if self.enrichment:
+            result["enrichment"] = self.enrichment
+        return result
 
 
 @dataclass
@@ -254,6 +261,110 @@ class CrosscuttingSurface(Surface):
 
 
 @dataclass
+class StateMgmtSurface(Surface):
+    """A state management surface (Redux, Zustand, Context, etc.)."""
+
+    store_name: str = ""
+    pattern: str = ""  # redux/vuex/zustand/pinia/context/signals
+    actions: list[str] = field(default_factory=list)
+    selectors: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "state_mgmt"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "store_name": self.store_name,
+                "pattern": self.pattern,
+                "actions": self.actions,
+                "selectors": self.selectors,
+            }
+        )
+        return result
+
+
+@dataclass
+class MiddlewareSurface(Surface):
+    """A middleware / pipeline surface."""
+
+    middleware_type: str = ""
+    execution_order: int | None = None
+    applies_to: list[str] = field(default_factory=list)
+    transforms: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "middleware"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "middleware_type": self.middleware_type,
+                "execution_order": self.execution_order,
+                "applies_to": self.applies_to,
+                "transforms": self.transforms,
+            }
+        )
+        return result
+
+
+@dataclass
+class IntegrationSurface(Surface):
+    """An external integration surface (webhook, queue, gRPC, etc.)."""
+
+    integration_type: str = ""  # webhook/queue/grpc/rest_client/sdk
+    target_service: str = ""
+    protocol: str = ""
+    data_exchanged: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "integration"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "integration_type": self.integration_type,
+                "target_service": self.target_service,
+                "protocol": self.protocol,
+                "data_exchanged": self.data_exchanged,
+            }
+        )
+        return result
+
+
+@dataclass
+class UIFlowSurface(Surface):
+    """A UI interaction flow surface (wizard, navigation, modal chain, etc.)."""
+
+    flow_type: str = ""  # wizard/navigation/modal_chain/form_sequence
+    steps: list[str] = field(default_factory=list)
+    entry_point: str = ""
+    exit_points: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "ui_flow"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "flow_type": self.flow_type,
+                "steps": self.steps,
+                "entry_point": self.entry_point,
+                "exit_points": self.exit_points,
+            }
+        )
+        return result
+
+
+@dataclass
 class SurfaceCollection:
     """Container for all extracted surfaces.
 
@@ -268,6 +379,10 @@ class SurfaceCollection:
     auth: list[AuthSurface] = field(default_factory=list)
     config: list[ConfigSurface] = field(default_factory=list)
     crosscutting: list[CrosscuttingSurface] = field(default_factory=list)
+    state_mgmt: list[StateMgmtSurface] = field(default_factory=list)
+    middleware: list[MiddlewareSurface] = field(default_factory=list)
+    integrations: list[IntegrationSurface] = field(default_factory=list)
+    ui_flows: list[UIFlowSurface] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[Surface]:
         """Iterate over all surfaces in the collection."""
@@ -278,6 +393,10 @@ class SurfaceCollection:
         yield from self.auth
         yield from self.config
         yield from self.crosscutting
+        yield from self.state_mgmt
+        yield from self.middleware
+        yield from self.integrations
+        yield from self.ui_flows
 
     def __len__(self) -> int:
         """Return the total number of surfaces."""
@@ -289,6 +408,10 @@ class SurfaceCollection:
             + len(self.auth)
             + len(self.config)
             + len(self.crosscutting)
+            + len(self.state_mgmt)
+            + len(self.middleware)
+            + len(self.integrations)
+            + len(self.ui_flows)
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -301,6 +424,10 @@ class SurfaceCollection:
             "auth": [s.to_dict() for s in self.auth],
             "config": [s.to_dict() for s in self.config],
             "crosscutting": [s.to_dict() for s in self.crosscutting],
+            "state_mgmt": [s.to_dict() for s in self.state_mgmt],
+            "middleware": [s.to_dict() for s in self.middleware],
+            "integrations": [s.to_dict() for s in self.integrations],
+            "ui_flows": [s.to_dict() for s in self.ui_flows],
         }
 
     def to_json(self, indent: int = 2) -> str:
