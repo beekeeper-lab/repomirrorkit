@@ -4,11 +4,11 @@
 |-------|-------|
 | **Bean ID** | BEAN-007 |
 | **Status** | Done |
-| **Priority** | Medium |
+| **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | 2026-02-15 |
-| **Completed** | 2026-02-15 |
-| **Duration** | — |
+| **Started** | 2026-02-20 17:31 |
+| **Completed** | 2026-02-20 17:31 |
+| **Duration** | 140h |
 | **Owner** | (unassigned) |
 | **Category** | App |
 
@@ -71,11 +71,14 @@ A logging module that provides structured logging for the harvester pipeline and
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Add structlog dependency | Developer | — | — | — | — |
+| 2 | Implement harvest_logging.py | Developer | — | — | — | — |
+| 3 | Unit tests | Developer | — | — | — | — |
+| 4 | QA verification | Tech QA | — | — | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
+| **Total Tasks** | 4 |
+| **Total Duration** | 140h |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

@@ -63,7 +63,7 @@ Implement Stage D of the pipeline: build link maps from extracted surfaces and e
 
 ## Notes
 
-- Depends on BEAN-020 through BEAN-026 (all analyzers must produce surfaces first).
+- Depends on BEAN-006 (State Management & Resume), BEAN-020 through BEAN-026 (all analyzers must produce surfaces first).
 - Reference: Spec section 4.3 (Traceability outputs), section 6 Stage D (Traceability graph).
 - The traceability maps are also used by the gap hunter (BEAN-030) to find orphaned surfaces.
 - BA wave: Skipped formal user story doc — bean definition already has specific, testable acceptance criteria.

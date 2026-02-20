@@ -68,7 +68,7 @@ Implement the file inventory module that scans a cloned repository, applies incl
 
 ## Notes
 
-- Depends on BEAN-004 (Harvester Package Setup), BEAN-008 (Clone & Normalize for the workdir).
+- Depends on BEAN-004 (Harvester Package Setup), BEAN-006 (State Management & Resume), BEAN-008 (Clone & Normalize for the workdir).
 - Reference: Spec section 6, Stage B (Inventory & detection) and section 9.1 (Deterministic iteration).
 - The inventory produces the ordered worklist that all subsequent analyzers iterate over. Deterministic ordering is critical for resume support.
 - Consider using `xxhash` for fast hashing (add as dependency) or fall back to `hashlib.md5` if we want to minimize dependencies.

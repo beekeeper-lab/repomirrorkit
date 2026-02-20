@@ -1,8 +1,5 @@
 # Hook Pack: Post-Task QA
 
-## Category
-code-quality
-
 ## Purpose
 
 Verifies that completed tasks actually meet their acceptance criteria and produce the required outputs. Prevents tasks from being marked "done" when deliverables are missing or incomplete.

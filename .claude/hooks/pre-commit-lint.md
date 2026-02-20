@@ -1,8 +1,5 @@
 # Hook Pack: Pre-Commit Lint
 
-## Category
-code-quality
-
 ## Purpose
 
 Enforces code quality standards before every commit. Catches formatting, linting, import ordering, and type errors early so they never reach review or integration.

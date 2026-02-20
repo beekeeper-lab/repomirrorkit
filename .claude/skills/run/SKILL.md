@@ -2,7 +2,7 @@
 
 ## Description
 
-Pulls the latest code from `main` or `test` and launches the desktop application. Designed for the workflow where development happens on a remote server and the app is run locally from freshly pulled code.
+Pulls the latest code from `main` or `test` and launches the Foundry PySide6 desktop app. Designed for the workflow where development happens on a remote server and the app is run locally from freshly pulled code.
 
 ## Trigger
 
@@ -24,7 +24,7 @@ Pulls the latest code from `main` or `test` and launches the desktop application
 4. **Checkout branch** — `git checkout <branch>` (default: `main`). Only `main` and `test` are valid targets.
 5. **Pull** — `git pull origin <branch>`.
 6. **Sync dependencies** — `uv sync` to ensure packages match the pulled code.
-7. **Launch app** — `uv run <app-name>`. This runs in the foreground — the app window opens and Claude waits for it to exit.
+7. **Launch app** — `uv run foundry`. This runs in the foreground — the app window opens and Claude waits for it to exit.
 8. **Restore** — After the app exits:
    - `git checkout <original-branch>`
    - If we stashed: `git stash pop`

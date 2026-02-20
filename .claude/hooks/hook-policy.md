@@ -106,6 +106,35 @@ When an advisory hook fails:
 
 If the same hook fails three or more times on the same task, it is flagged as a recurring issue in the status report and an escalation is created for the Team Lead. This prevents silent thrashing where a persona repeatedly retries without addressing the root cause.
 
+## Branch Protection
+
+Push permissions are enforced via `settings.local.json` deny rules. The policy protects production branches while enabling the feature branch workflow.
+
+### Protected Branches
+
+| Branch | Push | Force Push | Who Merges |
+|--------|------|------------|------------|
+| `main` | Blocked | Blocked | Manual merge or PR only |
+| `master` | Blocked | Blocked | Manual merge or PR only |
+
+### Allowed Branches
+
+| Branch Pattern | Push | Purpose |
+|----------------|------|---------|
+| `bean/*` | Allowed | Feature branches for bean work (e.g., `bean/BEAN-006-backlog-refinement`) |
+| `test` | Allowed | Integration branch for merge captain auto-merge |
+| `dev` | Allowed | Development integration branch |
+| Other feature branches | Allowed | General development work |
+
+### Rules
+
+- **Deny rules take precedence** over allow rules in `settings.local.json`.
+- Pushes to `main` and `master` are blocked by explicit deny patterns.
+- Force push is always blocked regardless of branch (existing rule).
+- The Merge Captain persona is the only role that pushes to `test` or `dev`.
+- All other personas push only to their bean's feature branch.
+- Branch deletion is blocked by existing deny rules (`git branch -D`, `git branch -d`).
+
 ## Adding Custom Hooks
 
 Projects can define custom hooks beyond what the library provides. Custom hooks are defined in `.foundry/hooks.yml` in the project root.

@@ -22,15 +22,16 @@ Promotes a source branch into a target branch via a pull request. Runs tests, cr
 1. **Check for uncommitted changes** — if dirty, prompt: **Commit** (stage + commit), **Stash** (stash, restore at end), or **Abort**
 2. **Determine source/target** — target `main`: source is `test`. Target `test`: source is current branch.
 3. **Push source** to remote
-4. **Run tests** (`uv run pytest`) and **ruff** (`uv run ruff check`) — stop if they fail
-5. **Build release notes** from bean commits in `git log <target>..<source>`
-6. **One approval prompt** — user says "go" (or "go with tag" for main), or "abort"
-7. **Create PR** (`gh pr create --base <target> --head <source>`)
-8. **Merge PR** (`gh pr merge --merge`) — preserves full commit history
-9. **Tag** if requested (main only)
-10. **Delete** merged feature branches, local + remote (main only)
-11. **Sync target** locally, restore stash
-12. **Report** — PR URL, merge commit, beans deployed, branches deleted
+4. **Review documentation** — Check all docs in the Documentation Checklist (MEMORY.md) for stale references. Search broadly for related concepts. Update any stale docs and commit before proceeding. If the change introduces a new document, add it to the checklist.
+5. **Run tests** (`uv run pytest`) and **ruff** (`uv run ruff check foundry_app/`) — stop if they fail
+6. **Build release notes** from bean commits in `git log <target>..<source>`
+7. **One approval prompt** — user says "go" (or "go with tag" for main), or "abort"
+8. **Create PR** (`gh pr create --base <target> --head <source>`)
+9. **Merge PR** (`gh pr merge --merge`) — preserves full commit history
+10. **Tag** if requested (main only)
+11. **Delete** merged feature branches, local + remote (main only)
+12. **Sync target** locally, restore stash
+13. **Report** — PR URL, merge commit, beans deployed, branches deleted
 
 ## Examples
 
