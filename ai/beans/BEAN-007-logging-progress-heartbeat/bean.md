@@ -4,7 +4,7 @@
 |-------|-------|
 | **Bean ID** | BEAN-007 |
 | **Status** | Approved |
-| **Priority** | Medium |
+| **Priority** | High |
 | **Created** | 2026-02-14 |
 | **Started** | — |
 | **Completed** | — |

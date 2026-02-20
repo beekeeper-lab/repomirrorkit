@@ -1,39 +1,36 @@
 {
-  "safety": {
-    "git": {
-      "allow_push": true,
-      "allow_force_push": false,
-      "allow_branch_delete": false,
-      "protected_branches": [
-        "main",
-        "master"
-      ]
-    },
-    "shell": {
-      "allow_shell": true,
-      "blocked_commands": [],
-      "blocked_patterns": []
-    },
-    "filesystem": {
-      "allow_write": true,
-      "allow_delete": false,
-      "protected_paths": [],
-      "allowed_extensions": []
-    },
-    "network": {
-      "allow_network": true,
-      "allowed_domains": [],
-      "blocked_domains": []
-    },
-    "secrets": {
-      "scan_for_secrets": true,
-      "block_on_secret": true,
-      "secret_patterns": []
-    },
-    "destructive_ops": {
-      "allow_destructive": false,
-      "require_confirmation": true,
-      "blocked_operations": []
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "branch=$(git branch --show-current 2>/dev/null); if [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ]; then echo 'BLOCKED: Cannot edit files on main. Create a feature branch first: git checkout -b <branch-name>'; exit 1; fi"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/telemetry-stamp.py"
+          }
+        ]
+      }
+    ]
+  },
+  "mcpServers": {
+    "trello": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-trello"],
+      "env": {
+        "TRELLO_API_KEY": "${TRELLO_API_KEY}",
+        "TRELLO_TOKEN": "${TRELLO_TOKEN}"
+      }
     }
   }
 }

@@ -56,13 +56,32 @@ When target is `test` and you are not on `main`, the source is whatever branch y
 4. **Push source** — `git push origin <source>` to ensure remote is up to date.
 5. **Verify ahead of target** — `git log <target>..<source> --oneline`. If empty, report "Nothing to deploy", restore stash, return to original branch, exit.
 
+### Phase 1.5: Documentation Review
+
+5a. **Identify what changed** — Review `git log <target>..<source> --oneline` and `git diff <target>..<source> --stat` to understand the scope of changes being deployed.
+
+5b. **Check documentation checklist** — For each change, review the documentation checklist in `MEMORY.md` (section "Documentation Checklist") and verify that all applicable docs have been updated to reflect the changes. At minimum, always check:
+   - `CLAUDE.md`, `README.md`, `ai/context/bean-workflow.md`, `ai/context/project.md`
+   - All agent files in `.claude/agents/`
+   - The relevant skill and command files in `.claude/skills/` and `.claude/commands/`
+   - `CHANGELOG.md`
+   - `docs/` for any project documentation
+
+5c. **Search broadly** — Don't just grep for exact strings. Search for related concepts, synonyms, and soft references that may have become stale. For example, if the change modifies the team wave model, search for "wave", "BA", "Architect", "persona", "team", "decompose", etc.
+
+5d. **Update stale docs** — If any documentation is stale, update it now on the source branch. Commit the documentation updates before proceeding.
+
+5e. **Check if the checklist itself needs updating** — If the change introduces a new document or removes an existing one, update the Documentation Checklist in `MEMORY.md`.
+
+5f. **Skip conditions** — This phase may be skipped if the deploy contains only documentation changes (no code or workflow changes) or if the user explicitly requests a fast deploy.
+
 ### Phase 2: Quality Gate
 
 6. **Run tests** — `uv run pytest` on the source branch.
    - If any fail: report failures, restore stash, return to original branch. Stop.
    - If all pass: record the count.
 
-7. **Run ruff** — `uv run ruff check`. Record result.
+7. **Run ruff** — `uv run ruff check foundry_app/`. Record result.
 
 ### Phase 3: Build Release Notes
 

@@ -34,7 +34,7 @@ Provides a structured "front door" to the beans workflow. Instead of requiring u
    - **Missing context:** Is there anything the Team Lead needs to understand better?
    - **Acceptance criteria:** What does "done" look like for the user?
 5. **Iterate** -- Refine the breakdown based on the user's answers. Merge beans that are too small, split beans that are too large, adjust priorities, add missing context. Repeat until the user agrees with the proposed set.
-6. **Create beans** -- For each agreed-upon bean, use `/new-bean` to create it with complete fields:
+6. **Create beans** -- For each agreed-upon bean, use `/internal:new-bean` to create it with complete fields:
    - Problem Statement (derived from the user's description)
    - Goal (what success looks like)
    - Scope (In Scope / Out of Scope)
@@ -46,7 +46,7 @@ Provides a structured "front door" to the beans workflow. Instead of requiring u
 
 | Artifact | Path | Description |
 |----------|------|-------------|
-| New beans | `ai/beans/BEAN-NNN-<slug>/bean.md` | One or more beans created via `/new-bean` |
+| New beans | `ai/beans/BEAN-NNN-<slug>/bean.md` | One or more beans created via `/internal:new-bean` |
 | Updated index | `ai/beans/_index.md` | All new beans added to the backlog |
 | Summary | Console output | Table of created beans with IDs, titles, and priorities |
 

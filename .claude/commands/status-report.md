@@ -64,8 +64,8 @@ The report structure follows `personas/team-lead/templates/status-report.md`:
 
 | Error | Cause | Resolution |
 |-------|-------|------------|
-| `NoTasksFound` | No task files exist in `ai/tasks/` | Run `/seed-tasks` first to create the initial task set |
-| `NoTeamComposition` | Neither composition spec nor compiled CLAUDE.md found | Run `/compile-team` first |
+| `NoTasksFound` | No task files exist in `ai/tasks/` | Run `/internal:seed-tasks` first to create the initial task set |
+| `NoTeamComposition` | Neither composition spec nor compiled CLAUDE.md found | Run `/internal:compile-team` first |
 | `MalformedTaskFile` | A task file cannot be parsed (missing status field, broken markdown) | Fix the task file format; ensure it has a status field |
 | `NoPriorReports` | Velocity calculation requested but no prior reports exist | First report of a project will skip velocity or show baseline-only metrics |
 | `OutputDirNotWritable` | Cannot write to the reports directory | Check permissions and that the directory exists |

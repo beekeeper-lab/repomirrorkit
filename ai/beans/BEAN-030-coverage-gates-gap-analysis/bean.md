@@ -81,7 +81,7 @@ Implement Stage F of the pipeline: coverage calculation, threshold enforcement, 
 
 ## Notes
 
-- Depends on BEAN-020–BEAN-026 (surface counts), BEAN-029 (bean generation counts).
+- Depends on BEAN-006 (State Management & Resume), BEAN-020–BEAN-026 (surface counts), BEAN-029 (bean generation counts).
 - Reference: Spec sections 4.2 (Report outputs), 7 (Coverage gates), 9.1 (cannot skip).
 - The spec says: "The tool may not exit successfully unless required coverage artifacts exist and required surfaces have corresponding beans."
 - Stage F is mandatory and cannot be skipped.

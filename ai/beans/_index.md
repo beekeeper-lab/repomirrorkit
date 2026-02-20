@@ -28,7 +28,7 @@
 | BEAN-004 | Harvester Package Setup | App | High | Approved | (unassigned) |
 | BEAN-005 | CLI Entry Point & Configuration | App | High | Approved | (unassigned) |
 | BEAN-006 | State Management & Resume | App | High | Approved | (unassigned) |
-| BEAN-007 | Logging & Progress Heartbeat | App | Medium | Approved | (unassigned) |
+| BEAN-007 | Logging & Progress Heartbeat | App | High | Approved | (unassigned) |
 | BEAN-008 | Clone & Normalize (Stage A) | App | High | Approved | (unassigned) |
 | BEAN-009 | File Inventory (Stage B) | App | High | Approved | (unassigned) |
 | BEAN-010 | Detector Framework | App | High | Approved | (unassigned) |
@@ -47,7 +47,7 @@
 | BEAN-023 | Model & Entity Analyzer | App | High | Approved | (unassigned) |
 | BEAN-024 | Auth & Security Analyzer | App | High | Approved | (unassigned) |
 | BEAN-025 | Config & Env Var Analyzer | App | High | Approved | (unassigned) |
-| BEAN-026 | Cross-cutting Concerns Analyzer | App | Medium | Approved | (unassigned) |
+| BEAN-026 | Cross-cutting Concerns Analyzer | App | High | Approved | (unassigned) |
 | BEAN-027 | Traceability Graph Builder (Stage D) | App | High | Approved | (unassigned) |
 | BEAN-028 | Bean Templates | App | High | Approved | (unassigned) |
 | BEAN-029 | Bean Writer & Indexer (Stage E) | App | High | Approved | (unassigned) |
