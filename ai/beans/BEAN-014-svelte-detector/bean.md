@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-014 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -42,20 +42,24 @@ Implement a basic Svelte detector that identifies Svelte and SvelteKit projects 
 
 ## Acceptance Criteria
 
-- [ ] `SvelteDetector` implements the `Detector` interface
-- [ ] Detects Svelte via `package.json` dependency
-- [ ] Detects Svelte via `.svelte` file presence
-- [ ] Detects SvelteKit via config and `@sveltejs/kit` dependency
-- [ ] Confidence scoring based on evidence strength
-- [ ] No false positives on React or Vue projects
-- [ ] Unit tests cover: Svelte repo, SvelteKit repo, non-Svelte repo
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `SvelteDetector` implements the `Detector` interface
+- [x] Detects Svelte via `package.json` dependency
+- [x] Detects Svelte via `.svelte` file presence
+- [x] Detects SvelteKit via config and `@sveltejs/kit` dependency
+- [x] Confidence scoring based on evidence strength
+- [x] No false positives on React or Vue projects
+- [x] Unit tests cover: Svelte repo, SvelteKit repo, non-Svelte repo
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement SvelteDetector class | Developer | BEAN-010 | Done |
+| 2 | Write unit tests (19 tests) | Developer | 1 | Done |
+| 3 | Run ruff check + format | Tech-QA | 2 | Done |
+| 4 | Run mypy strict mode | Tech-QA | 2 | Done |
+| 5 | Run pytest + verify ACs | Tech-QA | 2 | Done |
 
 ## Notes
 

@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-021 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -46,15 +46,15 @@ Implement a component analyzer that discovers shared UI components across detect
 
 ## Acceptance Criteria
 
-- [ ] Discovers components from standard directories (`components/`, `shared/`, `ui/`)
-- [ ] Extracts component names from file names and exports
-- [ ] Extracts props/inputs contract (best effort) from type annotations or PropTypes
-- [ ] Identifies usage locations (which files import/use this component)
-- [ ] Distinguishes shared components (2+ usage locations) from page-specific ones
-- [ ] Each component produces a `ComponentSurface` with name, props, usage, source ref
-- [ ] Analyzer only runs for detected frontend frameworks
-- [ ] Unit tests cover: React components, Vue SFCs, Svelte components
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] Discovers components from standard directories (`components/`, `shared/`, `ui/`)
+- [x] Extracts component names from file names and exports
+- [x] Extracts props/inputs contract (best effort) from type annotations or PropTypes
+- [x] Identifies usage locations (which files import/use this component)
+- [x] Distinguishes shared components (2+ usage locations) from page-specific ones
+- [x] Each component produces a `ComponentSurface` with name, props, usage, source ref
+- [x] Analyzer only runs for detected frontend frameworks
+- [x] Unit tests cover: React components, Vue SFCs, Svelte components
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 

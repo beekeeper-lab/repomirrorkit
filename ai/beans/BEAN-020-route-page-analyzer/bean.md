@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-020 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -44,17 +44,17 @@ Implement a route/page analyzer that discovers all UI routes across detected fro
 
 ## Acceptance Criteria
 
-- [ ] Extracts routes from Next.js `pages/` directory structure
-- [ ] Extracts routes from Next.js `app/` directory structure
-- [ ] Extracts routes from React Router configuration files
-- [ ] Extracts routes from Vue Router configuration files
-- [ ] Extracts routes from SvelteKit `src/routes/` directory structure
-- [ ] Dynamic route segments are identified (e.g., `[id]`, `:id`, `{slug}`)
-- [ ] Each route produces a `RouteSurface` with path, source ref, component refs
-- [ ] Analyzer only runs for detected frameworks (uses `StackProfile` from detection)
-- [ ] Skipped or unrecognized patterns are logged with reason
-- [ ] Unit tests cover each framework's route extraction with sample data
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] Extracts routes from Next.js `pages/` directory structure
+- [x] Extracts routes from Next.js `app/` directory structure
+- [x] Extracts routes from React Router configuration files
+- [x] Extracts routes from Vue Router configuration files
+- [x] Extracts routes from SvelteKit `src/routes/` directory structure
+- [x] Dynamic route segments are identified (e.g., `[id]`, `:id`, `{slug}`)
+- [x] Each route produces a `RouteSurface` with path, source ref, component refs
+- [x] Analyzer only runs for detected frameworks (uses `StackProfile` from detection)
+- [x] Skipped or unrecognized patterns are logged with reason
+- [x] Unit tests cover each framework's route extraction with sample data
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 

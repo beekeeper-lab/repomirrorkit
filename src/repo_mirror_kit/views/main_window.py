@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -18,6 +20,7 @@ from repo_mirror_kit.services.clone_service import (
     validate_project_name,
 )
 from repo_mirror_kit.workers.clone_worker import CloneWorker
+from repo_mirror_kit.workers.harvest_worker import HarvestWorker
 
 
 class MainWindow(QMainWindow):
@@ -28,6 +31,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("RepoMirrorKit")
         self.setMinimumSize(600, 400)
         self._worker: CloneWorker | None = None
+        self._harvest_worker: HarvestWorker | None = None
+        self._clone_project_name: str | None = None
         self._setup_ui()
         self._connect_signals()
 
@@ -69,6 +74,12 @@ class MainWindow(QMainWindow):
         self._fetch_button = QPushButton("Fetch")
         layout.addWidget(self._fetch_button)
 
+        # Generate Requirements button (hidden until clone succeeds)
+        self._harvest_button = QPushButton("Generate Requirements")
+        self._harvest_button.setEnabled(False)
+        self._harvest_button.hide()
+        layout.addWidget(self._harvest_button)
+
         # Status label
         self._status_label = QLabel()
         layout.addWidget(self._status_label)
@@ -89,6 +100,7 @@ class MainWindow(QMainWindow):
         """Connect UI signals to slots."""
         self._fetch_button.clicked.connect(self._on_fetch_clicked)
         self._log_toggle.toggled.connect(self._on_log_toggled)
+        self._harvest_button.clicked.connect(self._on_harvest_clicked)
 
     @Slot()
     def _on_fetch_clicked(self) -> None:
@@ -120,6 +132,7 @@ class MainWindow(QMainWindow):
             return
 
         self._fetch_button.setEnabled(False)
+        self._harvest_button.setEnabled(False)
         self._status_label.setText("Cloning...")
         self._log_area.clear()
         self._log_area.show()
@@ -141,12 +154,68 @@ class MainWindow(QMainWindow):
         self._fetch_button.setEnabled(True)
         if success:
             self._status_label.setText("Clone complete")
+            self._clone_project_name = self._name_input.text().strip()
+            self._harvest_button.show()
+            self._harvest_button.setEnabled(True)
         else:
             self._status_label.setText(f"Error: {message}")
         self._worker = None
+
+    @Slot()
+    def _on_harvest_clicked(self) -> None:
+        """Handle Generate Requirements button click."""
+        if self._clone_project_name is None:
+            return
+
+        project_dir = Path("projects") / self._clone_project_name
+        output_dir = project_dir / "ai"
+
+        self._set_harvesting_state(enabled=False)
+        self._status_label.setText("Harvesting: starting pipeline...")
+        self._log_area.clear()
+        self._log_area.show()
+        self._log_toggle.setChecked(True)
+
+        self._harvest_worker = HarvestWorker(project_dir, output_dir)
+        self._harvest_worker.stage_changed.connect(self._on_stage_changed)
+        self._harvest_worker.progress_updated.connect(self._on_progress_updated)
+        self._harvest_worker.harvest_finished.connect(self._on_harvest_finished)
+        self._harvest_worker.start()
+
+    @Slot(str)
+    def _on_stage_changed(self, label: str) -> None:
+        """Update status label when pipeline stage changes."""
+        self._status_label.setText(f"Harvesting: {label}")
+        self._log_area.append(f"\n--- {label} ---")
+
+    @Slot(str)
+    def _on_progress_updated(self, message: str) -> None:
+        """Append progress detail to the log area."""
+        self._log_area.append(message)
+
+    @Slot(bool, str)
+    def _on_harvest_finished(self, success: bool, summary: str) -> None:
+        """Handle harvest completion."""
+        self._set_harvesting_state(enabled=True)
+        if success:
+            self._status_label.setText(f"Harvest complete: {summary}")
+        else:
+            self._status_label.setText(f"Harvest failed: {summary}")
+        self._harvest_worker = None
 
     @Slot(bool)
     def _on_log_toggled(self, checked: bool) -> None:
         """Toggle log area visibility."""
         self._log_area.setVisible(checked)
         self._log_toggle.setText("Hide Log" if checked else "Show Log")
+
+    def _set_harvesting_state(self, *, enabled: bool) -> None:
+        """Enable or disable UI elements during harvest.
+
+        Args:
+            enabled: True to re-enable controls, False to disable for harvest.
+        """
+        self._fetch_button.setEnabled(enabled)
+        self._harvest_button.setEnabled(enabled)
+        self._name_input.setEnabled(enabled)
+        self._url_input.setEnabled(enabled)

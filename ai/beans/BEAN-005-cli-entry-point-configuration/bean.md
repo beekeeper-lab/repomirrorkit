@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-005 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -40,22 +40,25 @@ A working CLI entry point using Click that accepts all arguments from the spec (
 
 ## Acceptance Criteria
 
-- [ ] `requirements-harvester harvest --repo <url>` is runnable from the command line
-- [ ] All required and optional arguments from spec section 3.2 are accepted (except runtime-verify args)
-- [ ] Missing `--repo` argument produces exit code 3 with a clear error message
-- [ ] `HarvestConfig` dataclass holds all parsed configuration with proper types
-- [ ] Default values match spec: `--exclude` defaults, `--max-file-bytes=1000000`, `--fail-on-gaps=true`
-- [ ] `--include` and `--exclude` accept comma-separated glob patterns
-- [ ] `--log-level` accepts debug/info/warn/error (case-insensitive)
-- [ ] Invalid `--log-level` produces exit code 3
-- [ ] Unit tests cover argument parsing, defaults, and validation edge cases
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `requirements-harvester harvest --repo <url>` is runnable from the command line
+- [x] All required and optional arguments from spec section 3.2 are accepted (except runtime-verify args)
+- [x] Missing `--repo` argument produces exit code 3 with a clear error message
+- [x] `HarvestConfig` dataclass holds all parsed configuration with proper types
+- [x] Default values match spec: `--exclude` defaults, `--max-file-bytes=1000000`, `--fail-on-gaps=true`
+- [x] `--include` and `--exclude` accept comma-separated glob patterns
+- [x] `--log-level` accepts debug/info/warn/error (case-insensitive)
+- [x] Invalid `--log-level` produces exit code 3
+- [x] Unit tests cover argument parsing, defaults, and validation edge cases
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement HarvestConfig dataclass | Developer | — | Done |
+| 2 | Implement CLI Click command | Developer | 1 | Done |
+| 3 | Unit tests for config and CLI | Developer | 1, 2 | Done |
+| 4 | Quality verification (ruff, mypy, pytest) | Tech QA | 1, 2, 3 | Done |
 
 ## Notes
 

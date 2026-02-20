@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-006 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -41,23 +41,25 @@ A `state.py` module that saves and loads pipeline progress to `state/state.json`
 
 ## Acceptance Criteria
 
-- [ ] `StateManager` can save current progress to `state/state.json`
-- [ ] `StateManager` can load previous state from `state/state.json`
-- [ ] State JSON includes: stage name, stage status (pending/done), bean count, last checkpoint timestamp
-- [ ] `--resume` skips stages marked as "done" in state
-- [ ] `--resume` continues bean generation from the last checkpoint count
-- [ ] Completed beans are never overwritten during resume
-- [ ] Checkpoint occurs after each stage completion
-- [ ] Checkpoint occurs every N beans (default 10) during generation
-- [ ] Missing or corrupt `state.json` starts fresh (no crash)
-- [ ] Unit tests cover save, load, resume skip logic, corrupt state handling
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `StateManager` can save current progress to `state/state.json`
+- [x] `StateManager` can load previous state from `state/state.json`
+- [x] State JSON includes: stage name, stage status (pending/done), bean count, last checkpoint timestamp
+- [x] `--resume` skips stages marked as "done" in state
+- [x] `--resume` continues bean generation from the last checkpoint count
+- [x] Completed beans are never overwritten during resume
+- [x] Checkpoint occurs after each stage completion
+- [x] Checkpoint occurs every N beans (default 10) during generation
+- [x] Missing or corrupt `state.json` starts fresh (no crash)
+- [x] Unit tests cover save, load, resume skip logic, corrupt state handling
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement StateManager class | Developer | — | Done |
+| 2 | Write unit tests | Developer | 1 | Done |
+| 3 | QA verification (ruff, mypy, pytest) | Tech-QA | 1, 2 | Done |
 
 ## Notes
 

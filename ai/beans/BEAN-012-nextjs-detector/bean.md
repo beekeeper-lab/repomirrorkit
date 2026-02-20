@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-012 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
+| **Duration** | ~30 min |
+| **Owner** | Claude |
 | **Category** | App |
 
 ## Problem Statement
@@ -42,23 +42,25 @@ Implement a Next.js detector that identifies Next.js projects by examining confi
 
 ## Acceptance Criteria
 
-- [ ] `NextjsDetector` implements the `Detector` interface
-- [ ] Detects Next.js via `package.json` dependency check
-- [ ] Detects Next.js via `next.config.*` file presence
-- [ ] Detects Next.js via `pages/` or `app/` directory structure
-- [ ] Detects Next.js API routes via `pages/api/` or `app/api/`
-- [ ] Confidence score reflects evidence strength
-- [ ] Evidence list includes triggering files/paths
-- [ ] Registered in the detector registry
-- [ ] No false positives on plain React or Vue projects
-- [ ] Unit tests cover: Next.js repo, plain React repo (no match), partial signals
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `NextjsDetector` implements the `Detector` interface
+- [x] Detects Next.js via `package.json` dependency check
+- [x] Detects Next.js via `next.config.*` file presence
+- [x] Detects Next.js via `pages/` or `app/` directory structure
+- [x] Detects Next.js API routes via `pages/api/` or `app/api/`
+- [x] Confidence score reflects evidence strength
+- [x] Evidence list includes triggering files/paths
+- [x] Registered in the detector registry
+- [x] No false positives on plain React or Vue projects
+- [x] Unit tests cover: Next.js repo, plain React repo (no match), partial signals
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement NextjsDetector in nextjs.py | Developer | BEAN-010 | Done |
+| 2 | Write unit tests (37 tests, 8 classes) | Tech-QA | 1 | Done |
+| 3 | QA verification (ruff, mypy, pytest) | Tech-QA | 1, 2 | Done |
 
 ## Notes
 

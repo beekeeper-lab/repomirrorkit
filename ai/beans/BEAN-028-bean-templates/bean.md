@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-028 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
+| **Duration** | 1 day |
+| **Owner** | Claude |
 | **Category** | App |
 
 ## Problem Statement
@@ -44,25 +44,28 @@ Implement bean template definitions for all 7 bean types, each producing correct
 
 ## Acceptance Criteria
 
-- [ ] Template functions exist for all 7 bean types
-- [ ] Each template produces markdown with valid YAML frontmatter (id, type, title, source_refs, traceability, status)
-- [ ] Page/Route template includes all 8 required sections from spec 8.3
-- [ ] Component template includes all 6 required sections from spec 8.4
-- [ ] API template includes all 8 required sections from spec 8.5
-- [ ] Model template includes all 6 required sections from spec 8.6
-- [ ] Auth template includes all 4 required sections from spec 8.7
-- [ ] Config template includes all 4 required sections from spec 8.8
-- [ ] Crosscutting template includes sections per spec 8.9
-- [ ] Templates are rendered from `Surface` dataclass instances
-- [ ] Generated beans have `status: draft` in frontmatter
-- [ ] Unit tests verify each template renders correctly with sample data
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] Template functions exist for all 7 bean types
+- [x] Each template produces markdown with valid YAML frontmatter (id, type, title, source_refs, traceability, status)
+- [x] Page/Route template includes all 8 required sections from spec 8.3
+- [x] Component template includes all 6 required sections from spec 8.4
+- [x] API template includes all 8 required sections from spec 8.5
+- [x] Model template includes all 6 required sections from spec 8.6
+- [x] Auth template includes all 4 required sections from spec 8.7
+- [x] Config template includes all 4 required sections from spec 8.8
+- [x] Crosscutting template includes sections per spec 8.9
+- [x] Templates are rendered from `Surface` dataclass instances
+- [x] Generated beans have `status: draft` in frontmatter
+- [x] Unit tests verify each template renders correctly with sample data
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Design template structure | Architect | — | Done |
+| 2 | Implement templates.py | Developer | 1 | Done |
+| 3 | Write unit tests | Developer | 2 | Done |
+| 4 | Verify acceptance criteria | Tech QA | 3 | Done |
 
 ## Notes
 
@@ -74,11 +77,14 @@ Implement bean template definitions for all 7 bean types, each producing correct
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Design template structure | Architect | 5m | — | — |
+| 2 | Implement templates.py | Developer | 15m | — | — |
+| 3 | Write unit tests | Developer | 10m | — | — |
+| 4 | Verify acceptance criteria | Tech QA | 10m | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
+| **Total Tasks** | 4 |
+| **Total Duration** | 40m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

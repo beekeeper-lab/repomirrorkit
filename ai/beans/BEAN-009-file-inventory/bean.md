@@ -3,11 +3,11 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-009 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-14 |
-| **Started** | — |
-| **Completed** | — |
+| **Started** | 2026-02-15 |
+| **Completed** | 2026-02-15 |
 | **Duration** | — |
 | **Owner** | (unassigned) |
 | **Category** | App |
@@ -44,25 +44,27 @@ Implement the file inventory module that scans a cloned repository, applies incl
 
 ## Acceptance Criteria
 
-- [ ] `inventory.scan(workdir, config)` returns a structured inventory of all included files
-- [ ] Default exclude globs filter out `node_modules`, `dist`, `build`, `.git`, `.venv`, `coverage`, `**/*.min.*`
-- [ ] Custom `--include` globs restrict scanning to matched files only
-- [ ] Custom `--exclude` globs add to the default exclude list
-- [ ] Files exceeding `--max-file-bytes` are skipped with reason recorded
-- [ ] Each file entry includes: path, size, extension, hash, category
-- [ ] Categories include at minimum: source, config, test, asset, documentation, migration
-- [ ] `reports/inventory.json` is written with the complete inventory
-- [ ] Skipped files are recorded in the inventory with skip reason
-- [ ] File iteration order is deterministic (sorted by path)
-- [ ] State checkpoint written after Stage B completion
-- [ ] Unit tests cover: glob filtering, size filtering, categorization, hash computation
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `inventory.scan(workdir, config)` returns a structured inventory of all included files
+- [x] Default exclude globs filter out `node_modules`, `dist`, `build`, `.git`, `.venv`, `coverage`, `**/*.min.*`
+- [x] Custom `--include` globs restrict scanning to matched files only
+- [x] Custom `--exclude` globs add to the default exclude list
+- [x] Files exceeding `--max-file-bytes` are skipped with reason recorded
+- [x] Each file entry includes: path, size, extension, hash, category
+- [x] Categories include at minimum: source, config, test, asset, documentation, migration
+- [x] `reports/inventory.json` is written with the complete inventory
+- [x] Skipped files are recorded in the inventory with skip reason
+- [x] File iteration order is deterministic (sorted by path)
+- [x] State checkpoint written after Stage B completion
+- [x] Unit tests cover: glob filtering, size filtering, categorization, hash computation
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Implement inventory.py (scan, filter, hash, categorize, report) | Developer | BEAN-008 | Done |
+| 2 | Write unit tests (73 tests across 12 test classes) | Tech-QA | 1 | Done |
+| 3 | Run QA checks (ruff, mypy, pytest) | Tech-QA | 1, 2 | Done |
 
 ## Notes
 
