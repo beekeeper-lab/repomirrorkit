@@ -8,7 +8,7 @@ Copies a harvested project from its temp directory to a permanent location as a 
 /eject_project [project-name] [--from <harvest-output-dir>]
 ```
 
-- `project-name` -- Name of the project to eject. Matched against `/tmp/harvest-<name>/` directories. Also used as the target folder name.
+- `project-name` -- Name of the project to eject. Matched against `/tmp/harvest-<name>/` directories. Also used as the target folder name (normalized to lowercase with underscores).
 - `--from <path>` -- Override the source directory instead of scanning `/tmp/harvest-*/`.
 
 ## Process
@@ -17,7 +17,7 @@ Copies a harvested project from its temp directory to a permanent location as a 
 
 2. **Select project** -- If `project-name` is provided as an argument, match it against discovered harvest directories (e.g., `express` matches `/tmp/harvest-express/`). If no argument is given, list all available harvests and ask the user to pick one.
 
-3. **Determine target** -- The target directory is a sibling of this repo's root. Compute it as `<repomirrorkit-parent>/<project-name>/`. For example, if this repo is at `/home/gregg/workspace/personal/repomirrorkit`, the target for project `express` would be `/home/gregg/workspace/personal/express/`.
+3. **Determine target** -- The target directory is a sibling of this repo's root. Normalize the folder name: lowercase, replace spaces and hyphens with underscores (e.g., `My-Cool App` → `my_cool_app`). Compute the target as `<repomirrorkit-parent>/<normalized-name>/`. For example, if this repo is at `/home/gregg/workspace/personal/repomirrorkit`, the target for project `Express-App` would be `/home/gregg/workspace/personal/express_app/`.
 
 4. **Guard against overwrites** -- If the target directory already exists, warn the user and ask for explicit confirmation before proceeding. Show the full target path in the warning.
 
@@ -50,9 +50,9 @@ Scans `/tmp/harvest-*/`, lists available projects, asks user to choose.
 
 **Eject from custom path:**
 ```
-/eject_project myapp --from /tmp/custom-output
+/eject_project My-App --from /tmp/custom-output
 ```
-Copies `/tmp/custom-output/project-folder/` to `../myapp/`.
+Copies `/tmp/custom-output/project-folder/` to `../my_app/` (name normalized to lowercase with underscores).
 
 ## Error Handling
 
