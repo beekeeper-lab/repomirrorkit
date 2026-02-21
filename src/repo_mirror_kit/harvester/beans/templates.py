@@ -26,6 +26,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     SourceRef,
     StateMgmtSurface,
     Surface,
+    TestPatternSurface,
     UIFlowSurface,
 )
 
@@ -815,6 +816,53 @@ def render_dependency_bean(surface: DependencySurface, bean_id: str) -> str:
     return fm + "\n" + body.lstrip("\n")
 
 
+def render_test_pattern_bean(surface: TestPatternSurface, bean_id: str) -> str:
+    """Render a Test Pattern bean.
+
+    Args:
+        surface: A TestPatternSurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="test_pattern",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    subject_display = (
+        f"`{surface.subject_file}`" if surface.subject_file else "(unmapped)"
+    )
+
+    body = f"""
+# {surface.name}
+
+## Test overview
+
+- **Framework:** {surface.framework or "unknown"}
+- **Test type:** {surface.test_type or "unit"}
+- **Test file:** `{surface.test_file}`
+- **Subject file:** {subject_display}
+- **Test count:** {surface.test_count}
+
+{_render_enrichment_sections(surface)}
+## Test names
+
+{_bullet_list([f"`{n}`" for n in surface.test_names], "- No test names extracted.")}
+
+## Structural acceptance criteria
+
+- [ ] All tests in `{surface.test_file}` pass.
+- [ ] Test file correctly tests the functionality in {subject_display}.
+- [ ] Test count matches expected: {surface.test_count} tests.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
 _RENDERERS: dict[str, Any] = {
     "route": render_route_bean,
     "component": render_component_bean,
@@ -829,6 +877,7 @@ _RENDERERS: dict[str, Any] = {
     "ui_flow": render_ui_flow_bean,
     "build_deploy": render_build_deploy_bean,
     "dependency": render_dependency_bean,
+    "test_pattern": render_test_pattern_bean,
 }
 
 

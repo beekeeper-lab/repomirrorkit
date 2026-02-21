@@ -29,8 +29,10 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     StateMgmtSurface,
     Surface,
     SurfaceCollection,
+    TestPatternSurface,
     UIFlowSurface,
 )
+from repo_mirror_kit.harvester.analyzers.test_patterns import analyze_test_patterns
 from repo_mirror_kit.harvester.analyzers.ui_flows import analyze_ui_flows
 
 __all__ = [
@@ -50,6 +52,7 @@ __all__ = [
     "StateMgmtSurface",
     "Surface",
     "SurfaceCollection",
+    "TestPatternSurface",
     "UIFlowSurface",
     "analyze_api_endpoints",
     "analyze_auth",
@@ -63,5 +66,6 @@ __all__ = [
     "analyze_models",
     "analyze_routes",
     "analyze_state_management",
+    "analyze_test_patterns",
     "analyze_ui_flows",
 ]

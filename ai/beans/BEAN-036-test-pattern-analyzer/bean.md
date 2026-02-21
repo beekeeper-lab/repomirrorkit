@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-036 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-20 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-02-21 00:11 |
+| **Completed** | 2026-02-21 00:23 |
+| **Duration** | 12m |
+| **Owner** | developer |
 | **Category** | App |
 
 ## Problem Statement
@@ -50,34 +50,34 @@ Implement a test pattern analyzer that identifies test files, extracts testing f
 
 ## Acceptance Criteria
 
-- [ ] `TestPatternSurface` dataclass exists with test_type, framework, test_file, subject_file, test_count fields
-- [ ] `SurfaceCollection.test_patterns` list field exists
-- [ ] Detects Jest/Vitest test files and extracts describe/it block names
-- [ ] Detects pytest test files and extracts test function names
-- [ ] Detects Go test files
-- [ ] Detects .NET test classes
-- [ ] Detects Cypress/Playwright e2e test files
-- [ ] Classifies tests as unit, integration, e2e, or snapshot based on location and naming conventions
-- [ ] Maps test files to source files via naming conventions (test_foo.py -> foo.py)
-- [ ] Detects test configuration files and frameworks
-- [ ] Counts tests per file (approximate, regex-based)
-- [ ] Bean template renders test pattern beans with framework, type, subject, and test count
-- [ ] Coverage gate checks test pattern coverage (threshold >= 70%)
-- [ ] Gap query identifies test patterns without beans
-- [ ] Unit tests cover each ecosystem's test detection
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `TestPatternSurface` dataclass exists with test_type, framework, test_file, subject_file, test_count fields
+- [x] `SurfaceCollection.test_patterns` list field exists
+- [x] Detects Jest/Vitest test files and extracts describe/it block names
+- [x] Detects pytest test files and extracts test function names
+- [x] Detects Go test files
+- [x] Detects .NET test classes
+- [x] Detects Cypress/Playwright e2e test files
+- [x] Classifies tests as unit, integration, e2e, or snapshot based on location and naming conventions
+- [x] Maps test files to source files via naming conventions (test_foo.py -> foo.py)
+- [x] Detects test configuration files and frameworks
+- [x] Counts tests per file (approximate, regex-based)
+- [x] Bean template renders test pattern beans with framework, type, subject, and test count
+- [x] Coverage gate checks test pattern coverage (threshold >= 70%)
+- [x] Gap query identifies test patterns without beans
+- [x] Unit tests cover each ecosystem's test detection
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | Add TestPatternSurface to surfaces.py and extend SurfaceCollection | Developer | — | Pending |
-| 2 | Implement test_patterns.py analyzer | Developer | 1 | Pending |
-| 3 | Add bean template renderer for test patterns | Developer | 1 | Pending |
-| 4 | Wire analyzer into pipeline Stage C | Developer | 2 | Pending |
-| 5 | Add coverage gate and gap query | Developer | 1 | Pending |
-| 6 | Write unit tests | Tech-QA | 2, 3 | Pending |
-| 7 | Run lint, type-check, and test suite | Tech-QA | 4, 5, 6 | Pending |
+| 1 | Add TestPatternSurface to surfaces.py and extend SurfaceCollection | Developer | — | Done |
+| 2 | Implement test_patterns.py analyzer | Developer | 1 | Done |
+| 3 | Add bean template renderer for test patterns | Developer | 1 | Done |
+| 4 | Wire analyzer into pipeline Stage C | Developer | 2 | Done |
+| 5 | Add coverage gate and gap query | Developer | 1 | Done |
+| 6 | Write unit tests | Tech-QA | 2, 3 | Done |
+| 7 | Run lint, type-check, and test suite | Tech-QA | 4, 5, 6 | Done |
 
 ## Notes
 
@@ -91,17 +91,17 @@ Implement a test pattern analyzer that identifies test files, extracts testing f
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 | Add TestPatternSurface to surfaces.py and extend SurfaceCollection | Developer | — | — | — | — |
-| 2 | Implement test_patterns.py analyzer | Developer | — | — | — | — |
-| 3 | Add bean template renderer for test patterns | Developer | — | — | — | — |
-| 4 | Wire analyzer into pipeline Stage C | Developer | — | — | — | — |
-| 5 | Add coverage gate and gap query | Developer | — | — | — | — |
-| 6 | Write unit tests | Tech-QA | — | — | — | — |
-| 7 | Run lint, type-check, and test suite | Tech-QA | — | — | — | — |
+| 1 | Add TestPatternSurface to surfaces.py and extend SurfaceCollection | Developer | < 1m | 20,396,374 | 17,849 | $38.61 |
+| 2 | Implement test_patterns.py analyzer | Developer | < 1m | 20,543,348 | 17,874 | $38.84 |
+| 3 | Add bean template renderer for test patterns | Developer | < 1m | 20,841,021 | 18,570 | $39.38 |
+| 4 | Wire analyzer into pipeline Stage C | Developer | < 1m | 20,841,021 | 18,570 | $39.38 |
+| 5 | Add coverage gate and gap query | Developer | < 1m | 20,991,106 | 18,896 | $39.64 |
+| 6 | Write unit tests | Tech-QA | < 1m | 21,142,052 | 19,257 | $39.91 |
+| 7 | Run lint, type-check, and test suite | Tech-QA | < 1m | 21,293,912 | 19,281 | $40.15 |
 
 | Metric | Value |
 |--------|-------|
 | **Total Tasks** | 7 |
-| **Total Duration** | — |
-| **Total Tokens In** | — |
-| **Total Tokens Out** | — |
+| **Total Duration** | 3m |
+| **Total Tokens In** | 146,048,834 |
+| **Total Tokens Out** | 130,297 |

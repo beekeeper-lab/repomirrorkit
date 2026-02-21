@@ -99,7 +99,9 @@ def _make_evaluation() -> CoverageEvaluation:
         middleware=MetricPair(total=0, covered=0),
         integrations=MetricPair(total=0, covered=0),
         ui_flows=MetricPair(total=0, covered=0),
+        build_deploy=MetricPair(total=0, covered=0),
         dependencies=MetricPair(total=0, covered=0),
+        test_patterns=MetricPair(total=0, covered=0),
     )
     return CoverageEvaluation(
         metrics=metrics,
@@ -128,6 +130,9 @@ _ANALYZE_STATE_MGMT = f"{_P}.analyze_state_management"
 _ANALYZE_MIDDLEWARE = f"{_P}.analyze_middleware"
 _ANALYZE_INTEGRATIONS = f"{_P}.analyze_integrations"
 _ANALYZE_UI_FLOWS = f"{_P}.analyze_ui_flows"
+_ANALYZE_BUILD_DEPLOY = f"{_P}.analyze_build_deploy"
+_ANALYZE_DEPENDENCIES = f"{_P}.analyze_dependencies"
+_ANALYZE_TEST_PATTERNS = f"{_P}.analyze_test_patterns"
 _WRITE_SURFACE_MAP = f"{_P}.write_surface_map"
 _BUILD_TRACEABILITY = f"{_P}.build_traceability_maps"
 _WRITE_BEANS = f"{_P}.write_beans"
@@ -170,6 +175,9 @@ def _build_patches(
         _ANALYZE_MIDDLEWARE: s.middleware,
         _ANALYZE_INTEGRATIONS: s.integrations,
         _ANALYZE_UI_FLOWS: s.ui_flows,
+        _ANALYZE_BUILD_DEPLOY: s.build_deploy,
+        _ANALYZE_DEPENDENCIES: s.dependencies,
+        _ANALYZE_TEST_PATTERNS: s.test_patterns,
         _WRITE_SURFACE_MAP: (Path("/tmp/a.md"), Path("/tmp/b.json")),
         _BUILD_TRACEABILITY: [],
         _WRITE_BEANS: _make_beans(),
@@ -296,10 +304,20 @@ class TestFullPipelineFlow:
         rv = _build_patches(tmp_path, surfaces=empty_surfaces)
         # Override analyzer returns with empty lists
         for target in [
-            _ANALYZE_ROUTES, _ANALYZE_COMPONENTS, _ANALYZE_APIS, _ANALYZE_MODELS,
-            _ANALYZE_AUTH, _ANALYZE_CONFIG, _ANALYZE_CROSSCUTTING,
-            _ANALYZE_STATE_MGMT, _ANALYZE_MIDDLEWARE, _ANALYZE_INTEGRATIONS,
+            _ANALYZE_ROUTES,
+            _ANALYZE_COMPONENTS,
+            _ANALYZE_APIS,
+            _ANALYZE_MODELS,
+            _ANALYZE_AUTH,
+            _ANALYZE_CONFIG,
+            _ANALYZE_CROSSCUTTING,
+            _ANALYZE_STATE_MGMT,
+            _ANALYZE_MIDDLEWARE,
+            _ANALYZE_INTEGRATIONS,
             _ANALYZE_UI_FLOWS,
+            _ANALYZE_BUILD_DEPLOY,
+            _ANALYZE_DEPENDENCIES,
+            _ANALYZE_TEST_PATTERNS,
         ]:
             rv[target] = []
 
@@ -344,9 +362,7 @@ class TestPipelineErrorHandling:
         target = stage_to_target[failing_stage]
 
         with contextlib.ExitStack() as stack:
-            _enter_all_patches(
-                stack, rv, side_effects={target: RuntimeError("boom")}
-            )
+            _enter_all_patches(stack, rv, side_effects={target: RuntimeError("boom")})
             pipeline = HarvestPipeline()
             result = pipeline.run(config)
 
@@ -389,9 +405,7 @@ class TestPipelineResume:
 
         # First run: fail at stage B so A is checkpointed
         with contextlib.ExitStack() as stack:
-            _enter_all_patches(
-                stack, rv, side_effects={_SCAN: RuntimeError("fail")}
-            )
+            _enter_all_patches(stack, rv, side_effects={_SCAN: RuntimeError("fail")})
             pipeline = HarvestPipeline()
             pipeline.run(config)
 
@@ -462,7 +476,8 @@ class TestPipelineCallbacks:
 
         with contextlib.ExitStack() as stack:
             _enter_all_patches(
-                stack, rv,
+                stack,
+                rv,
                 side_effects={_ANALYZE_ROUTES: RuntimeError("extractor crash")},
             )
             pipeline = HarvestPipeline(callback=events.append)
