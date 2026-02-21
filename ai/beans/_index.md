@@ -55,7 +55,7 @@
 | BEAN-031 | Surface Map Report | App | High | Done | team-lead |
 | BEAN-032 | Pipeline Orchestrator | App | High | Done | team-lead |
 | BEAN-033 | Harvest Button & Progress UI | App | High | Done | team-lead |
-| BEAN-034 | Dependency & Package Analyzer | App | High | In Progress | team-lead |
+| BEAN-034 | Dependency & Package Analyzer | App | High | Done | team-lead |
 | BEAN-035 | Build & Deploy Config Analyzer | App | High | Done | team-lead |
 | BEAN-036 | Test Pattern Analyzer | App | High | In Progress | team-lead |
 | BEAN-037 | CLAUDE.md Generator (Stage G) | App | High | Approved | (unassigned) |
