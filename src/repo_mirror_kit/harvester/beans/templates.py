@@ -19,6 +19,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ConfigSurface,
     CrosscuttingSurface,
     DependencySurface,
+    GeneralLogicSurface,
     IntegrationSurface,
     MiddlewareSurface,
     ModelSurface,
@@ -863,6 +864,47 @@ def render_test_pattern_bean(surface: TestPatternSurface, bean_id: str) -> str:
     return fm + "\n" + body.lstrip("\n")
 
 
+def render_general_logic_bean(surface: GeneralLogicSurface, bean_id: str) -> str:
+    """Render a General Logic bean for uncovered source files.
+
+    Args:
+        surface: A GeneralLogicSurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="general_logic",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    body = f"""
+# {surface.name}
+
+## Module overview
+
+- **File:** `{surface.file_path}`
+- **Purpose:** {surface.module_purpose or "TODO: Describe the purpose of this module."}
+- **Complexity:** {surface.complexity_hint or "unassessed"}
+
+{_render_enrichment_sections(surface)}
+## Public API / Exports
+
+{_bullet_list([f"`{e}`" for e in surface.exports], "- No public exports identified.")}
+
+## Structural acceptance criteria
+
+- [ ] Module behavior is documented.
+- [ ] All public API contracts are covered by requirements.
+- [ ] Integration points with other modules are identified.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
 _RENDERERS: dict[str, Any] = {
     "route": render_route_bean,
     "component": render_component_bean,
@@ -878,6 +920,7 @@ _RENDERERS: dict[str, Any] = {
     "build_deploy": render_build_deploy_bean,
     "dependency": render_dependency_bean,
     "test_pattern": render_test_pattern_bean,
+    "general_logic": render_general_logic_bean,
 }
 
 

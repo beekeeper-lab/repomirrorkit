@@ -7,6 +7,10 @@ from repo_mirror_kit.harvester.analyzers.components import analyze_components
 from repo_mirror_kit.harvester.analyzers.config_env import analyze_config
 from repo_mirror_kit.harvester.analyzers.crosscutting import analyze_crosscutting
 from repo_mirror_kit.harvester.analyzers.dependencies import analyze_dependencies
+from repo_mirror_kit.harvester.analyzers.file_coverage import (
+    analyze_uncovered_files,
+    find_uncovered_files,
+)
 from repo_mirror_kit.harvester.analyzers.integrations import analyze_integrations
 from repo_mirror_kit.harvester.analyzers.middleware import analyze_middleware
 from repo_mirror_kit.harvester.analyzers.models import analyze_models
@@ -20,6 +24,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ConfigSurface,
     CrosscuttingSurface,
     DependencySurface,
+    GeneralLogicSurface,
     IntegrationSurface,
     MiddlewareSurface,
     ModelField,
@@ -43,6 +48,7 @@ __all__ = [
     "ConfigSurface",
     "CrosscuttingSurface",
     "DependencySurface",
+    "GeneralLogicSurface",
     "IntegrationSurface",
     "MiddlewareSurface",
     "ModelField",
@@ -68,4 +74,6 @@ __all__ = [
     "analyze_state_management",
     "analyze_test_patterns",
     "analyze_ui_flows",
+    "analyze_uncovered_files",
+    "find_uncovered_files",
 ]

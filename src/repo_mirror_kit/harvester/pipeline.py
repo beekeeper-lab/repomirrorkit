@@ -32,6 +32,8 @@ from repo_mirror_kit.harvester.analyzers import (
     analyze_state_management,
     analyze_test_patterns,
     analyze_ui_flows,
+    analyze_uncovered_files,
+    find_uncovered_files,
 )
 from repo_mirror_kit.harvester.beans.writer import WrittenBean, write_beans
 from repo_mirror_kit.harvester.config import HarvestConfig
@@ -44,6 +46,10 @@ from repo_mirror_kit.harvester.reports.coverage import (
     compute_metrics,
     evaluate_thresholds,
     write_coverage_reports,
+)
+from repo_mirror_kit.harvester.reports.file_coverage import (
+    compute_file_coverage,
+    write_file_coverage_reports,
 )
 from repo_mirror_kit.harvester.reports.gaps import (
     GapReport,
@@ -561,6 +567,19 @@ class HarvestPipeline:
             test_patterns=test_patterns,
         )
 
+        # File coverage: find uncovered files and generate catch-all surfaces
+        uncovered = find_uncovered_files(inventory, surfaces)
+        if uncovered:
+            general_logic = analyze_uncovered_files(
+                uncovered, inventory, profile, workdir
+            )
+            surfaces.general_logic = general_logic
+            self._emit(
+                PipelineEventType.PROGRESS_UPDATE,
+                "C",
+                f"General logic (uncovered files): {len(general_logic)} found",
+            )
+
         write_surface_map(output_dir, surfaces, profile)
 
         return surfaces
@@ -604,6 +623,10 @@ class HarvestPipeline:
         metrics = compute_metrics(surfaces, beans, inventory)
         evaluation = evaluate_thresholds(metrics)
         write_coverage_reports(output_dir, evaluation)
+
+        # File coverage report
+        file_cov = compute_file_coverage(inventory, surfaces)
+        write_file_coverage_reports(output_dir, file_cov)
 
         gap_report = run_all_gap_queries(surfaces, beans)
         write_gaps_report(output_dir, gap_report)

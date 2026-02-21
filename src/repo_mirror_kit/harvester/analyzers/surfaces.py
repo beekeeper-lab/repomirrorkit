@@ -449,6 +449,36 @@ class TestPatternSurface(Surface):
 
 
 @dataclass
+class GeneralLogicSurface(Surface):
+    """A catch-all surface for source files not covered by specialized analyzers.
+
+    Captures module-level information for files that don't fit any other
+    surface type, ensuring every source file has at least one requirement.
+    """
+
+    file_path: str = ""
+    module_purpose: str = ""
+    exports: list[str] = field(default_factory=list)
+    complexity_hint: str = ""  # simple/moderate/complex
+
+    def __post_init__(self) -> None:
+        self.surface_type = "general_logic"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "file_path": self.file_path,
+                "module_purpose": self.module_purpose,
+                "exports": self.exports,
+                "complexity_hint": self.complexity_hint,
+            }
+        )
+        return result
+
+
+@dataclass
 class SurfaceCollection:
     """Container for all extracted surfaces.
 
@@ -470,6 +500,7 @@ class SurfaceCollection:
     build_deploy: list[BuildDeploySurface] = field(default_factory=list)
     dependencies: list[DependencySurface] = field(default_factory=list)
     test_patterns: list[TestPatternSurface] = field(default_factory=list)
+    general_logic: list[GeneralLogicSurface] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[Surface]:
         """Iterate over all surfaces in the collection."""
@@ -487,6 +518,7 @@ class SurfaceCollection:
         yield from self.build_deploy
         yield from self.dependencies
         yield from self.test_patterns
+        yield from self.general_logic
 
     def __len__(self) -> int:
         """Return the total number of surfaces."""
@@ -505,6 +537,7 @@ class SurfaceCollection:
             + len(self.build_deploy)
             + len(self.dependencies)
             + len(self.test_patterns)
+            + len(self.general_logic)
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -524,6 +557,7 @@ class SurfaceCollection:
             "build_deploy": [s.to_dict() for s in self.build_deploy],
             "dependencies": [s.to_dict() for s in self.dependencies],
             "test_patterns": [s.to_dict() for s in self.test_patterns],
+            "general_logic": [s.to_dict() for s in self.general_logic],
         }
 
     def to_json(self, indent: int = 2) -> str:

@@ -28,6 +28,10 @@ from repo_mirror_kit.harvester.reports.coverage import (
     GateResult,
     MetricPair,
 )
+from repo_mirror_kit.harvester.reports.file_coverage import (
+    FileCoverageGateResult,
+    FileCoverageReport,
+)
 from repo_mirror_kit.harvester.reports.gaps import GapReport
 
 # -----------------------------------------------------------------------
@@ -102,6 +106,7 @@ def _make_evaluation() -> CoverageEvaluation:
         build_deploy=MetricPair(total=0, covered=0),
         dependencies=MetricPair(total=0, covered=0),
         test_patterns=MetricPair(total=0, covered=0),
+        general_logic=MetricPair(total=0, covered=0),
     )
     return CoverageEvaluation(
         metrics=metrics,
@@ -133,6 +138,10 @@ _ANALYZE_UI_FLOWS = f"{_P}.analyze_ui_flows"
 _ANALYZE_BUILD_DEPLOY = f"{_P}.analyze_build_deploy"
 _ANALYZE_DEPENDENCIES = f"{_P}.analyze_dependencies"
 _ANALYZE_TEST_PATTERNS = f"{_P}.analyze_test_patterns"
+_FIND_UNCOVERED = f"{_P}.find_uncovered_files"
+_ANALYZE_UNCOVERED = f"{_P}.analyze_uncovered_files"
+_COMPUTE_FILE_COV = f"{_P}.compute_file_coverage"
+_WRITE_FILE_COV = f"{_P}.write_file_coverage_reports"
 _WRITE_SURFACE_MAP = f"{_P}.write_surface_map"
 _BUILD_TRACEABILITY = f"{_P}.build_traceability_maps"
 _WRITE_BEANS = f"{_P}.write_beans"
@@ -178,12 +187,26 @@ def _build_patches(
         _ANALYZE_BUILD_DEPLOY: s.build_deploy,
         _ANALYZE_DEPENDENCIES: s.dependencies,
         _ANALYZE_TEST_PATTERNS: s.test_patterns,
+        _FIND_UNCOVERED: [],
         _WRITE_SURFACE_MAP: (Path("/tmp/a.md"), Path("/tmp/b.json")),
         _BUILD_TRACEABILITY: [],
         _WRITE_BEANS: _make_beans(),
         _COMPUTE_METRICS: evaluation.metrics,
         _EVALUATE_THRESHOLDS: evaluation,
         _WRITE_COVERAGE: (Path("/tmp/c.json"), Path("/tmp/c.md")),
+        _COMPUTE_FILE_COV: FileCoverageReport(
+            file_statuses=[],
+            total_source=0,
+            covered_count=0,
+            uncovered_count=0,
+            excluded_count=0,
+            coverage_percentage=100.0,
+            directory_coverage=[],
+            gate_result=FileCoverageGateResult(
+                threshold=90.0, actual=100.0, passed=True
+            ),
+        ),
+        _WRITE_FILE_COV: (Path("/tmp/fc.json"), Path("/tmp/fc.md")),
         _RUN_GAP_QUERIES: gap_report,
         _WRITE_GAPS: Path("/tmp/d.md"),
     }
