@@ -341,7 +341,9 @@ def find_integrations_without_bean(
     entries: list[GapEntry] = []
     for integ in surfaces.integrations:
         if integ.name not in covered_names:
-            file_path = integ.source_refs[0].file_path if integ.source_refs else "unknown"
+            file_path = (
+                integ.source_refs[0].file_path if integ.source_refs else "unknown"
+            )
             entries.append(
                 GapEntry(
                     category="Integrations with no bean",
@@ -382,6 +384,38 @@ def find_ui_flows_without_bean(
     return entries
 
 
+def find_test_patterns_without_bean(
+    surfaces: SurfaceCollection,
+    beans: list[WrittenBean],
+) -> list[GapEntry]:
+    """Find test pattern surfaces with no corresponding bean.
+
+    Args:
+        surfaces: Extracted surfaces.
+        beans: Written bean records.
+
+    Returns:
+        List of gap entries for uncovered test pattern surfaces.
+    """
+    covered_names = {b.title for b in beans if b.surface_type == "test_pattern"}
+    entries: list[GapEntry] = []
+    for tp in surfaces.test_patterns:
+        if tp.name not in covered_names:
+            file_path = tp.source_refs[0].file_path if tp.source_refs else "unknown"
+            entries.append(
+                GapEntry(
+                    category="Test patterns with no bean",
+                    description=(
+                        f"Test file '{tp.test_file}' ({tp.framework}, {tp.test_type}) "
+                        f"has no corresponding bean"
+                    ),
+                    file_path=file_path,
+                    recommended_action=f"Create a test_pattern bean for '{tp.name}'",
+                )
+            )
+    return entries
+
+
 def run_all_gap_queries(
     surfaces: SurfaceCollection,
     beans: list[WrittenBean],
@@ -406,6 +440,7 @@ def run_all_gap_queries(
     entries.extend(find_middleware_without_bean(surfaces, beans))
     entries.extend(find_integrations_without_bean(surfaces, beans))
     entries.extend(find_ui_flows_without_bean(surfaces, beans))
+    entries.extend(find_test_patterns_without_bean(surfaces, beans))
 
     logger.info("gap_queries_complete", total_gaps=len(entries))
     return GapReport(entries=entries)

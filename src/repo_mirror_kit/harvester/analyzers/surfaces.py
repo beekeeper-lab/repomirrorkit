@@ -365,6 +365,36 @@ class UIFlowSurface(Surface):
 
 
 @dataclass
+class TestPatternSurface(Surface):
+    """A test pattern surface extracted from test files."""
+
+    test_type: str = ""  # unit/integration/e2e/snapshot/performance
+    framework: str = ""  # jest/vitest/pytest/unittest/go/xunit/nunit/mstest/rspec/minitest/cypress/playwright/mocha
+    test_file: str = ""
+    subject_file: str = ""
+    test_count: int = 0
+    test_names: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "test_pattern"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "test_type": self.test_type,
+                "framework": self.framework,
+                "test_file": self.test_file,
+                "subject_file": self.subject_file,
+                "test_count": self.test_count,
+                "test_names": self.test_names,
+            }
+        )
+        return result
+
+
+@dataclass
 class SurfaceCollection:
     """Container for all extracted surfaces.
 
@@ -383,6 +413,7 @@ class SurfaceCollection:
     middleware: list[MiddlewareSurface] = field(default_factory=list)
     integrations: list[IntegrationSurface] = field(default_factory=list)
     ui_flows: list[UIFlowSurface] = field(default_factory=list)
+    test_patterns: list[TestPatternSurface] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[Surface]:
         """Iterate over all surfaces in the collection."""
@@ -397,6 +428,7 @@ class SurfaceCollection:
         yield from self.middleware
         yield from self.integrations
         yield from self.ui_flows
+        yield from self.test_patterns
 
     def __len__(self) -> int:
         """Return the total number of surfaces."""
@@ -412,6 +444,7 @@ class SurfaceCollection:
             + len(self.middleware)
             + len(self.integrations)
             + len(self.ui_flows)
+            + len(self.test_patterns)
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -428,6 +461,7 @@ class SurfaceCollection:
             "middleware": [s.to_dict() for s in self.middleware],
             "integrations": [s.to_dict() for s in self.integrations],
             "ui_flows": [s.to_dict() for s in self.ui_flows],
+            "test_patterns": [s.to_dict() for s in self.test_patterns],
         }
 
     def to_json(self, indent: int = 2) -> str:

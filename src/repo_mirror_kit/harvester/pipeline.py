@@ -28,6 +28,7 @@ from repo_mirror_kit.harvester.analyzers import (
     analyze_models,
     analyze_routes,
     analyze_state_management,
+    analyze_test_patterns,
     analyze_ui_flows,
 )
 from repo_mirror_kit.harvester.beans.writer import WrittenBean, write_beans
@@ -520,6 +521,13 @@ class HarvestPipeline:
             f"UI flows: {len(ui_flows)} found",
         )
 
+        test_patterns = analyze_test_patterns(inventory, profile, workdir)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Test patterns: {len(test_patterns)} found",
+        )
+
         surfaces = SurfaceCollection(
             routes=routes,
             components=components,
@@ -532,6 +540,7 @@ class HarvestPipeline:
             middleware=middleware,
             integrations=integrations,
             ui_flows=ui_flows,
+            test_patterns=test_patterns,
         )
 
         write_surface_map(output_dir, surfaces, profile)
