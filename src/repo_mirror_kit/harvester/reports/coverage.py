@@ -35,6 +35,10 @@ THRESHOLD_STATE_MGMT: float = 80.0
 THRESHOLD_MIDDLEWARE: float = 80.0
 THRESHOLD_INTEGRATIONS: float = 85.0
 THRESHOLD_UI_FLOWS: float = 75.0
+THRESHOLD_BUILD_DEPLOY: float = 75.0
+THRESHOLD_DEPENDENCIES: float = 80.0
+THRESHOLD_TEST_PATTERNS: float = 70.0
+THRESHOLD_GENERAL_LOGIC: float = 90.0
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +110,10 @@ class CoverageMetrics:
     middleware: MetricPair
     integrations: MetricPair
     ui_flows: MetricPair
+    build_deploy: MetricPair
+    dependencies: MetricPair
+    test_patterns: MetricPair
+    general_logic: MetricPair
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dictionary."""
@@ -144,6 +152,22 @@ class CoverageMetrics:
             "ui_flows": {
                 "total": self.ui_flows.total,
                 "with_bean": self.ui_flows.covered,
+            },
+            "build_deploy": {
+                "total": self.build_deploy.total,
+                "with_bean": self.build_deploy.covered,
+            },
+            "dependencies": {
+                "total": self.dependencies.total,
+                "with_bean": self.dependencies.covered,
+            },
+            "test_patterns": {
+                "total": self.test_patterns.total,
+                "with_bean": self.test_patterns.covered,
+            },
+            "general_logic": {
+                "total": self.general_logic.total,
+                "with_bean": self.general_logic.covered,
             },
         }
 
@@ -256,6 +280,22 @@ def compute_metrics(
             total=len(surfaces.ui_flows),
             covered=bean_counts.get("ui_flow", 0),
         ),
+        build_deploy=MetricPair(
+            total=len(surfaces.build_deploy),
+            covered=bean_counts.get("build_deploy", 0),
+        ),
+        dependencies=MetricPair(
+            total=len(surfaces.dependencies),
+            covered=bean_counts.get("dependency", 0),
+        ),
+        test_patterns=MetricPair(
+            total=len(surfaces.test_patterns),
+            covered=bean_counts.get("test_pattern", 0),
+        ),
+        general_logic=MetricPair(
+            total=len(surfaces.general_logic),
+            covered=bean_counts.get("general_logic", 0),
+        ),
     )
 
 
@@ -286,6 +326,10 @@ def evaluate_thresholds(metrics: CoverageMetrics) -> CoverageEvaluation:
         _evaluate_gate("Middleware", metrics.middleware, THRESHOLD_MIDDLEWARE),
         _evaluate_gate("Integrations", metrics.integrations, THRESHOLD_INTEGRATIONS),
         _evaluate_gate("UI Flows", metrics.ui_flows, THRESHOLD_UI_FLOWS),
+        _evaluate_gate("Build/Deploy", metrics.build_deploy, THRESHOLD_BUILD_DEPLOY),
+        _evaluate_gate("Dependencies", metrics.dependencies, THRESHOLD_DEPENDENCIES),
+        _evaluate_gate("Test Patterns", metrics.test_patterns, THRESHOLD_TEST_PATTERNS),
+        _evaluate_gate("General Logic", metrics.general_logic, THRESHOLD_GENERAL_LOGIC),
     ]
     return CoverageEvaluation(metrics=metrics, gates=gates)
 
@@ -362,6 +406,10 @@ def generate_coverage_markdown(evaluation: CoverageEvaluation) -> str:
         f"| Middleware | {m.middleware.total} | {m.middleware.covered} | {m.middleware.percentage:.1f}% |",
         f"| Integrations | {m.integrations.total} | {m.integrations.covered} | {m.integrations.percentage:.1f}% |",
         f"| UI Flows | {m.ui_flows.total} | {m.ui_flows.covered} | {m.ui_flows.percentage:.1f}% |",
+        f"| Build/Deploy | {m.build_deploy.total} | {m.build_deploy.covered} | {m.build_deploy.percentage:.1f}% |",
+        f"| Dependencies | {m.dependencies.total} | {m.dependencies.covered} | {m.dependencies.percentage:.1f}% |",
+        f"| Test Patterns | {m.test_patterns.total} | {m.test_patterns.covered} | {m.test_patterns.percentage:.1f}% |",
+        f"| General Logic | {m.general_logic.total} | {m.general_logic.covered} | {m.general_logic.percentage:.1f}% |",
         "",
         "## Coverage Gates",
         "",

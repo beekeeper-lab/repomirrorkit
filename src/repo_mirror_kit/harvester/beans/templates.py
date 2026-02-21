@@ -14,9 +14,12 @@ from typing import Any
 from repo_mirror_kit.harvester.analyzers.surfaces import (
     ApiSurface,
     AuthSurface,
+    BuildDeploySurface,
     ComponentSurface,
     ConfigSurface,
     CrosscuttingSurface,
+    DependencySurface,
+    GeneralLogicSurface,
     IntegrationSurface,
     MiddlewareSurface,
     ModelSurface,
@@ -24,6 +27,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     SourceRef,
     StateMgmtSurface,
     Surface,
+    TestPatternSurface,
     UIFlowSurface,
 )
 
@@ -109,7 +113,9 @@ def _render_enrichment_sections(surface: Surface) -> str:
     if enrichment and enrichment.get("behavioral_description"):
         lines.append(enrichment["behavioral_description"])
     else:
-        lines.append("TODO: Describe the expected behavior from a user/system perspective.")
+        lines.append(
+            "TODO: Describe the expected behavior from a user/system perspective."
+        )
     lines.append("")
 
     # Inferred intent
@@ -601,7 +607,11 @@ def render_middleware_bean(surface: MiddlewareSurface, bean_id: str) -> str:
         enrichment=surface.enrichment,
     )
 
-    order_str = str(surface.execution_order) if surface.execution_order is not None else "unspecified"
+    order_str = (
+        str(surface.execution_order)
+        if surface.execution_order is not None
+        else "unspecified"
+    )
 
     body = f"""
 # {surface.name}
@@ -716,6 +726,185 @@ def render_ui_flow_bean(surface: UIFlowSurface, bean_id: str) -> str:
     return fm + "\n" + body.lstrip("\n")
 
 
+def render_build_deploy_bean(surface: BuildDeploySurface, bean_id: str) -> str:
+    """Render a Build/Deploy bean.
+
+    Args:
+        surface: A BuildDeploySurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="build_deploy",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    body = f"""
+# {surface.name}
+
+## Build/deploy overview
+
+- **Config type:** {surface.config_type or "unidentified"}
+- **Tool:** {surface.tool or "unknown"}
+
+{_render_enrichment_sections(surface)}
+## Stages
+
+{_bullet_list(surface.stages, "- No stages identified.")}
+
+## Targets
+
+{_bullet_list(surface.targets, "- No targets identified.")}
+
+## Structural acceptance criteria
+
+- [ ] Configuration file is valid and parseable.
+- [ ] All referenced stages/targets are reachable.
+- [ ] Build/deploy pipeline executes successfully.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
+def render_dependency_bean(surface: DependencySurface, bean_id: str) -> str:
+    """Render a Dependency bean.
+
+    Args:
+        surface: A DependencySurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="dependency",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    direct_str = "Direct" if surface.is_direct else "Transitive"
+    lock_str = (
+        ", ".join(surface.lock_files) if surface.lock_files else "(none detected)"
+    )
+
+    body = f"""
+# {surface.name}
+
+## Package overview
+
+- **Version constraint:** `{surface.version_constraint or "(any)"}`
+- **Purpose:** {surface.purpose or "unclassified"}
+- **Manifest file:** `{surface.manifest_file}`
+- **Dependency type:** {direct_str}
+
+{_render_enrichment_sections(surface)}
+## Lock files
+
+- {lock_str}
+
+## Structural acceptance criteria
+
+- [ ] Package `{surface.name}` is declared in the manifest with the correct version constraint.
+- [ ] Package is classified as {surface.purpose or "runtime"} dependency.
+- [ ] Lock file pins the exact resolved version.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
+def render_test_pattern_bean(surface: TestPatternSurface, bean_id: str) -> str:
+    """Render a Test Pattern bean.
+
+    Args:
+        surface: A TestPatternSurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="test_pattern",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    subject_display = (
+        f"`{surface.subject_file}`" if surface.subject_file else "(unmapped)"
+    )
+
+    body = f"""
+# {surface.name}
+
+## Test overview
+
+- **Framework:** {surface.framework or "unknown"}
+- **Test type:** {surface.test_type or "unit"}
+- **Test file:** `{surface.test_file}`
+- **Subject file:** {subject_display}
+- **Test count:** {surface.test_count}
+
+{_render_enrichment_sections(surface)}
+## Test names
+
+{_bullet_list([f"`{n}`" for n in surface.test_names], "- No test names extracted.")}
+
+## Structural acceptance criteria
+
+- [ ] All tests in `{surface.test_file}` pass.
+- [ ] Test file correctly tests the functionality in {subject_display}.
+- [ ] Test count matches expected: {surface.test_count} tests.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
+def render_general_logic_bean(surface: GeneralLogicSurface, bean_id: str) -> str:
+    """Render a General Logic bean for uncovered source files.
+
+    Args:
+        surface: A GeneralLogicSurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="general_logic",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    body = f"""
+# {surface.name}
+
+## Module overview
+
+- **File:** `{surface.file_path}`
+- **Purpose:** {surface.module_purpose or "TODO: Describe the purpose of this module."}
+- **Complexity:** {surface.complexity_hint or "unassessed"}
+
+{_render_enrichment_sections(surface)}
+## Public API / Exports
+
+{_bullet_list([f"`{e}`" for e in surface.exports], "- No public exports identified.")}
+
+## Structural acceptance criteria
+
+- [ ] Module behavior is documented.
+- [ ] All public API contracts are covered by requirements.
+- [ ] Integration points with other modules are identified.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
 _RENDERERS: dict[str, Any] = {
     "route": render_route_bean,
     "component": render_component_bean,
@@ -728,6 +917,10 @@ _RENDERERS: dict[str, Any] = {
     "middleware": render_middleware_bean,
     "integration": render_integration_bean,
     "ui_flow": render_ui_flow_bean,
+    "build_deploy": render_build_deploy_bean,
+    "dependency": render_dependency_bean,
+    "test_pattern": render_test_pattern_bean,
+    "general_logic": render_general_logic_bean,
 }
 
 

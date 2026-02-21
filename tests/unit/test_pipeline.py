@@ -12,6 +12,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import SurfaceCollection
 from repo_mirror_kit.harvester.beans.writer import WrittenBean
 from repo_mirror_kit.harvester.config import HarvestConfig
 from repo_mirror_kit.harvester.detectors.base import StackProfile
+from repo_mirror_kit.harvester.generator.assembler import GeneratorResult
 from repo_mirror_kit.harvester.git_ops import CloneResult
 from repo_mirror_kit.harvester.inventory import InventoryResult
 from repo_mirror_kit.harvester.pipeline import (
@@ -27,6 +28,10 @@ from repo_mirror_kit.harvester.reports.coverage import (
     FileMetrics,
     GateResult,
     MetricPair,
+)
+from repo_mirror_kit.harvester.reports.file_coverage import (
+    FileCoverageGateResult,
+    FileCoverageReport,
 )
 from repo_mirror_kit.harvester.reports.gaps import GapReport
 
@@ -99,6 +104,10 @@ def _make_evaluation() -> CoverageEvaluation:
         middleware=MetricPair(total=0, covered=0),
         integrations=MetricPair(total=0, covered=0),
         ui_flows=MetricPair(total=0, covered=0),
+        build_deploy=MetricPair(total=0, covered=0),
+        dependencies=MetricPair(total=0, covered=0),
+        test_patterns=MetricPair(total=0, covered=0),
+        general_logic=MetricPair(total=0, covered=0),
     )
     return CoverageEvaluation(
         metrics=metrics,
@@ -127,6 +136,13 @@ _ANALYZE_STATE_MGMT = f"{_P}.analyze_state_management"
 _ANALYZE_MIDDLEWARE = f"{_P}.analyze_middleware"
 _ANALYZE_INTEGRATIONS = f"{_P}.analyze_integrations"
 _ANALYZE_UI_FLOWS = f"{_P}.analyze_ui_flows"
+_ANALYZE_BUILD_DEPLOY = f"{_P}.analyze_build_deploy"
+_ANALYZE_DEPENDENCIES = f"{_P}.analyze_dependencies"
+_ANALYZE_TEST_PATTERNS = f"{_P}.analyze_test_patterns"
+_FIND_UNCOVERED = f"{_P}.find_uncovered_files"
+_ANALYZE_UNCOVERED = f"{_P}.analyze_uncovered_files"
+_COMPUTE_FILE_COV = f"{_P}.compute_file_coverage"
+_WRITE_FILE_COV = f"{_P}.write_file_coverage_reports"
 _WRITE_SURFACE_MAP = f"{_P}.write_surface_map"
 _BUILD_TRACEABILITY = f"{_P}.build_traceability_maps"
 _WRITE_BEANS = f"{_P}.write_beans"
@@ -135,6 +151,7 @@ _EVALUATE_THRESHOLDS = f"{_P}.evaluate_thresholds"
 _WRITE_COVERAGE = f"{_P}.write_coverage_reports"
 _RUN_GAP_QUERIES = f"{_P}.run_all_gap_queries"
 _WRITE_GAPS = f"{_P}.write_gaps_report"
+_ASSEMBLE = f"{_P}.assemble_project_folder"
 
 
 def _build_patches(
@@ -169,14 +186,37 @@ def _build_patches(
         _ANALYZE_MIDDLEWARE: s.middleware,
         _ANALYZE_INTEGRATIONS: s.integrations,
         _ANALYZE_UI_FLOWS: s.ui_flows,
+        _ANALYZE_BUILD_DEPLOY: s.build_deploy,
+        _ANALYZE_DEPENDENCIES: s.dependencies,
+        _ANALYZE_TEST_PATTERNS: s.test_patterns,
+        _FIND_UNCOVERED: [],
         _WRITE_SURFACE_MAP: (Path("/tmp/a.md"), Path("/tmp/b.json")),
         _BUILD_TRACEABILITY: [],
         _WRITE_BEANS: _make_beans(),
         _COMPUTE_METRICS: evaluation.metrics,
         _EVALUATE_THRESHOLDS: evaluation,
         _WRITE_COVERAGE: (Path("/tmp/c.json"), Path("/tmp/c.md")),
+        _COMPUTE_FILE_COV: FileCoverageReport(
+            file_statuses=[],
+            total_source=0,
+            covered_count=0,
+            uncovered_count=0,
+            excluded_count=0,
+            coverage_percentage=100.0,
+            directory_coverage=[],
+            gate_result=FileCoverageGateResult(
+                threshold=90.0, actual=100.0, passed=True
+            ),
+        ),
+        _WRITE_FILE_COV: (Path("/tmp/fc.json"), Path("/tmp/fc.md")),
         _RUN_GAP_QUERIES: gap_report,
         _WRITE_GAPS: Path("/tmp/d.md"),
+        _ASSEMBLE: GeneratorResult(
+            output_dir=output_dir / "project-folder",
+            generated_files=[],
+            agent_count=3,
+            stack_count=1,
+        ),
     }
 
 
@@ -295,10 +335,20 @@ class TestFullPipelineFlow:
         rv = _build_patches(tmp_path, surfaces=empty_surfaces)
         # Override analyzer returns with empty lists
         for target in [
-            _ANALYZE_ROUTES, _ANALYZE_COMPONENTS, _ANALYZE_APIS, _ANALYZE_MODELS,
-            _ANALYZE_AUTH, _ANALYZE_CONFIG, _ANALYZE_CROSSCUTTING,
-            _ANALYZE_STATE_MGMT, _ANALYZE_MIDDLEWARE, _ANALYZE_INTEGRATIONS,
+            _ANALYZE_ROUTES,
+            _ANALYZE_COMPONENTS,
+            _ANALYZE_APIS,
+            _ANALYZE_MODELS,
+            _ANALYZE_AUTH,
+            _ANALYZE_CONFIG,
+            _ANALYZE_CROSSCUTTING,
+            _ANALYZE_STATE_MGMT,
+            _ANALYZE_MIDDLEWARE,
+            _ANALYZE_INTEGRATIONS,
             _ANALYZE_UI_FLOWS,
+            _ANALYZE_BUILD_DEPLOY,
+            _ANALYZE_DEPENDENCIES,
+            _ANALYZE_TEST_PATTERNS,
         ]:
             rv[target] = []
 
@@ -338,14 +388,13 @@ class TestPipelineErrorHandling:
             "D": _BUILD_TRACEABILITY,
             "E": _WRITE_BEANS,
             "F": _COMPUTE_METRICS,
+            "G": _ASSEMBLE,
         }
 
         target = stage_to_target[failing_stage]
 
         with contextlib.ExitStack() as stack:
-            _enter_all_patches(
-                stack, rv, side_effects={target: RuntimeError("boom")}
-            )
+            _enter_all_patches(stack, rv, side_effects={target: RuntimeError("boom")})
             pipeline = HarvestPipeline()
             result = pipeline.run(config)
 
@@ -388,9 +437,7 @@ class TestPipelineResume:
 
         # First run: fail at stage B so A is checkpointed
         with contextlib.ExitStack() as stack:
-            _enter_all_patches(
-                stack, rv, side_effects={_SCAN: RuntimeError("fail")}
-            )
+            _enter_all_patches(stack, rv, side_effects={_SCAN: RuntimeError("fail")})
             pipeline = HarvestPipeline()
             pipeline.run(config)
 
@@ -440,15 +487,15 @@ class TestPipelineCallbacks:
             pipeline = HarvestPipeline(callback=events.append)
             pipeline.run(config)
 
-        # Expect stage_start and stage_complete for each of 7 stages
+        # Expect stage_start and stage_complete for each of 8 stages
         start_events = [
             e for e in events if e.event_type == PipelineEventType.STAGE_START
         ]
         complete_events = [
             e for e in events if e.event_type == PipelineEventType.STAGE_COMPLETE
         ]
-        assert len(start_events) == 7
-        assert len(complete_events) == 7
+        assert len(start_events) == 8
+        assert len(complete_events) == 8
 
         # Stages should be in order
         start_stages = [e.stage for e in start_events]
@@ -461,7 +508,8 @@ class TestPipelineCallbacks:
 
         with contextlib.ExitStack() as stack:
             _enter_all_patches(
-                stack, rv,
+                stack,
+                rv,
                 side_effects={_ANALYZE_ROUTES: RuntimeError("extractor crash")},
             )
             pipeline = HarvestPipeline(callback=events.append)
@@ -543,4 +591,4 @@ class TestStageNames:
     """Verify stage ordering constant."""
 
     def test_stage_names_order(self) -> None:
-        assert STAGE_NAMES == ["A", "B", "C", "C2", "D", "E", "F"]
+        assert STAGE_NAMES == ["A", "B", "C", "C2", "D", "E", "F", "G"]

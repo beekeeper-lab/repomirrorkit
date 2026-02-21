@@ -3,12 +3,12 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-037 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-20 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
+| **Started** | 2026-02-21 00:32 |
+| **Completed** | 2026-02-21 00:43 |
+| **Duration** | 11m |
 | **Owner** | (unassigned) |
 | **Category** | App |
 
@@ -57,33 +57,33 @@ Implement a Stage G that synthesizes all harvest artifacts into a Claude Code pr
 
 ## Acceptance Criteria
 
-- [ ] Stage G exists in pipeline after Stage F
-- [ ] `generator/` package exists with claude_md.py, agents.py, stacks.py, assembler.py
-- [ ] Generated CLAUDE.md includes project name, tech stack table, and cross-cutting rules
-- [ ] Generated CLAUDE.md includes team roster with agent file references
-- [ ] Generated CLAUDE.md includes workflow references to beans and reports
-- [ ] Stack conventions file generated matching detected primary language/framework
-- [ ] Developer agent file generated with project-specific paths and patterns
-- [ ] At least 3 agent files generated (developer, architect, tech-qa) for any project
-- [ ] Additional agents generated conditionally (security if auth surfaces exist, devops if build/deploy surfaces exist)
-- [ ] Output directory follows Claude Code project structure (.claude/agents/, CLAUDE.md at root)
-- [ ] Generated files are valid markdown with no broken references
-- [ ] Pipeline completes Stage G and reports generated file count
-- [ ] Unit tests cover CLAUDE.md generation, agent generation, stack generation
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] Stage G exists in pipeline after Stage F
+- [x] `generator/` package exists with claude_md.py, agents.py, stacks.py, assembler.py
+- [x] Generated CLAUDE.md includes project name, tech stack table, and cross-cutting rules
+- [x] Generated CLAUDE.md includes team roster with agent file references
+- [x] Generated CLAUDE.md includes workflow references to beans and reports
+- [x] Stack conventions file generated matching detected primary language/framework
+- [x] Developer agent file generated with project-specific paths and patterns
+- [x] At least 3 agent files generated (developer, architect, tech-qa) for any project
+- [x] Additional agents generated conditionally (security if auth surfaces exist, devops if build/deploy surfaces exist)
+- [x] Output directory follows Claude Code project structure (.claude/agents/, CLAUDE.md at root)
+- [x] Generated files are valid markdown with no broken references
+- [x] Pipeline completes Stage G and reports generated file count
+- [x] Unit tests cover CLAUDE.md generation, agent generation, stack generation
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | Design output directory structure and CLAUDE.md template | Architect | — | Pending |
-| 2 | Implement claude_md.py generator | Developer | 1 | Pending |
-| 3 | Implement stacks.py generator | Developer | 1 | Pending |
-| 4 | Implement agents.py generator | Developer | 1, 3 | Pending |
-| 5 | Implement assembler.py orchestrator | Developer | 2, 3, 4 | Pending |
-| 6 | Add Stage G to pipeline | Developer | 5 | Pending |
-| 7 | Write unit tests | Tech-QA | 2, 3, 4, 5 | Pending |
-| 8 | Run lint, type-check, and test suite | Tech-QA | 6, 7 | Pending |
+| 1 | Design output directory structure and CLAUDE.md template | Architect | — | Done |
+| 2 | Implement claude_md.py generator | Developer | 1 | Done |
+| 3 | Implement stacks.py generator | Developer | 1 | Done |
+| 4 | Implement agents.py generator | Developer | 1, 3 | Done |
+| 5 | Implement assembler.py orchestrator | Developer | 2, 3, 4 | Done |
+| 6 | Add Stage G to pipeline | Developer | 5 | Done |
+| 7 | Write unit tests | Tech-QA | 2, 3, 4, 5 | Done |
+| 8 | Run lint, type-check, and test suite | Tech-QA | 6, 7 | Done |
 
 ## Notes
 
@@ -98,18 +98,18 @@ Implement a Stage G that synthesizes all harvest artifacts into a Claude Code pr
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 | Design output directory structure and CLAUDE.md template | Architect | — | — | — | — |
-| 2 | Implement claude_md.py generator | Developer | — | — | — | — |
-| 3 | Implement stacks.py generator | Developer | — | — | — | — |
-| 4 | Implement agents.py generator | Developer | — | — | — | — |
-| 5 | Implement assembler.py orchestrator | Developer | — | — | — | — |
-| 6 | Add Stage G to pipeline | Developer | — | — | — | — |
-| 7 | Write unit tests | Tech-QA | — | — | — | — |
-| 8 | Run lint, type-check, and test suite | Tech-QA | — | — | — | — |
+| 1 | Design output directory structure and CLAUDE.md template | Architect | < 1m | 2,747,274 | 1,223 | $7.95 |
+| 2 | Implement claude_md.py generator | Developer | < 1m | 17,015,110 | 20,059 | $36.34 |
+| 3 | Implement stacks.py generator | Developer | < 1m | 17,162,899 | 20,060 | $36.56 |
+| 4 | Implement agents.py generator | Developer | < 1m | 17,310,688 | 20,061 | $36.79 |
+| 5 | Implement assembler.py orchestrator | Developer | < 1m | 17,458,477 | 20,062 | $37.01 |
+| 6 | Add Stage G to pipeline | Developer | < 1m | 17,606,266 | 20,063 | $37.24 |
+| 7 | Write unit tests | Tech-QA | < 1m | 17,754,055 | 20,064 | $37.46 |
+| 8 | Run lint, type-check, and test suite | Tech-QA | < 1m | 17,901,844 | 20,065 | $37.69 |
 
 | Metric | Value |
 |--------|-------|
 | **Total Tasks** | 8 |
-| **Total Duration** | — |
-| **Total Tokens In** | — |
-| **Total Tokens Out** | — |
+| **Total Duration** | 4m |
+| **Total Tokens In** | 124,956,613 |
+| **Total Tokens Out** | 141,657 |

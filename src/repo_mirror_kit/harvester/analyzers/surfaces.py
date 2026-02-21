@@ -365,6 +365,120 @@ class UIFlowSurface(Surface):
 
 
 @dataclass
+class BuildDeploySurface(Surface):
+    """A build/deploy configuration surface."""
+
+    config_type: str = ""  # container/ci_cd/build_tool/iac/platform
+    tool: str = ""
+    stages: list[str] = field(default_factory=list)
+    targets: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "build_deploy"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "config_type": self.config_type,
+                "tool": self.tool,
+                "stages": self.stages,
+                "targets": self.targets,
+            }
+        )
+        return result
+
+
+@dataclass
+class DependencySurface(Surface):
+    """A dependency / package surface extracted from manifest files."""
+
+    version_constraint: str = ""
+    purpose: str = ""  # runtime/dev/test/build/peer
+    manifest_file: str = ""
+    is_direct: bool = True
+    lock_files: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "dependency"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "version_constraint": self.version_constraint,
+                "purpose": self.purpose,
+                "manifest_file": self.manifest_file,
+                "is_direct": self.is_direct,
+                "lock_files": self.lock_files,
+            }
+        )
+        return result
+
+
+@dataclass
+class TestPatternSurface(Surface):
+    """A test pattern surface extracted from test files."""
+
+    test_type: str = ""  # unit/integration/e2e/snapshot/performance
+    framework: str = ""  # jest/vitest/pytest/unittest/go/xunit/nunit/mstest/rspec/minitest/cypress/playwright/mocha
+    test_file: str = ""
+    subject_file: str = ""
+    test_count: int = 0
+    test_names: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "test_pattern"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "test_type": self.test_type,
+                "framework": self.framework,
+                "test_file": self.test_file,
+                "subject_file": self.subject_file,
+                "test_count": self.test_count,
+                "test_names": self.test_names,
+            }
+        )
+        return result
+
+
+@dataclass
+class GeneralLogicSurface(Surface):
+    """A catch-all surface for source files not covered by specialized analyzers.
+
+    Captures module-level information for files that don't fit any other
+    surface type, ensuring every source file has at least one requirement.
+    """
+
+    file_path: str = ""
+    module_purpose: str = ""
+    exports: list[str] = field(default_factory=list)
+    complexity_hint: str = ""  # simple/moderate/complex
+
+    def __post_init__(self) -> None:
+        self.surface_type = "general_logic"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "file_path": self.file_path,
+                "module_purpose": self.module_purpose,
+                "exports": self.exports,
+                "complexity_hint": self.complexity_hint,
+            }
+        )
+        return result
+
+
+@dataclass
 class SurfaceCollection:
     """Container for all extracted surfaces.
 
@@ -383,6 +497,10 @@ class SurfaceCollection:
     middleware: list[MiddlewareSurface] = field(default_factory=list)
     integrations: list[IntegrationSurface] = field(default_factory=list)
     ui_flows: list[UIFlowSurface] = field(default_factory=list)
+    build_deploy: list[BuildDeploySurface] = field(default_factory=list)
+    dependencies: list[DependencySurface] = field(default_factory=list)
+    test_patterns: list[TestPatternSurface] = field(default_factory=list)
+    general_logic: list[GeneralLogicSurface] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[Surface]:
         """Iterate over all surfaces in the collection."""
@@ -397,6 +515,10 @@ class SurfaceCollection:
         yield from self.middleware
         yield from self.integrations
         yield from self.ui_flows
+        yield from self.build_deploy
+        yield from self.dependencies
+        yield from self.test_patterns
+        yield from self.general_logic
 
     def __len__(self) -> int:
         """Return the total number of surfaces."""
@@ -412,6 +534,10 @@ class SurfaceCollection:
             + len(self.middleware)
             + len(self.integrations)
             + len(self.ui_flows)
+            + len(self.build_deploy)
+            + len(self.dependencies)
+            + len(self.test_patterns)
+            + len(self.general_logic)
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -428,6 +554,10 @@ class SurfaceCollection:
             "middleware": [s.to_dict() for s in self.middleware],
             "integrations": [s.to_dict() for s in self.integrations],
             "ui_flows": [s.to_dict() for s in self.ui_flows],
+            "build_deploy": [s.to_dict() for s in self.build_deploy],
+            "dependencies": [s.to_dict() for s in self.dependencies],
+            "test_patterns": [s.to_dict() for s in self.test_patterns],
+            "general_logic": [s.to_dict() for s in self.general_logic],
         }
 
     def to_json(self, indent: int = 2) -> str:

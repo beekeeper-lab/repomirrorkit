@@ -171,7 +171,7 @@ class TestBuildTraceabilityMaps:
     def test_returns_four_file_paths(self, tmp_path: Path) -> None:
         surfaces = _sample_surfaces()
         result = build_traceability_maps(surfaces, tmp_path)
-        assert len(result) == 4
+        assert len(result) == 7
         for path in result:
             assert path.exists()
 
@@ -184,12 +184,15 @@ class TestBuildTraceabilityMaps:
             "routes_to_apis.md",
             "apis_to_models.md",
             "envvars_to_files.md",
+            "middleware_to_routes.md",
+            "state_to_components.md",
+            "integrations_to_apis.md",
         }
 
     def test_empty_surfaces_produces_files(self, tmp_path: Path) -> None:
         surfaces = _empty_surfaces()
         result = build_traceability_maps(surfaces, tmp_path)
-        assert len(result) == 4
+        assert len(result) == 7
         for path in result:
             assert path.exists()
             content = path.read_text(encoding="utf-8")
@@ -199,7 +202,7 @@ class TestBuildTraceabilityMaps:
         surfaces = _sample_surfaces()
         build_traceability_maps(surfaces, tmp_path)
         result = build_traceability_maps(surfaces, tmp_path)
-        assert len(result) == 4
+        assert len(result) == 7
 
 
 # ---------------------------------------------------------------------------
@@ -460,7 +463,7 @@ class TestGraphBuildingEdgeCases:
             ],
         )
         result = build_traceability_maps(surfaces, tmp_path)
-        assert len(result) == 4
+        assert len(result) == 7
         content = (tmp_path / "traceability" / "routes_to_components.md").read_text(
             encoding="utf-8"
         )
@@ -480,7 +483,7 @@ class TestGraphBuildingEdgeCases:
             ],
         )
         result = build_traceability_maps(surfaces, tmp_path)
-        assert len(result) == 4
+        assert len(result) == 7
         content = (tmp_path / "traceability" / "routes_to_apis.md").read_text(
             encoding="utf-8"
         )
@@ -500,7 +503,7 @@ class TestGraphBuildingEdgeCases:
             ],
         )
         result = build_traceability_maps(surfaces, tmp_path)
-        assert len(result) == 4
+        assert len(result) == 7
         content = (tmp_path / "traceability" / "apis_to_models.md").read_text(
             encoding="utf-8"
         )
@@ -521,7 +524,7 @@ class TestGraphBuildingEdgeCases:
             ],
         )
         result = build_traceability_maps(surfaces, tmp_path)
-        assert len(result) == 4
+        assert len(result) == 7
         content = (tmp_path / "traceability" / "envvars_to_files.md").read_text(
             encoding="utf-8"
         )

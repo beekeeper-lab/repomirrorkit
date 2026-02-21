@@ -18,6 +18,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ComponentSurface,
     ConfigSurface,
     CrosscuttingSurface,
+    DependencySurface,
     IntegrationSurface,
     MiddlewareSurface,
     ModelSurface,
@@ -58,6 +59,7 @@ def generate_surface_map_markdown(
     sections.append(_build_middleware_section(surfaces.middleware))
     sections.append(_build_integrations_section(surfaces.integrations))
     sections.append(_build_ui_flows_section(surfaces.ui_flows))
+    sections.append(_build_dependencies_section(surfaces.dependencies))
     return "\n".join(sections)
 
 
@@ -162,6 +164,7 @@ def _build_summary_section(
     lines.append(f"| Middleware | {len(surfaces.middleware)} |")
     lines.append(f"| Integrations | {len(surfaces.integrations)} |")
     lines.append(f"| UI Flows | {len(surfaces.ui_flows)} |")
+    lines.append(f"| Dependencies | {len(surfaces.dependencies)} |")
     lines.append("")
     return "\n".join(lines)
 
@@ -350,6 +353,24 @@ def _build_ui_flows_section(ui_flows: list[UIFlowSurface]) -> str:
     for flow in ui_flows:
         lines.append(
             f"| {flow.name} | {flow.flow_type} | {len(flow.steps)} | {flow.entry_point} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _build_dependencies_section(dependencies: list[DependencySurface]) -> str:
+    """Build the dependencies section."""
+    lines: list[str] = ["## Dependencies\n"]
+    if not dependencies:
+        lines.append(_NONE_DETECTED)
+        return "\n".join(lines)
+
+    lines.append("| Name | Version | Purpose | Manifest | Direct |")
+    lines.append("|---|---|---|---|---|")
+    for dep in dependencies:
+        direct = "Yes" if dep.is_direct else "No"
+        lines.append(
+            f"| {dep.name} | {dep.version_constraint or '(any)'} | {dep.purpose} | {dep.manifest_file} | {direct} |"
         )
     lines.append("")
     return "\n".join(lines)

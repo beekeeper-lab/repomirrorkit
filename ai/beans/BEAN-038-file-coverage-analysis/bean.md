@@ -3,12 +3,12 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-038 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-21 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
+| **Started** | 2026-02-21 00:24 |
+| **Completed** | 2026-02-21 00:35 |
+| **Duration** | 11m |
 | **Owner** | (unassigned) |
 | **Category** | App |
 
@@ -50,36 +50,36 @@ Implement a file coverage analysis stage that cross-references the file inventor
 
 ## Acceptance Criteria
 
-- [ ] `GeneralLogicSurface` dataclass exists with file_path, module_purpose, exports, complexity_hint fields
-- [ ] `SurfaceCollection.general_logic` list field exists
-- [ ] `find_uncovered_files()` correctly identifies files with zero surface references
-- [ ] `find_uncovered_files()` excludes non-source files (images, lock files, generated code, etc.)
-- [ ] Configurable exclusion patterns (default excludes: migrations/, vendor/, node_modules/, __pycache__/, *.lock, *.min.js, etc.)
-- [ ] `analyze_uncovered_files()` produces `GeneralLogicSurface` for each uncovered file
-- [ ] `analyze_uncovered_files()` extracts module-level info: top-level classes, functions, docstring
-- [ ] File coverage report shows per-file status (covered/uncovered/excluded)
-- [ ] File coverage report shows overall coverage percentage
-- [ ] File coverage report groups uncovered files by directory
-- [ ] Coverage gate fails when file coverage is below threshold
-- [ ] Bean template renders general logic beans with module purpose, exports, and file path
-- [ ] LLM enrichment generates behavioral descriptions for uncovered files when enabled
-- [ ] Pipeline produces file-coverage.md and file-coverage.json in output directory
-- [ ] Unit tests cover uncovered file detection, exclusion patterns, report generation
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `GeneralLogicSurface` dataclass exists with file_path, module_purpose, exports, complexity_hint fields
+- [x] `SurfaceCollection.general_logic` list field exists
+- [x] `find_uncovered_files()` correctly identifies files with zero surface references
+- [x] `find_uncovered_files()` excludes non-source files (images, lock files, generated code, etc.)
+- [x] Configurable exclusion patterns (default excludes: migrations/, vendor/, node_modules/, __pycache__/, *.lock, *.min.js, etc.)
+- [x] `analyze_uncovered_files()` produces `GeneralLogicSurface` for each uncovered file
+- [x] `analyze_uncovered_files()` extracts module-level info: top-level classes, functions, docstring
+- [x] File coverage report shows per-file status (covered/uncovered/excluded)
+- [x] File coverage report shows overall coverage percentage
+- [x] File coverage report groups uncovered files by directory
+- [x] Coverage gate fails when file coverage is below threshold
+- [x] Bean template renders general logic beans with module purpose, exports, and file path
+- [x] LLM enrichment generates behavioral descriptions for uncovered files when enabled
+- [x] Pipeline produces file-coverage.md and file-coverage.json in output directory
+- [x] Unit tests cover uncovered file detection, exclusion patterns, report generation
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | Add GeneralLogicSurface to surfaces.py and extend SurfaceCollection | Developer | — | Pending |
-| 2 | Implement file_coverage.py analyzer (find_uncovered + analyze_uncovered) | Developer | 1 | Pending |
-| 3 | Implement file_coverage.py report (per-file status, percentage, directory grouping) | Developer | 2 | Pending |
-| 4 | Add bean template renderer for general logic | Developer | 1 | Pending |
-| 5 | Add LLM prompt template for uncovered file enrichment | Developer | 1 | Pending |
-| 6 | Wire into pipeline: run after Stage C, feed into C2/D/E/F | Developer | 2, 3 | Pending |
-| 7 | Add coverage gate for file coverage | Developer | 3 | Pending |
-| 8 | Write unit tests | Tech-QA | 2, 3, 4 | Pending |
-| 9 | Run lint, type-check, and test suite | Tech-QA | 6, 7, 8 | Pending |
+| 1 | Add GeneralLogicSurface to surfaces.py and extend SurfaceCollection | Developer | — | Done |
+| 2 | Implement file_coverage.py analyzer (find_uncovered + analyze_uncovered) | Developer | 1 | Done |
+| 3 | Implement file_coverage.py report (per-file status, percentage, directory grouping) | Developer | 2 | Done |
+| 4 | Add bean template renderer for general logic | Developer | 1 | Done |
+| 5 | Add LLM prompt template for uncovered file enrichment | Developer | 1 | Done |
+| 6 | Wire into pipeline: run after Stage C, feed into C2/D/E/F | Developer | 2, 3 | Done |
+| 7 | Add coverage gate for file coverage | Developer | 3 | Done |
+| 8 | Write unit tests | Tech-QA | 2, 3, 4 | Done |
+| 9 | Run lint, type-check, and test suite | Tech-QA | 6, 7, 8 | Done |
 
 ## Notes
 
@@ -108,6 +108,6 @@ Implement a file coverage analysis stage that cross-references the file inventor
 | Metric | Value |
 |--------|-------|
 | **Total Tasks** | 9 |
-| **Total Duration** | — |
+| **Total Duration** | 11m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

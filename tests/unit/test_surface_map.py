@@ -150,7 +150,7 @@ class TestMarkdownReport:
 
     def test_empty_sections_show_none_detected(self) -> None:
         md = generate_surface_map_markdown(SurfaceCollection())
-        assert md.count("None detected.") == 7
+        assert md.count("None detected.") == 12
 
     def test_summary_shows_stacks(self) -> None:
         surfaces = _make_populated_collection()
@@ -343,4 +343,4 @@ class TestWriteSurfaceMap:
         surfaces = SurfaceCollection()
         md_path, _ = write_surface_map(tmp_path, surfaces)
         content = md_path.read_text(encoding="utf-8")
-        assert content.count("None detected.") == 7
+        assert content.count("None detected.") == 12

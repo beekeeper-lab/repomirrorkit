@@ -116,15 +116,24 @@ def _make_collection(
             for i in range(config)
         ],
         state_mgmt=[
-            StateMgmtSurface(name=f"store_{i}", store_name=f"store_{i}", pattern="redux", source_refs=[ref])
+            StateMgmtSurface(
+                name=f"store_{i}",
+                store_name=f"store_{i}",
+                pattern="redux",
+                source_refs=[ref],
+            )
             for i in range(state_mgmt)
         ],
         middleware=[
-            MiddlewareSurface(name=f"mw_{i}", middleware_type="express", source_refs=[ref])
+            MiddlewareSurface(
+                name=f"mw_{i}", middleware_type="express", source_refs=[ref]
+            )
             for i in range(middleware)
         ],
         integrations=[
-            IntegrationSurface(name=f"integ_{i}", integration_type="rest_client", source_refs=[ref])
+            IntegrationSurface(
+                name=f"integ_{i}", integration_type="rest_client", source_refs=[ref]
+            )
             for i in range(integrations)
         ],
         ui_flows=[
@@ -368,18 +377,29 @@ class TestEvaluateThresholds:
         assert len(failing) >= 3
 
     def test_gate_count(self) -> None:
-        """Should have exactly 9 gates matching spec section 7.2."""
+        """Should have exactly 13 gates matching spec section 7.2."""
         collection = _make_collection()
         inventory = _make_inventory()
         metrics = compute_metrics(collection, [], inventory)
 
         evaluation = evaluate_thresholds(metrics)
 
-        assert len(evaluation.gates) == 9
+        assert len(evaluation.gates) == 13
         gate_names = {g.name for g in evaluation.gates}
         assert gate_names == {
-            "Routes", "APIs", "Models", "Components", "Env Vars",
-            "State Mgmt", "Middleware", "Integrations", "UI Flows",
+            "Routes",
+            "APIs",
+            "Models",
+            "Components",
+            "Env Vars",
+            "State Mgmt",
+            "Middleware",
+            "Integrations",
+            "UI Flows",
+            "Build/Deploy",
+            "Dependencies",
+            "Test Patterns",
+            "General Logic",
         }
 
 
@@ -426,6 +446,10 @@ class TestCoverageJson:
             "middleware",
             "integrations",
             "ui_flows",
+            "build_deploy",
+            "dependencies",
+            "test_patterns",
+            "general_logic",
         }
         assert set(data["metrics"].keys()) == expected_keys
 

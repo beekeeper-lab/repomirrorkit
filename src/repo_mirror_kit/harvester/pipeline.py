@@ -20,19 +20,28 @@ from repo_mirror_kit.harvester.analyzers import (
     SurfaceCollection,
     analyze_api_endpoints,
     analyze_auth,
+    analyze_build_deploy,
     analyze_components,
     analyze_config,
     analyze_crosscutting,
+    analyze_dependencies,
     analyze_integrations,
     analyze_middleware,
     analyze_models,
     analyze_routes,
     analyze_state_management,
+    analyze_test_patterns,
     analyze_ui_flows,
+    analyze_uncovered_files,
+    find_uncovered_files,
 )
 from repo_mirror_kit.harvester.beans.writer import WrittenBean, write_beans
 from repo_mirror_kit.harvester.config import HarvestConfig
 from repo_mirror_kit.harvester.detectors.base import StackProfile, run_detection
+from repo_mirror_kit.harvester.generator.assembler import (
+    GeneratorResult,
+    assemble_project_folder,
+)
 from repo_mirror_kit.harvester.git_ops import CloneResult, clone_repository
 from repo_mirror_kit.harvester.harvest_logging import configure_logging
 from repo_mirror_kit.harvester.inventory import InventoryResult, scan, write_report
@@ -41,6 +50,10 @@ from repo_mirror_kit.harvester.reports.coverage import (
     compute_metrics,
     evaluate_thresholds,
     write_coverage_reports,
+)
+from repo_mirror_kit.harvester.reports.file_coverage import (
+    compute_file_coverage,
+    write_file_coverage_reports,
 )
 from repo_mirror_kit.harvester.reports.gaps import (
     GapReport,
@@ -54,7 +67,7 @@ from repo_mirror_kit.harvester.state import StateManager
 logger = structlog.get_logger()
 
 # Ordered stage names matching the spec
-STAGE_NAMES: list[str] = ["A", "B", "C", "C2", "D", "E", "F"]
+STAGE_NAMES: list[str] = ["A", "B", "C", "C2", "D", "E", "F", "G"]
 
 
 class PipelineEventType(StrEnum):
@@ -117,13 +130,14 @@ class HarvestResult:
     coverage_passed: bool
     bean_count: int
     gap_count: int
+    generated_file_count: int = 0
     error_stage: str | None = None
     error_message: str | None = None
     output_dir: Path | None = None
 
 
 class HarvestPipeline:
-    """Orchestrates the harvester pipeline stages A through F.
+    """Orchestrates the harvester pipeline stages A through G.
 
     Sequences stage execution, manages checkpointing via StateManager,
     supports resume from the last incomplete stage, and emits progress
@@ -176,6 +190,7 @@ class HarvestPipeline:
         beans: list[WrittenBean] = []
         evaluation: CoverageEvaluation | None = None
         gap_report: GapReport | None = None
+        generator_result: GeneratorResult | None = None
 
         try:
             # --- Stage A: Clone & Normalize ---
@@ -362,6 +377,32 @@ class HarvestPipeline:
                     surfaces, beans, inventory_result, output_dir
                 )
 
+            # --- Stage G: Generate Project Folder ---
+            if not state.is_stage_done("G"):
+                self._emit(
+                    PipelineEventType.STAGE_START,
+                    "G",
+                    "Generating Claude Code project folder",
+                )
+                try:
+                    generator_result = self._run_stage_g(
+                        config, surfaces, profile, output_dir
+                    )
+                except Exception as exc:
+                    return self._handle_stage_error("G", exc, state, output_dir)
+                state.complete_stage("G")
+                self._emit(
+                    PipelineEventType.STAGE_COMPLETE,
+                    "G",
+                    "Project folder generation complete",
+                    {"generated_files": len(generator_result.generated_files)},
+                )
+            else:
+                logger.info("stage_skipped_resume", stage="G")
+                generator_result = self._run_stage_g(
+                    config, surfaces, profile, output_dir
+                )
+
         except Exception as exc:
             logger.error("pipeline_unexpected_error", error=str(exc))
             state.finalize()
@@ -377,11 +418,16 @@ class HarvestPipeline:
 
         state.finalize()
 
+        gen_file_count = (
+            len(generator_result.generated_files) if generator_result else 0
+        )
+
         logger.info(
             "pipeline_complete",
             bean_count=len(beans),
             gap_count=gap_report.total_gaps,
             coverage_passed=evaluation.all_passed,
+            generated_files=gen_file_count,
         )
 
         return HarvestResult(
@@ -389,6 +435,7 @@ class HarvestPipeline:
             coverage_passed=evaluation.all_passed,
             bean_count=len(beans),
             gap_count=gap_report.total_gaps,
+            generated_file_count=gen_file_count,
             output_dir=output_dir,
         )
 
@@ -520,6 +567,27 @@ class HarvestPipeline:
             f"UI flows: {len(ui_flows)} found",
         )
 
+        build_deploy = analyze_build_deploy(inventory, workdir)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Build/deploy: {len(build_deploy)} found",
+        )
+
+        dependencies = analyze_dependencies(inventory, profile, workdir)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Dependencies: {len(dependencies)} found",
+        )
+
+        test_patterns = analyze_test_patterns(inventory, profile, workdir)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Test patterns: {len(test_patterns)} found",
+        )
+
         surfaces = SurfaceCollection(
             routes=routes,
             components=components,
@@ -532,7 +600,23 @@ class HarvestPipeline:
             middleware=middleware,
             integrations=integrations,
             ui_flows=ui_flows,
+            build_deploy=build_deploy,
+            dependencies=dependencies,
+            test_patterns=test_patterns,
         )
+
+        # File coverage: find uncovered files and generate catch-all surfaces
+        uncovered = find_uncovered_files(inventory, surfaces)
+        if uncovered:
+            general_logic = analyze_uncovered_files(
+                uncovered, inventory, profile, workdir
+            )
+            surfaces.general_logic = general_logic
+            self._emit(
+                PipelineEventType.PROGRESS_UPDATE,
+                "C",
+                f"General logic (uncovered files): {len(general_logic)} found",
+            )
 
         write_surface_map(output_dir, surfaces, profile)
 
@@ -578,10 +662,26 @@ class HarvestPipeline:
         evaluation = evaluate_thresholds(metrics)
         write_coverage_reports(output_dir, evaluation)
 
+        # File coverage report
+        file_cov = compute_file_coverage(inventory, surfaces)
+        write_file_coverage_reports(output_dir, file_cov)
+
         gap_report = run_all_gap_queries(surfaces, beans)
         write_gaps_report(output_dir, gap_report)
 
         return evaluation, gap_report
+
+    def _run_stage_g(
+        self,
+        config: HarvestConfig,
+        surfaces: SurfaceCollection,
+        profile: StackProfile,
+        output_dir: Path,
+    ) -> GeneratorResult:
+        """Stage G: generate Claude Code project folder."""
+        # Derive project name from the repo URL
+        project_name = _derive_project_name(config.repo)
+        return assemble_project_folder(output_dir, project_name, surfaces, profile)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -640,3 +740,22 @@ class HarvestPipeline:
             error_message=error_msg,
             output_dir=output_dir,
         )
+
+
+def _derive_project_name(repo: str) -> str:
+    """Derive a project name from a repository URL or path.
+
+    Args:
+        repo: Repository URL or local path.
+
+    Returns:
+        A human-readable project name.
+    """
+    # Handle URLs like https://github.com/user/repo.git
+    name = repo.rstrip("/")
+    if name.endswith(".git"):
+        name = name[:-4]
+    # Take the last path segment
+    name = name.rsplit("/", maxsplit=1)[-1]
+    # Fall back if empty
+    return name if name else "project"
