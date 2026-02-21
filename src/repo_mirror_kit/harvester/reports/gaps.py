@@ -341,7 +341,9 @@ def find_integrations_without_bean(
     entries: list[GapEntry] = []
     for integ in surfaces.integrations:
         if integ.name not in covered_names:
-            file_path = integ.source_refs[0].file_path if integ.source_refs else "unknown"
+            file_path = (
+                integ.source_refs[0].file_path if integ.source_refs else "unknown"
+            )
             entries.append(
                 GapEntry(
                     category="Integrations with no bean",
@@ -382,11 +384,40 @@ def find_ui_flows_without_bean(
     return entries
 
 
+def find_build_deploy_without_bean(
+    surfaces: SurfaceCollection,
+    beans: list[WrittenBean],
+) -> list[GapEntry]:
+    """Find build/deploy surfaces with no corresponding bean.
+
+    Args:
+        surfaces: Extracted surfaces.
+        beans: Written bean records.
+
+    Returns:
+        List of gap entries for uncovered build/deploy surfaces.
+    """
+    covered_names = {b.title for b in beans if b.surface_type == "build_deploy"}
+    entries: list[GapEntry] = []
+    for bd in surfaces.build_deploy:
+        if bd.name not in covered_names:
+            file_path = bd.source_refs[0].file_path if bd.source_refs else "unknown"
+            entries.append(
+                GapEntry(
+                    category="Build/deploy configs with no bean",
+                    description=f"Build/deploy config '{bd.name}' ({bd.tool}) has no corresponding bean",
+                    file_path=file_path,
+                    recommended_action=f"Create a build_deploy bean for '{bd.name}'",
+                )
+            )
+    return entries
+
+
 def run_all_gap_queries(
     surfaces: SurfaceCollection,
     beans: list[WrittenBean],
 ) -> GapReport:
-    """Run all 10 gap hunt queries and return a consolidated report.
+    """Run all 11 gap hunt queries and return a consolidated report.
 
     Args:
         surfaces: Extracted surfaces from analyzers.
@@ -406,6 +437,7 @@ def run_all_gap_queries(
     entries.extend(find_middleware_without_bean(surfaces, beans))
     entries.extend(find_integrations_without_bean(surfaces, beans))
     entries.extend(find_ui_flows_without_bean(surfaces, beans))
+    entries.extend(find_build_deploy_without_bean(surfaces, beans))
 
     logger.info("gap_queries_complete", total_gaps=len(entries))
     return GapReport(entries=entries)

@@ -3,12 +3,12 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-035 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-20 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
+| **Started** | 2026-02-21 00:10 |
+| **Completed** | 2026-02-21 00:17 |
+| **Duration** | 7m |
 | **Owner** | (unassigned) |
 | **Category** | App |
 
@@ -47,33 +47,33 @@ Implement a build and deploy configuration analyzer that extracts build tooling,
 
 ## Acceptance Criteria
 
-- [ ] `BuildDeploySurface` dataclass exists with config_type, tool, stages, targets fields
-- [ ] `SurfaceCollection.build_deploy` list field exists
-- [ ] Detects Dockerfiles and extracts base image, exposed ports, build stages
-- [ ] Detects docker-compose files and extracts service definitions
-- [ ] Detects GitHub Actions workflows and extracts jobs/steps
-- [ ] Detects GitLab CI, Jenkins, CircleCI pipeline configs
-- [ ] Detects Makefile/justfile/taskfile targets
-- [ ] Detects package.json scripts section
-- [ ] Detects Kubernetes manifests and Terraform configs
-- [ ] Detects platform deployment configs (Procfile, fly.toml, vercel.json, etc.)
-- [ ] Bean template renders build/deploy beans with tool, stages, and targets
-- [ ] Coverage gate checks build/deploy coverage (threshold >= 75%)
-- [ ] Gap query identifies build/deploy configs without beans
-- [ ] Unit tests cover each config type detection
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `BuildDeploySurface` dataclass exists with config_type, tool, stages, targets fields
+- [x] `SurfaceCollection.build_deploy` list field exists
+- [x] Detects Dockerfiles and extracts base image, exposed ports, build stages
+- [x] Detects docker-compose files and extracts service definitions
+- [x] Detects GitHub Actions workflows and extracts jobs/steps
+- [x] Detects GitLab CI, Jenkins, CircleCI pipeline configs
+- [x] Detects Makefile/justfile/taskfile targets
+- [x] Detects package.json scripts section
+- [x] Detects Kubernetes manifests and Terraform configs
+- [x] Detects platform deployment configs (Procfile, fly.toml, vercel.json, etc.)
+- [x] Bean template renders build/deploy beans with tool, stages, and targets
+- [x] Coverage gate checks build/deploy coverage (threshold >= 75%)
+- [x] Gap query identifies build/deploy configs without beans
+- [x] Unit tests cover each config type detection
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | Add BuildDeploySurface to surfaces.py and extend SurfaceCollection | Developer | — | Pending |
-| 2 | Implement build_deploy.py analyzer | Developer | 1 | Pending |
-| 3 | Add bean template renderer for build/deploy | Developer | 1 | Pending |
-| 4 | Wire analyzer into pipeline Stage C | Developer | 2 | Pending |
-| 5 | Add coverage gate and gap query | Developer | 1 | Pending |
-| 6 | Write unit tests | Tech-QA | 2, 3 | Pending |
-| 7 | Run lint, type-check, and test suite | Tech-QA | 4, 5, 6 | Pending |
+| 1 | Add BuildDeploySurface to surfaces.py and extend SurfaceCollection | Developer | — | Done |
+| 2 | Implement build_deploy.py analyzer | Developer | 1 | Done |
+| 3 | Add bean template renderer for build/deploy | Developer | 1 | Done |
+| 4 | Wire analyzer into pipeline Stage C | Developer | 2 | Done |
+| 5 | Add coverage gate and gap query | Developer | 1 | Done |
+| 6 | Write unit tests | Tech-QA | 2, 3 | Done |
+| 7 | Run lint, type-check, and test suite | Tech-QA | 4, 5, 6 | Done |
 
 ## Notes
 
@@ -97,6 +97,6 @@ Implement a build and deploy configuration analyzer that extracts build tooling,
 | Metric | Value |
 |--------|-------|
 | **Total Tasks** | 7 |
-| **Total Duration** | — |
+| **Total Duration** | 7m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

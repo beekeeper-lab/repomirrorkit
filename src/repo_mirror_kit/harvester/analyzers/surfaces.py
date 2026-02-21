@@ -365,6 +365,32 @@ class UIFlowSurface(Surface):
 
 
 @dataclass
+class BuildDeploySurface(Surface):
+    """A build/deploy configuration surface."""
+
+    config_type: str = ""  # container/ci_cd/build_tool/iac/platform
+    tool: str = ""
+    stages: list[str] = field(default_factory=list)
+    targets: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "build_deploy"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "config_type": self.config_type,
+                "tool": self.tool,
+                "stages": self.stages,
+                "targets": self.targets,
+            }
+        )
+        return result
+
+
+@dataclass
 class SurfaceCollection:
     """Container for all extracted surfaces.
 
@@ -383,6 +409,7 @@ class SurfaceCollection:
     middleware: list[MiddlewareSurface] = field(default_factory=list)
     integrations: list[IntegrationSurface] = field(default_factory=list)
     ui_flows: list[UIFlowSurface] = field(default_factory=list)
+    build_deploy: list[BuildDeploySurface] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[Surface]:
         """Iterate over all surfaces in the collection."""
@@ -397,6 +424,7 @@ class SurfaceCollection:
         yield from self.middleware
         yield from self.integrations
         yield from self.ui_flows
+        yield from self.build_deploy
 
     def __len__(self) -> int:
         """Return the total number of surfaces."""
@@ -412,6 +440,7 @@ class SurfaceCollection:
             + len(self.middleware)
             + len(self.integrations)
             + len(self.ui_flows)
+            + len(self.build_deploy)
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -428,6 +457,7 @@ class SurfaceCollection:
             "middleware": [s.to_dict() for s in self.middleware],
             "integrations": [s.to_dict() for s in self.integrations],
             "ui_flows": [s.to_dict() for s in self.ui_flows],
+            "build_deploy": [s.to_dict() for s in self.build_deploy],
         }
 
     def to_json(self, indent: int = 2) -> str:

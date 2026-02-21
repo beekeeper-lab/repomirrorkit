@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from repo_mirror_kit.harvester.analyzers.apis import analyze_api_endpoints
 from repo_mirror_kit.harvester.analyzers.auth import analyze_auth
+from repo_mirror_kit.harvester.analyzers.build_deploy import analyze_build_deploy
 from repo_mirror_kit.harvester.analyzers.components import analyze_components
 from repo_mirror_kit.harvester.analyzers.config_env import analyze_config
 from repo_mirror_kit.harvester.analyzers.crosscutting import analyze_crosscutting
@@ -13,6 +14,7 @@ from repo_mirror_kit.harvester.analyzers.state_mgmt import analyze_state_managem
 from repo_mirror_kit.harvester.analyzers.surfaces import (
     ApiSurface,
     AuthSurface,
+    BuildDeploySurface,
     ComponentSurface,
     ConfigSurface,
     CrosscuttingSurface,
@@ -32,6 +34,7 @@ from repo_mirror_kit.harvester.analyzers.ui_flows import analyze_ui_flows
 __all__ = [
     "ApiSurface",
     "AuthSurface",
+    "BuildDeploySurface",
     "ComponentSurface",
     "ConfigSurface",
     "CrosscuttingSurface",
@@ -47,6 +50,7 @@ __all__ = [
     "UIFlowSurface",
     "analyze_api_endpoints",
     "analyze_auth",
+    "analyze_build_deploy",
     "analyze_components",
     "analyze_config",
     "analyze_crosscutting",
