@@ -368,18 +368,19 @@ class TestEvaluateThresholds:
         assert len(failing) >= 3
 
     def test_gate_count(self) -> None:
-        """Should have exactly 9 gates matching spec section 7.2."""
+        """Should have exactly 10 gates matching spec section 7.2."""
         collection = _make_collection()
         inventory = _make_inventory()
         metrics = compute_metrics(collection, [], inventory)
 
         evaluation = evaluate_thresholds(metrics)
 
-        assert len(evaluation.gates) == 9
+        assert len(evaluation.gates) == 10
         gate_names = {g.name for g in evaluation.gates}
         assert gate_names == {
             "Routes", "APIs", "Models", "Components", "Env Vars",
             "State Mgmt", "Middleware", "Integrations", "UI Flows",
+            "Dependencies",
         }
 
 
@@ -426,6 +427,7 @@ class TestCoverageJson:
             "middleware",
             "integrations",
             "ui_flows",
+            "dependencies",
         }
         assert set(data["metrics"].keys()) == expected_keys
 

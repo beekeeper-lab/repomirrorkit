@@ -5,6 +5,7 @@ from repo_mirror_kit.harvester.analyzers.auth import analyze_auth
 from repo_mirror_kit.harvester.analyzers.components import analyze_components
 from repo_mirror_kit.harvester.analyzers.config_env import analyze_config
 from repo_mirror_kit.harvester.analyzers.crosscutting import analyze_crosscutting
+from repo_mirror_kit.harvester.analyzers.dependencies import analyze_dependencies
 from repo_mirror_kit.harvester.analyzers.integrations import analyze_integrations
 from repo_mirror_kit.harvester.analyzers.middleware import analyze_middleware
 from repo_mirror_kit.harvester.analyzers.models import analyze_models
@@ -16,6 +17,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ComponentSurface,
     ConfigSurface,
     CrosscuttingSurface,
+    DependencySurface,
     IntegrationSurface,
     MiddlewareSurface,
     ModelField,
@@ -35,6 +37,7 @@ __all__ = [
     "ComponentSurface",
     "ConfigSurface",
     "CrosscuttingSurface",
+    "DependencySurface",
     "IntegrationSurface",
     "MiddlewareSurface",
     "ModelField",
@@ -50,6 +53,7 @@ __all__ = [
     "analyze_components",
     "analyze_config",
     "analyze_crosscutting",
+    "analyze_dependencies",
     "analyze_integrations",
     "analyze_middleware",
     "analyze_models",

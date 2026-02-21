@@ -35,6 +35,7 @@ THRESHOLD_STATE_MGMT: float = 80.0
 THRESHOLD_MIDDLEWARE: float = 80.0
 THRESHOLD_INTEGRATIONS: float = 85.0
 THRESHOLD_UI_FLOWS: float = 75.0
+THRESHOLD_DEPENDENCIES: float = 80.0
 
 
 # ---------------------------------------------------------------------------
@@ -106,6 +107,7 @@ class CoverageMetrics:
     middleware: MetricPair
     integrations: MetricPair
     ui_flows: MetricPair
+    dependencies: MetricPair
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dictionary."""
@@ -144,6 +146,10 @@ class CoverageMetrics:
             "ui_flows": {
                 "total": self.ui_flows.total,
                 "with_bean": self.ui_flows.covered,
+            },
+            "dependencies": {
+                "total": self.dependencies.total,
+                "with_bean": self.dependencies.covered,
             },
         }
 
@@ -256,6 +262,10 @@ def compute_metrics(
             total=len(surfaces.ui_flows),
             covered=bean_counts.get("ui_flow", 0),
         ),
+        dependencies=MetricPair(
+            total=len(surfaces.dependencies),
+            covered=bean_counts.get("dependency", 0),
+        ),
     )
 
 
@@ -286,6 +296,7 @@ def evaluate_thresholds(metrics: CoverageMetrics) -> CoverageEvaluation:
         _evaluate_gate("Middleware", metrics.middleware, THRESHOLD_MIDDLEWARE),
         _evaluate_gate("Integrations", metrics.integrations, THRESHOLD_INTEGRATIONS),
         _evaluate_gate("UI Flows", metrics.ui_flows, THRESHOLD_UI_FLOWS),
+        _evaluate_gate("Dependencies", metrics.dependencies, THRESHOLD_DEPENDENCIES),
     ]
     return CoverageEvaluation(metrics=metrics, gates=gates)
 
@@ -362,6 +373,7 @@ def generate_coverage_markdown(evaluation: CoverageEvaluation) -> str:
         f"| Middleware | {m.middleware.total} | {m.middleware.covered} | {m.middleware.percentage:.1f}% |",
         f"| Integrations | {m.integrations.total} | {m.integrations.covered} | {m.integrations.percentage:.1f}% |",
         f"| UI Flows | {m.ui_flows.total} | {m.ui_flows.covered} | {m.ui_flows.percentage:.1f}% |",
+        f"| Dependencies | {m.dependencies.total} | {m.dependencies.covered} | {m.dependencies.percentage:.1f}% |",
         "",
         "## Coverage Gates",
         "",
