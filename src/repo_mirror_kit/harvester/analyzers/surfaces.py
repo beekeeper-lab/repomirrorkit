@@ -391,6 +391,34 @@ class BuildDeploySurface(Surface):
 
 
 @dataclass
+class DependencySurface(Surface):
+    """A dependency / package surface extracted from manifest files."""
+
+    version_constraint: str = ""
+    purpose: str = ""  # runtime/dev/test/build/peer
+    manifest_file: str = ""
+    is_direct: bool = True
+    lock_files: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "dependency"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "version_constraint": self.version_constraint,
+                "purpose": self.purpose,
+                "manifest_file": self.manifest_file,
+                "is_direct": self.is_direct,
+                "lock_files": self.lock_files,
+            }
+        )
+        return result
+
+
+@dataclass
 class SurfaceCollection:
     """Container for all extracted surfaces.
 
@@ -410,6 +438,7 @@ class SurfaceCollection:
     integrations: list[IntegrationSurface] = field(default_factory=list)
     ui_flows: list[UIFlowSurface] = field(default_factory=list)
     build_deploy: list[BuildDeploySurface] = field(default_factory=list)
+    dependencies: list[DependencySurface] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[Surface]:
         """Iterate over all surfaces in the collection."""
@@ -425,6 +454,7 @@ class SurfaceCollection:
         yield from self.integrations
         yield from self.ui_flows
         yield from self.build_deploy
+        yield from self.dependencies
 
     def __len__(self) -> int:
         """Return the total number of surfaces."""
@@ -441,6 +471,7 @@ class SurfaceCollection:
             + len(self.integrations)
             + len(self.ui_flows)
             + len(self.build_deploy)
+            + len(self.dependencies)
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -458,6 +489,7 @@ class SurfaceCollection:
             "integrations": [s.to_dict() for s in self.integrations],
             "ui_flows": [s.to_dict() for s in self.ui_flows],
             "build_deploy": [s.to_dict() for s in self.build_deploy],
+            "dependencies": [s.to_dict() for s in self.dependencies],
         }
 
     def to_json(self, indent: int = 2) -> str:

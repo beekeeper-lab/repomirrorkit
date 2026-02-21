@@ -24,6 +24,7 @@ from repo_mirror_kit.harvester.analyzers import (
     analyze_components,
     analyze_config,
     analyze_crosscutting,
+    analyze_dependencies,
     analyze_integrations,
     analyze_middleware,
     analyze_models,
@@ -528,6 +529,13 @@ class HarvestPipeline:
             f"Build/deploy: {len(build_deploy)} found",
         )
 
+        dependencies = analyze_dependencies(inventory, profile, workdir)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Dependencies: {len(dependencies)} found",
+        )
+
         surfaces = SurfaceCollection(
             routes=routes,
             components=components,
@@ -541,6 +549,7 @@ class HarvestPipeline:
             integrations=integrations,
             ui_flows=ui_flows,
             build_deploy=build_deploy,
+            dependencies=dependencies,
         )
 
         write_surface_map(output_dir, surfaces, profile)

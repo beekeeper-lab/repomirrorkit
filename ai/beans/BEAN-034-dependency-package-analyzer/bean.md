@@ -3,12 +3,12 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-034 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-02-20 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
+| **Started** | 2026-02-21 00:10 |
+| **Completed** | 2026-02-21 00:21 |
+| **Duration** | 11m |
 | **Owner** | (unassigned) |
 | **Category** | App |
 
@@ -49,33 +49,33 @@ Implement a dependency and package analyzer that extracts declared dependencies 
 
 ## Acceptance Criteria
 
-- [ ] `DependencySurface` dataclass exists with name, version, purpose, manifest_file, is_direct fields
-- [ ] `SurfaceCollection.dependencies` list field exists
-- [ ] Detects JS/TS dependencies from package.json (all dependency groups)
-- [ ] Detects Python dependencies from pyproject.toml and requirements*.txt
-- [ ] Detects Go dependencies from go.mod
-- [ ] Detects .NET dependencies from *.csproj
-- [ ] Detects Ruby dependencies from Gemfile
-- [ ] Detects Rust dependencies from Cargo.toml
-- [ ] Classifies each dependency as runtime, dev, test, build, or peer
-- [ ] Records presence of lock files in surface metadata
-- [ ] Bean template renders dependency beans with version, purpose, and manifest source
-- [ ] Coverage gate checks dependency coverage (threshold >= 80%)
-- [ ] Gap query identifies dependencies without beans
-- [ ] Unit tests cover each ecosystem's manifest parsing
-- [ ] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
+- [x] `DependencySurface` dataclass exists with name, version, purpose, manifest_file, is_direct fields
+- [x] `SurfaceCollection.dependencies` list field exists
+- [x] Detects JS/TS dependencies from package.json (all dependency groups)
+- [x] Detects Python dependencies from pyproject.toml and requirements*.txt
+- [x] Detects Go dependencies from go.mod
+- [x] Detects .NET dependencies from *.csproj
+- [x] Detects Ruby dependencies from Gemfile
+- [x] Detects Rust dependencies from Cargo.toml
+- [x] Classifies each dependency as runtime, dev, test, build, or peer
+- [x] Records presence of lock files in surface metadata
+- [x] Bean template renders dependency beans with version, purpose, and manifest source
+- [x] Coverage gate checks dependency coverage (threshold >= 80%)
+- [x] Gap query identifies dependencies without beans
+- [x] Unit tests cover each ecosystem's manifest parsing
+- [x] `ruff check`, `ruff format --check`, `mypy`, `pytest` all pass
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | Add DependencySurface to surfaces.py and extend SurfaceCollection | Developer | — | Pending |
-| 2 | Implement dependencies.py analyzer | Developer | 1 | Pending |
-| 3 | Add bean template renderer for dependencies | Developer | 1 | Pending |
-| 4 | Wire analyzer into pipeline Stage C | Developer | 2 | Pending |
-| 5 | Add coverage gate and gap query | Developer | 1 | Pending |
-| 6 | Write unit tests | Tech-QA | 2, 3 | Pending |
-| 7 | Run lint, type-check, and test suite | Tech-QA | 4, 5, 6 | Pending |
+| 1 | Add DependencySurface to surfaces.py and extend SurfaceCollection | Developer | — | Done |
+| 2 | Implement dependencies.py analyzer | Developer | 1 | Done |
+| 3 | Add bean template renderer for dependencies | Developer | 1 | Done |
+| 4 | Wire analyzer into pipeline Stage C | Developer | 2 | Done |
+| 5 | Add coverage gate and gap query | Developer | 1 | Done |
+| 6 | Write unit tests | Tech-QA | 2, 3 | Done |
+| 7 | Run lint, type-check, and test suite | Tech-QA | 4, 5, 6 | Done |
 
 ## Notes
 
@@ -99,6 +99,6 @@ Implement a dependency and package analyzer that extracts declared dependencies 
 | Metric | Value |
 |--------|-------|
 | **Total Tasks** | 7 |
-| **Total Duration** | — |
+| **Total Duration** | 11m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

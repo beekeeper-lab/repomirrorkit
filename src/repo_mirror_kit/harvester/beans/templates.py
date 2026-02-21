@@ -18,6 +18,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ComponentSurface,
     ConfigSurface,
     CrosscuttingSurface,
+    DependencySurface,
     IntegrationSurface,
     MiddlewareSurface,
     ModelSurface,
@@ -767,6 +768,53 @@ def render_build_deploy_bean(surface: BuildDeploySurface, bean_id: str) -> str:
     return fm + "\n" + body.lstrip("\n")
 
 
+def render_dependency_bean(surface: DependencySurface, bean_id: str) -> str:
+    """Render a Dependency bean.
+
+    Args:
+        surface: A DependencySurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="dependency",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    direct_str = "Direct" if surface.is_direct else "Transitive"
+    lock_str = (
+        ", ".join(surface.lock_files) if surface.lock_files else "(none detected)"
+    )
+
+    body = f"""
+# {surface.name}
+
+## Package overview
+
+- **Version constraint:** `{surface.version_constraint or "(any)"}`
+- **Purpose:** {surface.purpose or "unclassified"}
+- **Manifest file:** `{surface.manifest_file}`
+- **Dependency type:** {direct_str}
+
+{_render_enrichment_sections(surface)}
+## Lock files
+
+- {lock_str}
+
+## Structural acceptance criteria
+
+- [ ] Package `{surface.name}` is declared in the manifest with the correct version constraint.
+- [ ] Package is classified as {surface.purpose or "runtime"} dependency.
+- [ ] Lock file pins the exact resolved version.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
 _RENDERERS: dict[str, Any] = {
     "route": render_route_bean,
     "component": render_component_bean,
@@ -780,6 +828,7 @@ _RENDERERS: dict[str, Any] = {
     "integration": render_integration_bean,
     "ui_flow": render_ui_flow_bean,
     "build_deploy": render_build_deploy_bean,
+    "dependency": render_dependency_bean,
 }
 
 

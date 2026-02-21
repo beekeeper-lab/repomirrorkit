@@ -99,6 +99,7 @@ def _make_evaluation() -> CoverageEvaluation:
         middleware=MetricPair(total=0, covered=0),
         integrations=MetricPair(total=0, covered=0),
         ui_flows=MetricPair(total=0, covered=0),
+        dependencies=MetricPair(total=0, covered=0),
     )
     return CoverageEvaluation(
         metrics=metrics,
