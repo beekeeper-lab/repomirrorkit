@@ -23,9 +23,11 @@ STAGE_LABELS: dict[str, str] = {
     "A": "Stage A: Clone & Normalize",
     "B": "Stage B: Inventory & Detection",
     "C": "Stage C: Surface Extraction",
+    "C2": "Stage C2: LLM Enrichment",
     "D": "Stage D: Traceability",
     "E": "Stage E: Bean Generation",
     "F": "Stage F: Coverage Gates",
+    "G": "Stage G: Project Folder Generation",
 }
 
 

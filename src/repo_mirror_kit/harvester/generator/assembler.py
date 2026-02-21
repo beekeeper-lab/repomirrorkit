@@ -7,6 +7,7 @@ structure.
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +20,25 @@ from repo_mirror_kit.harvester.generator.claude_md import generate_claude_md
 from repo_mirror_kit.harvester.generator.stacks import generate_stacks
 
 logger = structlog.get_logger()
+
+
+def _find_claude_dir() -> Path | None:
+    """Locate the .claude/ directory relative to the package source tree.
+
+    Walks up from this file's location to find the project root that
+    contains a .claude/ directory with a settings.json file.
+
+    Returns:
+        Path to the .claude/ directory, or None if not found.
+    """
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        candidate = parent / ".claude"
+        if candidate.is_dir() and (candidate / "settings.json").exists():
+            return candidate
+        if parent == parent.parent:
+            break
+    return None
 
 
 @dataclass(frozen=True)
@@ -66,6 +86,24 @@ def assemble_project_folder(
         project_name=project_name,
         output_dir=str(project_dir),
     )
+
+    # Step 0: Copy .claude/ infrastructure from source project
+    source_claude_dir = _find_claude_dir()
+    if source_claude_dir is not None:
+        target_claude_dir = project_dir / ".claude"
+        shutil.copytree(source_claude_dir, target_claude_dir, dirs_exist_ok=True)
+        copied_files = [p for p in target_claude_dir.rglob("*") if p.is_file()]
+        generated_files.extend(copied_files)
+        logger.info(
+            "generator_claude_dir_copied",
+            source=str(source_claude_dir),
+            file_count=len(copied_files),
+        )
+    else:
+        logger.warning(
+            "generator_claude_dir_not_found",
+            msg="Could not locate .claude/ directory; skipping infrastructure copy",
+        )
 
     # Step 1: Generate stack convention files
     stack_files = generate_stacks(profile, surfaces)
