@@ -78,7 +78,10 @@ def enrich_surfaces(
             error_count += 1
 
         if callback is not None and (i + 1) % 5 == 0:
-            from repo_mirror_kit.harvester.pipeline import PipelineEvent, PipelineEventType
+            from repo_mirror_kit.harvester.pipeline import (
+                PipelineEvent,
+                PipelineEventType,
+            )
             callback(PipelineEvent(
                 event_type=PipelineEventType.PROGRESS_UPDATE,
                 stage="C2",
