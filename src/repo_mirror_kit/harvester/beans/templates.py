@@ -14,6 +14,7 @@ from typing import Any
 from repo_mirror_kit.harvester.analyzers.surfaces import (
     ApiSurface,
     AuthSurface,
+    BuildDeploySurface,
     ComponentSurface,
     ConfigSurface,
     CrosscuttingSurface,
@@ -109,7 +110,9 @@ def _render_enrichment_sections(surface: Surface) -> str:
     if enrichment and enrichment.get("behavioral_description"):
         lines.append(enrichment["behavioral_description"])
     else:
-        lines.append("TODO: Describe the expected behavior from a user/system perspective.")
+        lines.append(
+            "TODO: Describe the expected behavior from a user/system perspective."
+        )
     lines.append("")
 
     # Inferred intent
@@ -601,7 +604,11 @@ def render_middleware_bean(surface: MiddlewareSurface, bean_id: str) -> str:
         enrichment=surface.enrichment,
     )
 
-    order_str = str(surface.execution_order) if surface.execution_order is not None else "unspecified"
+    order_str = (
+        str(surface.execution_order)
+        if surface.execution_order is not None
+        else "unspecified"
+    )
 
     body = f"""
 # {surface.name}
@@ -716,6 +723,50 @@ def render_ui_flow_bean(surface: UIFlowSurface, bean_id: str) -> str:
     return fm + "\n" + body.lstrip("\n")
 
 
+def render_build_deploy_bean(surface: BuildDeploySurface, bean_id: str) -> str:
+    """Render a Build/Deploy bean.
+
+    Args:
+        surface: A BuildDeploySurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="build_deploy",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    body = f"""
+# {surface.name}
+
+## Build/deploy overview
+
+- **Config type:** {surface.config_type or "unidentified"}
+- **Tool:** {surface.tool or "unknown"}
+
+{_render_enrichment_sections(surface)}
+## Stages
+
+{_bullet_list(surface.stages, "- No stages identified.")}
+
+## Targets
+
+{_bullet_list(surface.targets, "- No targets identified.")}
+
+## Structural acceptance criteria
+
+- [ ] Configuration file is valid and parseable.
+- [ ] All referenced stages/targets are reachable.
+- [ ] Build/deploy pipeline executes successfully.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
 _RENDERERS: dict[str, Any] = {
     "route": render_route_bean,
     "component": render_component_bean,
@@ -728,6 +779,7 @@ _RENDERERS: dict[str, Any] = {
     "middleware": render_middleware_bean,
     "integration": render_integration_bean,
     "ui_flow": render_ui_flow_bean,
+    "build_deploy": render_build_deploy_bean,
 }
 
 
