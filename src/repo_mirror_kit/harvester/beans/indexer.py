@@ -13,14 +13,18 @@ from pathlib import Path
 from repo_mirror_kit.harvester.beans.templates import (
     render_api_bean,
     render_auth_bean,
+    render_build_deploy_bean,
     render_component_bean,
     render_config_bean,
     render_crosscutting_bean,
+    render_dependency_bean,
+    render_general_logic_bean,
     render_integration_bean,
     render_middleware_bean,
     render_model_bean,
     render_route_bean,
     render_state_mgmt_bean,
+    render_test_pattern_bean,
     render_ui_flow_bean,
 )
 from repo_mirror_kit.harvester.beans.writer import WrittenBean
@@ -40,6 +44,10 @@ _TEMPLATE_DESCRIPTIONS: dict[str, str] = {
     "middleware": "Middleware bean template",
     "integration": "Integration bean template",
     "ui_flow": "UI Flow bean template",
+    "build_deploy": "Build/Deploy bean template",
+    "dependency": "Dependency bean template",
+    "test_pattern": "Test Pattern bean template",
+    "general_logic": "General Logic bean template",
 }
 
 # Map surface type to its render function's docstring for template content.
@@ -55,6 +63,10 @@ _TEMPLATE_FUNCTIONS: dict[str, str] = {
     "middleware": render_middleware_bean.__doc__ or "",
     "integration": render_integration_bean.__doc__ or "",
     "ui_flow": render_ui_flow_bean.__doc__ or "",
+    "build_deploy": render_build_deploy_bean.__doc__ or "",
+    "dependency": render_dependency_bean.__doc__ or "",
+    "test_pattern": render_test_pattern_bean.__doc__ or "",
+    "general_logic": render_general_logic_bean.__doc__ or "",
 }
 
 

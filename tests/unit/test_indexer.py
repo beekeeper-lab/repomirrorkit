@@ -120,7 +120,7 @@ class TestGenerateTemplatesDir:
         templates_dir = generate_templates_dir(tmp_path)
         assert templates_dir == tmp_path / "beans" / "_templates"
 
-    def test_creates_all_seven_template_files(self, tmp_path: Path) -> None:
+    def test_creates_all_template_files(self, tmp_path: Path) -> None:
         generate_templates_dir(tmp_path)
         templates_dir = tmp_path / "beans" / "_templates"
         expected_files = {
@@ -131,6 +131,14 @@ class TestGenerateTemplatesDir:
             "auth.md",
             "config.md",
             "crosscutting.md",
+            "state_mgmt.md",
+            "middleware.md",
+            "integration.md",
+            "ui_flow.md",
+            "build_deploy.md",
+            "dependency.md",
+            "test_pattern.md",
+            "general_logic.md",
         }
         actual_files = {f.name for f in templates_dir.iterdir()}
         assert actual_files == expected_files
@@ -160,4 +168,4 @@ class TestGenerateTemplatesDir:
         generate_templates_dir(tmp_path)
         generate_templates_dir(tmp_path)
         templates_dir = tmp_path / "beans" / "_templates"
-        assert len(list(templates_dir.iterdir())) == 7
+        assert len(list(templates_dir.iterdir())) == 15
