@@ -58,5 +58,5 @@
 | BEAN-034 | Dependency & Package Analyzer | App | High | Done | team-lead |
 | BEAN-035 | Build & Deploy Config Analyzer | App | High | Done | team-lead |
 | BEAN-036 | Test Pattern Analyzer | App | High | Done | team-lead |
-| BEAN-037 | CLAUDE.md Generator (Stage G) | App | High | Approved | (unassigned) |
+| BEAN-037 | CLAUDE.md Generator (Stage G) | App | High | In Progress | team-lead |
 | BEAN-038 | File Coverage Analysis & Uncovered File Detection | App | High | In Progress | team-lead |
