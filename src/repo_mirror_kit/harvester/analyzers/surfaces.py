@@ -391,6 +391,36 @@ class BuildDeploySurface(Surface):
 
 
 @dataclass
+class GeneralLogicSurface(Surface):
+    """A catch-all surface for source files not covered by specialized analyzers.
+
+    Captures module-level information for files that don't fit any other
+    surface type, ensuring every source file has at least one requirement.
+    """
+
+    file_path: str = ""
+    module_purpose: str = ""
+    exports: list[str] = field(default_factory=list)
+    complexity_hint: str = ""  # simple/moderate/complex
+
+    def __post_init__(self) -> None:
+        self.surface_type = "general_logic"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "file_path": self.file_path,
+                "module_purpose": self.module_purpose,
+                "exports": self.exports,
+                "complexity_hint": self.complexity_hint,
+            }
+        )
+        return result
+
+
+@dataclass
 class SurfaceCollection:
     """Container for all extracted surfaces.
 
@@ -410,6 +440,7 @@ class SurfaceCollection:
     integrations: list[IntegrationSurface] = field(default_factory=list)
     ui_flows: list[UIFlowSurface] = field(default_factory=list)
     build_deploy: list[BuildDeploySurface] = field(default_factory=list)
+    general_logic: list[GeneralLogicSurface] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[Surface]:
         """Iterate over all surfaces in the collection."""
@@ -425,6 +456,7 @@ class SurfaceCollection:
         yield from self.integrations
         yield from self.ui_flows
         yield from self.build_deploy
+        yield from self.general_logic
 
     def __len__(self) -> int:
         """Return the total number of surfaces."""
@@ -441,6 +473,7 @@ class SurfaceCollection:
             + len(self.integrations)
             + len(self.ui_flows)
             + len(self.build_deploy)
+            + len(self.general_logic)
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -458,6 +491,7 @@ class SurfaceCollection:
             "integrations": [s.to_dict() for s in self.integrations],
             "ui_flows": [s.to_dict() for s in self.ui_flows],
             "build_deploy": [s.to_dict() for s in self.build_deploy],
+            "general_logic": [s.to_dict() for s in self.general_logic],
         }
 
     def to_json(self, indent: int = 2) -> str:

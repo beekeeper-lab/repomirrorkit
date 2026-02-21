@@ -36,6 +36,7 @@ THRESHOLD_MIDDLEWARE: float = 80.0
 THRESHOLD_INTEGRATIONS: float = 85.0
 THRESHOLD_UI_FLOWS: float = 75.0
 THRESHOLD_BUILD_DEPLOY: float = 75.0
+THRESHOLD_GENERAL_LOGIC: float = 90.0
 
 
 # ---------------------------------------------------------------------------
@@ -108,6 +109,7 @@ class CoverageMetrics:
     integrations: MetricPair
     ui_flows: MetricPair
     build_deploy: MetricPair
+    general_logic: MetricPair
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-compatible dictionary."""
@@ -150,6 +152,10 @@ class CoverageMetrics:
             "build_deploy": {
                 "total": self.build_deploy.total,
                 "with_bean": self.build_deploy.covered,
+            },
+            "general_logic": {
+                "total": self.general_logic.total,
+                "with_bean": self.general_logic.covered,
             },
         }
 
@@ -266,6 +272,10 @@ def compute_metrics(
             total=len(surfaces.build_deploy),
             covered=bean_counts.get("build_deploy", 0),
         ),
+        general_logic=MetricPair(
+            total=len(surfaces.general_logic),
+            covered=bean_counts.get("general_logic", 0),
+        ),
     )
 
 
@@ -297,6 +307,7 @@ def evaluate_thresholds(metrics: CoverageMetrics) -> CoverageEvaluation:
         _evaluate_gate("Integrations", metrics.integrations, THRESHOLD_INTEGRATIONS),
         _evaluate_gate("UI Flows", metrics.ui_flows, THRESHOLD_UI_FLOWS),
         _evaluate_gate("Build/Deploy", metrics.build_deploy, THRESHOLD_BUILD_DEPLOY),
+        _evaluate_gate("General Logic", metrics.general_logic, THRESHOLD_GENERAL_LOGIC),
     ]
     return CoverageEvaluation(metrics=metrics, gates=gates)
 
@@ -374,6 +385,7 @@ def generate_coverage_markdown(evaluation: CoverageEvaluation) -> str:
         f"| Integrations | {m.integrations.total} | {m.integrations.covered} | {m.integrations.percentage:.1f}% |",
         f"| UI Flows | {m.ui_flows.total} | {m.ui_flows.covered} | {m.ui_flows.percentage:.1f}% |",
         f"| Build/Deploy | {m.build_deploy.total} | {m.build_deploy.covered} | {m.build_deploy.percentage:.1f}% |",
+        f"| General Logic | {m.general_logic.total} | {m.general_logic.covered} | {m.general_logic.percentage:.1f}% |",
         "",
         "## Coverage Gates",
         "",
