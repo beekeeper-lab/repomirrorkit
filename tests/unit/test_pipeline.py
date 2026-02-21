@@ -12,6 +12,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import SurfaceCollection
 from repo_mirror_kit.harvester.beans.writer import WrittenBean
 from repo_mirror_kit.harvester.config import HarvestConfig
 from repo_mirror_kit.harvester.detectors.base import StackProfile
+from repo_mirror_kit.harvester.generator.assembler import GeneratorResult
 from repo_mirror_kit.harvester.git_ops import CloneResult
 from repo_mirror_kit.harvester.inventory import InventoryResult
 from repo_mirror_kit.harvester.pipeline import (
@@ -141,6 +142,7 @@ _EVALUATE_THRESHOLDS = f"{_P}.evaluate_thresholds"
 _WRITE_COVERAGE = f"{_P}.write_coverage_reports"
 _RUN_GAP_QUERIES = f"{_P}.run_all_gap_queries"
 _WRITE_GAPS = f"{_P}.write_gaps_report"
+_ASSEMBLE = f"{_P}.assemble_project_folder"
 
 
 def _build_patches(
@@ -186,6 +188,12 @@ def _build_patches(
         _WRITE_COVERAGE: (Path("/tmp/c.json"), Path("/tmp/c.md")),
         _RUN_GAP_QUERIES: gap_report,
         _WRITE_GAPS: Path("/tmp/d.md"),
+        _ASSEMBLE: GeneratorResult(
+            output_dir=output_dir / "project-folder",
+            generated_files=[],
+            agent_count=3,
+            stack_count=1,
+        ),
     }
 
 
@@ -357,6 +365,7 @@ class TestPipelineErrorHandling:
             "D": _BUILD_TRACEABILITY,
             "E": _WRITE_BEANS,
             "F": _COMPUTE_METRICS,
+            "G": _ASSEMBLE,
         }
 
         target = stage_to_target[failing_stage]
@@ -455,15 +464,15 @@ class TestPipelineCallbacks:
             pipeline = HarvestPipeline(callback=events.append)
             pipeline.run(config)
 
-        # Expect stage_start and stage_complete for each of 7 stages
+        # Expect stage_start and stage_complete for each of 8 stages
         start_events = [
             e for e in events if e.event_type == PipelineEventType.STAGE_START
         ]
         complete_events = [
             e for e in events if e.event_type == PipelineEventType.STAGE_COMPLETE
         ]
-        assert len(start_events) == 7
-        assert len(complete_events) == 7
+        assert len(start_events) == 8
+        assert len(complete_events) == 8
 
         # Stages should be in order
         start_stages = [e.stage for e in start_events]
@@ -559,4 +568,4 @@ class TestStageNames:
     """Verify stage ordering constant."""
 
     def test_stage_names_order(self) -> None:
-        assert STAGE_NAMES == ["A", "B", "C", "C2", "D", "E", "F"]
+        assert STAGE_NAMES == ["A", "B", "C", "C2", "D", "E", "F", "G"]
