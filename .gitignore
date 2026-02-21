@@ -24,5 +24,14 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Claude-Kit: generated symlinks (recreated by scripts/claude-sync.sh)
+.claude/agents/
+.claude/commands/
+.claude/skills/
+.claude/hooks/
+.claude/settings.json
+.claude/mcp.json
+!.claude/settings.local.json
+
 # Project
 projects/
