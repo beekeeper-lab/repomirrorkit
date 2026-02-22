@@ -60,3 +60,4 @@
 | BEAN-036 | Test Pattern Analyzer | App | High | Done | team-lead |
 | BEAN-037 | CLAUDE.md Generator (Stage G) | App | High | Done | team-lead |
 | BEAN-038 | File Coverage Analysis & Uncovered File Detection | App | High | Done | team-lead |
+| BEAN-039 | Claude-Kit Health Check | Infra | Medium | Approved | (unassigned) |
