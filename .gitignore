@@ -31,6 +31,7 @@ Thumbs.db
 .claude/hooks/
 .claude/settings.json
 .claude/mcp.json
+.claude/shared
 !.claude/settings.local.json
 
 # Project
