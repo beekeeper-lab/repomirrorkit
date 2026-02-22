@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+#
+# post-checkout — Restore git submodules after branch checkout or worktree creation.
+#
+# Git supplies three arguments:
+#   $1 = previous HEAD ref
+#   $2 = new HEAD ref
+#   $3 = checkout type flag (1 = branch checkout, 0 = file checkout)
+#
+# Only runs on branch checkouts (flag=1). Worktrees share the parent
+# repo's .git/hooks/ so this fires automatically in new worktrees.
+#
+set -euo pipefail
+
+checkout_flag="${3:-0}"
+
+# Only act on branch checkouts (not file checkouts)
+if [ "$checkout_flag" != "1" ]; then
+  exit 0
+fi
+
+# Find repo root relative to wherever git invokes us
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Check if the submodule working tree is missing or empty
+SUBMODULE_DIR="${REPO_ROOT}/.claude/kit"
+if [ -d "$SUBMODULE_DIR" ] && [ -z "$(ls -A "$SUBMODULE_DIR" 2>/dev/null)" ]; then
+  echo "[post-checkout] Submodule .claude/kit/ is empty — initializing..."
+  git -C "$REPO_ROOT" submodule update --init --recursive
+fi
+
+# Run claude-sync.sh if it exists and is executable
+SYNC_SCRIPT="${REPO_ROOT}/scripts/claude-sync.sh"
+if [ -x "$SYNC_SCRIPT" ]; then
+  echo "[post-checkout] Running claude-sync.sh..."
+  "$SYNC_SCRIPT"
+fi

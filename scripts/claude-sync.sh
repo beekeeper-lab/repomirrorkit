@@ -233,6 +233,30 @@ sync_config() {
   fi
 }
 
+# --- Install git hooks from scripts/githooks/ ---
+install_git_hooks() {
+  local hooks_src="${REPO_ROOT}/scripts/githooks"
+  [ -d "$hooks_src" ] || return 0
+
+  # Resolve the hooks directory (works in both main repo and worktrees)
+  local git_dir
+  git_dir="$(git -C "$REPO_ROOT" rev-parse --git-common-dir)"
+  local hooks_dest="${git_dir}/hooks"
+
+  for hook in "$hooks_src"/*; do
+    [ -f "$hook" ] || continue
+    local name
+    name="$(basename "$hook")"
+    if $DRY_RUN; then
+      log "(dry-run) Would install git hook: ${name}"
+    else
+      cp "$hook" "${hooks_dest}/${name}"
+      chmod +x "${hooks_dest}/${name}"
+      log "Installed git hook: ${name}"
+    fi
+  done
+}
+
 # --- Main ---
 log "Syncing Claude Code assets..."
 log "  Kit:   ${KIT_SHARED}"
@@ -245,6 +269,7 @@ sync_internal_files "commands"
 sync_files "hooks"
 sync_skills
 sync_config
+install_git_hooks
 
 log ""
 log "Done. ${LINKS_CREATED} symlinks created, ${CONFLICTS} override(s)."
