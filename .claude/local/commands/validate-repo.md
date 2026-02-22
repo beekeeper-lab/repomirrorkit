@@ -25,9 +25,10 @@ Verify that a project's structure, files, internal links, and stack-specific too
 
 1. **Locate project and composition** -- Find the project root and parse its composition spec.
 2. **Run structural checks** -- Verify all expected directories and required files exist.
-3. **Run content checks** -- Validate agent completeness, output directories, internal links, manifest consistency.
-4. **Run stack checks** -- Execute stack-specific validations based on the composition's stack selections.
-5. **Produce report** -- Output a pass/fail/warn checklist with remediation guidance.
+3. **Run Claude-Kit integration check** -- Execute `scripts/claude-kit-check.sh` to verify submodule presence, symlink wiring, layout correctness, and absence of legacy artifacts. If `--fix` is set, pass `--fix` to the script. This check runs at all check levels (structure, content, full).
+4. **Run content checks** -- Validate agent completeness, output directories, internal links, manifest consistency.
+5. **Run stack checks** -- Execute stack-specific validations based on the composition's stack selections.
+6. **Produce report** -- Output a pass/fail/warn checklist with remediation guidance.
 
 ## Output
 
@@ -42,7 +43,7 @@ Verify that a project's structure, files, internal links, and stack-specific too
 | `--check-level <level>` | `full` | `structure`: folders and files only. `content`: adds link and completeness checks. `full`: adds stack-specific and secrets checks |
 | `--output <path>` | stdout | Write the report to a file instead of stdout |
 | `--strict` | `false` | Treat warnings as errors |
-| `--fix` | `false` | Attempt to auto-fix simple issues (create missing directories, add missing READMEs) |
+| `--fix` | `false` | Attempt to auto-fix simple issues (create missing directories, add missing READMEs, repair Claude-Kit symlinks) |
 
 ## Error Handling
 

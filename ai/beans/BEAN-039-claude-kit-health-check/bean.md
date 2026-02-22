@@ -55,7 +55,7 @@ A standalone `scripts/claude-kit-check.sh` script that verifies Claude-Kit integ
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
 | 1 | Create claude-kit-check.sh | developer | — | Done |
-| 2 | Integrate into /validate-repo | developer | 1 | Pending |
+| 2 | Integrate into /validate-repo | developer | 1 | Done |
 | 3 | Tech-QA Verification | tech-qa | 1, 2 | Pending |
 
 > Skipped: BA (default), Architect (default)
@@ -77,7 +77,7 @@ A standalone `scripts/claude-kit-check.sh` script that verifies Claude-Kit integ
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
 | 1 | Create claude-kit-check.sh | developer | 1m | 1,138,159 | 491 | $1.92 |
-| 2 | Integrate into /validate-repo | developer | — | — | — | — |
+| 2 | Integrate into /validate-repo | developer | 1m | 610,265 | 486 | $1.02 |
 | 3 | Tech-QA Verification | tech-qa | — | — | — | — |
 
 | Metric | Value |
