@@ -111,6 +111,31 @@ This keeps the system prompt lean. Only cross-cutting rules (this file) load int
 
 ---
 
+## Claude-Kit Integration
+
+This project uses a three-layer structure for Claude Code assets:
+
+| Layer | Path | Source | Tracked |
+|-------|------|--------|---------|
+| **Kit** (shared) | `.claude/kit/` | `beekeeper-lab/claude-kit` submodule | Submodule ref |
+| **Local** (project) | `.claude/local/` | Project-specific assets | Yes |
+| **Generated** | `.claude/{agents,commands,skills,hooks}/` | Symlinks from sync script | No (gitignored) |
+
+Claude Code discovers assets at `.claude/{agents,commands,skills,hooks}/`. The sync script bridges kit and local sources into those paths via symlinks.
+
+**After clone or pull:**
+```bash
+git submodule update --init --recursive
+scripts/claude-sync.sh
+```
+
+**Key rules:**
+- Never `git subtree push` from this repo — only foundry pushes to claude-kit
+- Run `scripts/claude-sync.sh` after clone, pull, or submodule update
+- Local overrides kit when both provide the same asset name
+
+---
+
 ## Maintenance Note
 
 This file is manually maintained. Do not regenerate with `/compile-team`. Persona definitions extracted from the original compiled CLAUDE.md live in `ai/personas/` and stack conventions in `ai/stacks/`. Edit those files directly for persona or stack changes.
