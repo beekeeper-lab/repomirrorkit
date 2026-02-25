@@ -16,7 +16,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CLAUDE_DIR="${REPO_ROOT}/.claude"
-KIT_DIR="${CLAUDE_DIR}/kit"
+KIT_DIR="${CLAUDE_DIR}/shared"
 LOCAL_DIR="${CLAUDE_DIR}/local"
 SYNC_SCRIPT="${REPO_ROOT}/scripts/claude-sync.sh"
 
@@ -54,12 +54,12 @@ check_submodule() {
   log "Checking submodule presence..."
 
   local stage_mode
-  stage_mode="$(git -C "$REPO_ROOT" ls-files --stage .claude/kit 2>/dev/null | awk '{print $1}' || true)"
+  stage_mode="$(git -C "$REPO_ROOT" ls-files --stage .claude/shared 2>/dev/null | awk '{print $1}' || true)"
 
   if [ "$stage_mode" = "160000" ]; then
-    pass "Submodule .claude/kit is gitlink mode 160000"
+    pass "Submodule .claude/shared is gitlink mode 160000"
   else
-    fail "Submodule .claude/kit not found or wrong mode (got: '${stage_mode:-empty}')"
+    fail "Submodule .claude/shared not found or wrong mode (got: '${stage_mode:-empty}')"
     if $FIX; then
       info "Fix: initializing submodule..."
       if $DRY_RUN; then
@@ -183,7 +183,7 @@ check_symlinks() {
   log "Detected layout: ${layout}"
 
   if [ "$layout" = "unknown" ]; then
-    fail "Cannot detect kit layout — .claude/kit may not be initialized"
+    fail "Cannot detect kit layout — .claude/shared may not be initialized"
     if $FIX; then
       info "Fix: initializing submodule and re-syncing..."
       if $DRY_RUN; then
