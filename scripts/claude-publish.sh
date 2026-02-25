@@ -12,7 +12,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-KIT_DIR="${REPO_ROOT}/.claude/kit"
+KIT_DIR="${REPO_ROOT}/.claude/shared"
 
 KIT_ONLY=false
 
