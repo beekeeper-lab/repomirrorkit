@@ -54,6 +54,14 @@ def test_pipeline_python_flask_fixture(
         f"Expected >=2 beans for the Flask fixture, got {len(bean_files)}"
     )
 
+    # BEAN-051: top-level REQUIREMENTS.md exists with the expected sections.
+    requirements = out / "REQUIREMENTS.md"
+    assert requirements.is_file(), "Top-level REQUIREMENTS.md missing"
+    text = requirements.read_text()
+    assert "Requirements Specification" in text
+    assert "## Tech Stack" in text
+    assert "## Functional Requirements" in text
+
 
 @pytest.mark.integration
 def test_pipeline_ts_next_fixture(
@@ -75,3 +83,6 @@ def test_pipeline_ts_next_fixture(
     assert len(bean_files) >= 2, (
         f"Expected >=2 beans for the Next.js fixture, got {len(bean_files)}"
     )
+
+    # BEAN-051: top-level REQUIREMENTS.md exists.
+    assert (out / "REQUIREMENTS.md").is_file(), "REQUIREMENTS.md missing"

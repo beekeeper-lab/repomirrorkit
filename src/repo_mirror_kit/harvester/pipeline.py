@@ -402,7 +402,7 @@ class HarvestPipeline:
             )
             try:
                 generator_result = self._run_stage_g(
-                    config, surfaces, profile, output_dir
+                    config, surfaces, profile, beans, output_dir
                 )
             except _FS_EXCEPTIONS as exc:
                 return self._handle_stage_error("G", exc, state, output_dir)
@@ -698,12 +698,15 @@ class HarvestPipeline:
         config: HarvestConfig,
         surfaces: SurfaceCollection,
         profile: StackProfile,
+        beans: list[WrittenBean],
         output_dir: Path,
     ) -> GeneratorResult:
-        """Stage G: generate Claude Code project folder."""
+        """Stage G: generate Claude Code project folder + REQUIREMENTS.md."""
         # Derive project name from the repo URL
         project_name = _derive_project_name(config.repo)
-        return assemble_project_folder(output_dir, project_name, surfaces, profile)
+        return assemble_project_folder(
+            output_dir, project_name, surfaces, profile, beans=beans
+        )
 
     # ------------------------------------------------------------------
     # Helpers
