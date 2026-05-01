@@ -58,6 +58,7 @@ from repo_mirror_kit.harvester.reports.coverage import (
     evaluate_thresholds,
     write_coverage_reports,
 )
+from repo_mirror_kit.harvester.reports.data_model import write_data_model_report
 from repo_mirror_kit.harvester.reports.file_coverage import (
     compute_file_coverage,
     write_file_coverage_reports,
@@ -379,7 +380,7 @@ class HarvestPipeline:
             )
             try:
                 evaluation, gap_report = self._run_stage_f(
-                    surfaces, beans, inventory_result, output_dir
+                    surfaces, beans, inventory_result, workdir, output_dir
                 )
             except _FS_EXCEPTIONS as exc:
                 return self._handle_stage_error("F", exc, state, output_dir)
@@ -691,9 +692,10 @@ class HarvestPipeline:
         surfaces: SurfaceCollection,
         beans: list[WrittenBean],
         inventory: InventoryResult,
+        workdir: Path,
         output_dir: Path,
     ) -> tuple[CoverageEvaluation, GapReport]:
-        """Stage F: coverage gates and gap analysis."""
+        """Stage F: coverage gates, gap analysis, data-model report."""
         metrics = compute_metrics(surfaces, beans, inventory)
         evaluation = evaluate_thresholds(metrics)
         write_coverage_reports(output_dir, evaluation)
@@ -704,6 +706,11 @@ class HarvestPipeline:
 
         gap_report = run_all_gap_queries(surfaces, beans)
         write_gaps_report(output_dir, gap_report)
+
+        # BEAN-055: data-model relationships report (Mermaid + tables).
+        # Always runs; renders an "(no models detected)" stub if the surface
+        # collection has no models.
+        write_data_model_report(surfaces, output_dir, workdir=workdir)
 
         return evaluation, gap_report
 

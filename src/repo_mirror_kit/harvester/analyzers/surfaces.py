@@ -158,6 +158,36 @@ class ModelField:
         }
 
 
+@dataclass(frozen=True)
+class ModelRelationship:
+    """A typed relationship between two model surfaces (BEAN-055).
+
+    The ``relationships`` legacy field on :class:`ModelSurface` is a
+    free-form list of strings populated by the per-framework model
+    analyzer. This class captures the same edges in structured form so
+    downstream consumers (Mermaid ER diagram, traceability) can render
+    them without re-parsing.
+    """
+
+    source_model: str
+    target_model: str
+    kind: str  # "one_to_one" | "one_to_many" | "many_to_one" | "many_to_many"
+    fk_column: str | None = None
+    cascade: str | None = None
+    source_file: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        return {
+            "source_model": self.source_model,
+            "target_model": self.target_model,
+            "kind": self.kind,
+            "fk_column": self.fk_column,
+            "cascade": self.cascade,
+            "source_file": self.source_file,
+        }
+
+
 @dataclass
 class ModelSurface(Surface):
     """A data model / entity surface."""
@@ -166,6 +196,9 @@ class ModelSurface(Surface):
     fields: list[ModelField] = field(default_factory=list)
     relationships: list[str] = field(default_factory=list)
     persistence_refs: list[str] = field(default_factory=list)
+    # BEAN-055: structured edges populated by the data-model report
+    # extraction pass; complements the legacy ``relationships`` string list.
+    relationship_details: list[ModelRelationship] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         self.surface_type = "model"
@@ -179,6 +212,7 @@ class ModelSurface(Surface):
                 "fields": [f.to_dict() for f in self.fields],
                 "relationships": self.relationships,
                 "persistence_refs": self.persistence_refs,
+                "relationship_details": [r.to_dict() for r in self.relationship_details],
             }
         )
         return result
