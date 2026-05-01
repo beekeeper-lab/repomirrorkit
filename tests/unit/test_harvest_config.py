@@ -16,6 +16,32 @@ from repo_mirror_kit.harvester.config import (
 )
 
 
+class TestHarvestConfigLLMKey:
+    """When --llm-enabled is set without ANTHROPIC_API_KEY, raise a helpful
+    multi-line error (BEAN-045)."""
+
+    def test_missing_key_with_llm_enabled_raises_helpful_error(self) -> None:
+        with pytest.raises(ConfigValidationError) as exc_info:
+            HarvestConfig(
+                repo="https://example.com/repo.git",
+                llm_enabled=True,
+                llm_api_key=None,
+            )
+        msg = str(exc_info.value)
+        # Helpful guidance markers
+        assert "ANTHROPIC_API_KEY" in msg
+        assert "https://console.anthropic.com/settings/keys" in msg
+        assert "export ANTHROPIC_API_KEY=" in msg
+
+    def test_present_key_with_llm_enabled_succeeds(self) -> None:
+        # Should not raise.
+        HarvestConfig(
+            repo="https://example.com/repo.git",
+            llm_enabled=True,
+            llm_api_key="sk-ant-fake",
+        )
+
+
 class TestHarvestConfigUrlValidation:
     """HarvestConfig must enforce the canonical clone-URL allow-list (BEAN-044)."""
 

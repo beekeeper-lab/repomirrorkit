@@ -39,7 +39,9 @@ class HarvestConfig:
         fail_on_gaps: Whether to fail with exit code 2 if coverage gaps are found.
         log_level: Logging level (debug, info, warn, error).
         llm_enabled: Whether to enable LLM enrichment of surfaces.
-        llm_api_key: Anthropic API key for LLM enrichment.
+        llm_api_key: Anthropic API key for LLM enrichment. Sourced from the
+            ``ANTHROPIC_API_KEY`` environment variable only — there is no CLI
+            flag for it, so the key cannot leak into shell history or argv.
         llm_model: Claude model to use for LLM enrichment.
     """
 
@@ -85,8 +87,15 @@ class HarvestConfig:
             )
         if self.llm_enabled and not self.llm_api_key:
             raise ConfigValidationError(
-                "--llm-api-key (or ANTHROPIC_API_KEY env var) is required"
-                " when --llm-enabled is set"
+                "ANTHROPIC_API_KEY is not set, but --llm-enabled was passed.\n"
+                "\n"
+                "  1. Get an API key: https://console.anthropic.com/settings/keys\n"
+                "  2. Export it before running the harvester:\n"
+                "       export ANTHROPIC_API_KEY=sk-ant-...\n"
+                "\n"
+                "The key is read from the environment only (never logged, "
+                "never accepted on the command line). To run without LLM "
+                "enrichment, omit --llm-enabled."
             )
 
 
