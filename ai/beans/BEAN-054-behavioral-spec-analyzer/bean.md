@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-054 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-05-01 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-05-01 16:49 |
+| **Completed** | 2026-05-01 16:54 |
+| **Duration** | 6h 3m |
+| **Owner** | team-lead |
 | **Category** | App |
 
 ## Problem Statement
@@ -57,7 +57,25 @@ A new analyzer extracts intent signal from docstrings, test names, JSDoc/TSDoc c
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Behavioral-spec analyzer + bean template integration | developer | — | Done |
+| 2 | Verify extraction + bean rendering fallback | tech-qa | 01 | Done |
+
+> Skipped: BA, Architect (analyzer pattern follows existing patterns; design recorded inline).
+
+### Verification (Tech-QA)
+
+- ✅ New module `src/repo_mirror_kit/harvester/analyzers/behavioral_spec.py` with `analyze_behavioral_spec(inventory, profile, workdir, surfaces)` running as a Stage C post-pass after the surface analyzers.
+- ✅ Three signal sources extracted, attached to `surface.enrichment["behavioral_signals"]`:
+  - **Python docstrings**: AST walks the source file once per file (cached) and finds the smallest enclosing `FunctionDef` / `AsyncFunctionDef` / `ClassDef` containing the surface's `start_line`. Falls back to module docstring.
+  - **JSDoc/TSDoc comments**: scans backwards from the surface's source line for the nearest `/** ... */` block, strips `*` markers, returns cleaned body. Handles blank lines between block and target.
+  - **Test names** (pytest test functions + Jest/Vitest/Mocha `it/test/describe/context` strings): collected once per harvest from inventory test files. Matched to surfaces by camelCase-aware token overlap (`UserLogin` → `{user, login}` matches `test_user_can_log_in`). Capped at 10 per surface.
+- ✅ Bean templates (`harvester/beans/templates.py`) updated: when LLM `behavioral_description` is absent but `behavioral_signals` is present, render docstring blockquote + JSDoc blockquote + test-name list under the **Behavioral description** heading. The literal `"TODO: Describe..."` placeholder only appears when there is **no** signal at all. **This is the headline goal-alignment payoff: beans without an API key now contain real behavioral content.**
+- ✅ Idempotent: a pre-existing `behavioral_signals` entry is preserved, not clobbered.
+- ✅ Failure-mode hardening: parse errors, missing files, malformed JSDoc all silently skipped (this is enrichment, not core analysis).
+- ✅ 23 unit tests in `tests/unit/test_behavioral_spec.py`: Python docstring extraction (function, class, module fallback, none), JSDoc extraction (single-line, multi-line, blank-line handling, no-jsdoc, body cleaning), test-name extraction (sync, async, syntax-error tolerance, non-test skip), name matching (substring, camelCase tokens, short-name skip, 10-cap), top-level integration (Python docstring on route, JSDoc on api, test-name attachment, no-clobber, no-signal, broken-source tolerance).
+- ✅ Suite: 1772 passed (up from 1749; +23 new). Ruff clean.
+
+Note: the bean's "module docstring as a context layer" sub-item is implemented as a fallback inside `_python_docstring_at` rather than as a separate signal — simpler and matches the spec.
 
 ## Notes
 
@@ -70,11 +88,12 @@ A new analyzer extracts intent signal from docstrings, test names, JSDoc/TSDoc c
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Behavioral-spec analyzer + bean template integration | developer | — | — | — | — |
+| 2 | Verify extraction + bean rendering fallback | tech-qa | — | — | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
+| **Total Tasks** | 2 |
+| **Total Duration** | 6h 3m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

@@ -12,6 +12,7 @@ logger = structlog.get_logger()
 # Guarded import — anthropic is optional
 try:
     import anthropic
+
     HAS_ANTHROPIC = True
 except ImportError:
     anthropic = None  # type: ignore[assignment]
@@ -30,7 +31,7 @@ class LLMClient:
     def __init__(
         self,
         api_key: str,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = "claude-sonnet-4-6",
         requests_per_minute: int = 30,
     ) -> None:
         if not HAS_ANTHROPIC:
@@ -45,7 +46,9 @@ class LLMClient:
         self._total_output_tokens: int = 0
         self._request_count: int = 0
 
-    def complete(self, system_prompt: str, user_prompt: str, max_tokens: int = 2048) -> str:
+    def complete(
+        self, system_prompt: str, user_prompt: str, max_tokens: int = 2048
+    ) -> str:
         """Send a completion request with rate limiting.
 
         Args:

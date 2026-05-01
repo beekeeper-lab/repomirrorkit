@@ -37,7 +37,11 @@ def _write_file(tmp_path: Path, rel_path: str, content: str) -> FileEntry:
     if dot != -1:
         ext = rel_path[dot:]
     return FileEntry(
-        path=rel_path, size=len(content), extension=ext, hash="abc123", category="source"
+        path=rel_path,
+        size=len(content),
+        extension=ext,
+        hash="abc123",
+        category="source",
     )
 
 
@@ -62,7 +66,11 @@ class TestEmptyResults:
 
     def test_no_workdir_returns_empty(self) -> None:
         entry = FileEntry(
-            path="src/app.ts", size=100, extension=".ts", hash="abc123", category="source"
+            path="src/app.ts",
+            size=100,
+            extension=".ts",
+            hash="abc123",
+            category="source",
         )
         inventory = _make_inventory([entry])
         result = analyze_middleware(inventory, _make_profile(), workdir=None)
@@ -262,7 +270,10 @@ MIDDLEWARE = [
         result = analyze_middleware(inventory, _make_profile(), workdir=tmp_path)
 
         assert len(result) == 1
-        assert "django.contrib.sessions.middleware.SessionMiddleware" in result[0].transforms
+        assert (
+            "django.contrib.sessions.middleware.SessionMiddleware"
+            in result[0].transforms
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -332,7 +343,9 @@ async def add_process_time_header(request, call_next):
         inventory = _make_inventory([entry])
         result = analyze_middleware(inventory, _make_profile(), workdir=tmp_path)
 
-        decorator_surfaces = [s for s in result if s.middleware_type == "fastapi_decorator"]
+        decorator_surfaces = [
+            s for s in result if s.middleware_type == "fastapi_decorator"
+        ]
         assert len(decorator_surfaces) == 1
         assert decorator_surfaces[0].transforms == ["http"]
 

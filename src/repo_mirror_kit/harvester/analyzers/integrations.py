@@ -317,7 +317,13 @@ def _scan_rest_clients(content: str, file_path: str) -> list[IntegrationSurface]
             method = match.group(1)
             url = match.group(2)
             if method not in {
-                "get", "post", "put", "delete", "patch", "head", "options",
+                "get",
+                "post",
+                "put",
+                "delete",
+                "patch",
+                "head",
+                "options",
             }:
                 continue
             surfaces.append(

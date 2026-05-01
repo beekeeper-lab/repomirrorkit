@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -94,10 +95,19 @@ def main() -> None:
     show_default=True,
 )
 @click.option(
+    "--max-total-bytes",
+    default=500 * 1024 * 1024,
+    type=int,
+    help="Maximum total on-disk size of the cloned repo (excluding .git). "
+    "Cloning aborts and the partial clone is removed if exceeded.",
+    show_default=True,
+)
+@click.option(
     "--resume",
     is_flag=True,
     default=False,
-    help="Resume from a previous incomplete run.",
+    help="Resume from a previous incomplete run. Skips the clone (Stage A) "
+    "if the working copy already exists; analysis stages always re-run.",
 )
 @click.option(
     "--fail-on-gaps/--no-fail-on-gaps",
@@ -112,20 +122,18 @@ def main() -> None:
     show_default=True,
 )
 @click.option(
-    "--llm-enabled",
-    is_flag=True,
-    default=False,
-    help="Enable LLM enrichment of surfaces using Claude.",
-)
-@click.option(
-    "--llm-api-key",
-    default=None,
-    envvar="ANTHROPIC_API_KEY",
-    help="Anthropic API key for LLM enrichment. Defaults to ANTHROPIC_API_KEY env var.",
+    "--llm/--no-llm",
+    "llm_enabled",
+    default=True,
+    help="Enable LLM enrichment of surfaces using Claude (default ON). "
+    "Reads the API key from ANTHROPIC_API_KEY (env var only). "
+    "If --llm is on but the env var is missing, the harvester emits a "
+    "warning and falls back to structural-only output. Use --no-llm to "
+    "skip enrichment without warning.",
 )
 @click.option(
     "--llm-model",
-    default="claude-sonnet-4-20250514",
+    default="claude-sonnet-4-6",
     help="Claude model to use for LLM enrichment.",
     show_default=True,
 )
@@ -136,14 +144,19 @@ def harvest(
     include: str | None,
     exclude: str | None,
     max_file_bytes: int,
+    max_total_bytes: int,
     resume: bool,
     fail_on_gaps: bool,
     log_level: str,
     llm_enabled: bool,
-    llm_api_key: str | None,
     llm_model: str,
 ) -> None:
     """Run the requirements harvester against a repository."""
+    # API key is sourced from the environment only — never accepted on
+    # argv (would leak into shell history and ps output). The HarvestConfig
+    # validator below raises a helpful ConfigValidationError if --llm-enabled
+    # is set without ANTHROPIC_API_KEY.
+    llm_api_key = os.environ.get("ANTHROPIC_API_KEY")
     try:
         config = HarvestConfig(
             repo=repo,
@@ -152,6 +165,7 @@ def harvest(
             include=parse_glob_patterns(include) if include else (),
             exclude=merge_exclude_globs(exclude),
             max_file_bytes=max_file_bytes,
+            max_total_bytes=max_total_bytes,
             resume=resume,
             fail_on_gaps=fail_on_gaps,
             log_level=log_level,

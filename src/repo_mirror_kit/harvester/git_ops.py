@@ -7,6 +7,7 @@ safety checks for Stage A of the harvester pipeline.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -15,6 +16,20 @@ from pathlib import Path
 import structlog
 
 logger = structlog.get_logger()
+
+# scp-like git URL form, e.g. ``git@github.com:user/repo.git``.
+_SCP_LIKE_URL_RE = re.compile(r"^[\w.-]+@[\w.-]+:[\w./~-]+$")
+
+# Supported URL prefixes for ``git clone``. Anything not starting with one of
+# these (or an absolute path, or matching the scp-like form above) is rejected
+# by ``_validate_clone_url`` to prevent argv-flag confusion and unsupported
+# transport vectors.
+_VALID_URL_PREFIXES: tuple[str, ...] = (
+    "https://",
+    "http://",
+    "ssh://",
+    "file://",
+)
 
 
 class GitNotFoundError(Exception):
@@ -27,6 +42,52 @@ class GitCloneError(Exception):
 
 class GitRefError(Exception):
     """Raised when a git ref checkout fails."""
+
+
+def validate_clone_url(url: str) -> None:
+    """Validate that *url* is one of the supported clone source forms.
+
+    The single canonical URL validator for the harvester. Used by:
+
+    - ``clone_repository`` (defense-in-depth before the subprocess call)
+    - ``HarvestConfig.__post_init__`` (boundary validation at config build)
+    - ``services.clone_service.validate_git_url`` (GUI-friendly wrapper that
+      converts the raised exception to a user-facing message string)
+
+    Rejects empty/whitespace strings, URLs starting with ``-`` (could be
+    misparsed by ``git clone`` as a flag), URLs containing whitespace, and
+    anything outside the documented allow-list (``https://``, ``http://``,
+    ``ssh://``, ``file://``, scp-like ``user@host:path``, or absolute local
+    paths beginning with ``/``).
+
+    Raises:
+        GitCloneError: If *url* fails validation.
+    """
+    if not url or not url.strip():
+        raise GitCloneError("Repository URL cannot be empty")
+    if url != url.strip():
+        raise GitCloneError(
+            f"Repository URL cannot have leading or trailing whitespace: {url!r}"
+        )
+    if " " in url:
+        raise GitCloneError(f"Repository URL cannot contain spaces: {url!r}")
+    if url.startswith("-"):
+        raise GitCloneError(
+            f"Repository URL cannot start with '-' (could be parsed as a "
+            f"git flag): {url!r}"
+        )
+    if url.startswith(_VALID_URL_PREFIXES):
+        return
+    if _SCP_LIKE_URL_RE.match(url):
+        return
+    if url.startswith("/"):
+        return
+    raise GitCloneError(
+        "Repository URL does not match a supported scheme "
+        "(https://, http://, ssh://, file://, "
+        "scp-like user@host:path, or absolute local path): "
+        f"{url!r}"
+    )
 
 
 @dataclass
@@ -58,10 +119,34 @@ def check_git_available() -> None:
         raise GitNotFoundError(msg)
 
 
+def _compute_total_size(workdir: Path) -> int:
+    """Sum the on-disk size of regular files under *workdir* (excluding ``.git``).
+
+    Symlinks are not followed. Returns the total in bytes.
+    """
+    total = 0
+    for dirpath, dirnames, filenames in os.walk(workdir):
+        # Skip the .git directory entirely.
+        if ".git" in Path(dirpath).parts:
+            dirnames.clear()
+            continue
+        for name in filenames:
+            fp = Path(dirpath) / name
+            if fp.is_symlink():
+                continue
+            try:
+                total += fp.stat().st_size
+            except OSError:
+                continue
+    return total
+
+
 def clone_repository(
     url: str,
     ref: str | None,
     workdir: Path,
+    *,
+    max_total_bytes: int | None = None,
 ) -> CloneResult:
     """Clone a repository, checkout a ref, and normalize the working copy.
 
@@ -84,10 +169,27 @@ def clone_repository(
         GitRefError: If the specified ref cannot be checked out.
     """
     check_git_available()
+    validate_clone_url(url)
 
     logger.info("clone_starting", url=url, ref=ref, workdir=str(workdir))
 
     _run_clone(url, workdir)
+
+    if max_total_bytes is not None:
+        actual = _compute_total_size(workdir)
+        if actual > max_total_bytes:
+            # Clean up the partial clone so we never leave a half-state on disk.
+            shutil.rmtree(workdir, ignore_errors=True)
+            raise GitCloneError(
+                f"Cloned repository size {actual} bytes exceeds cap "
+                f"of {max_total_bytes} bytes. Increase --max-total-bytes "
+                f"or use --include/--exclude to narrow scope."
+            )
+        logger.info(
+            "clone_size_ok",
+            actual_bytes=actual,
+            cap_bytes=max_total_bytes,
+        )
 
     if ref is not None:
         _checkout_ref(ref, workdir)
@@ -119,7 +221,9 @@ def _run_clone(url: str, workdir: Path) -> None:
     Raises:
         GitCloneError: If the clone process fails.
     """
-    cmd = ["git", "clone", "--progress", url, str(workdir)]
+    # ``--`` ensures that a URL beginning with ``-`` cannot be reinterpreted by
+    # git as a flag (defense-in-depth alongside ``_validate_clone_url``).
+    cmd = ["git", "clone", "--progress", "--", url, str(workdir)]
     logger.info("clone_running", cmd=cmd)
 
     try:

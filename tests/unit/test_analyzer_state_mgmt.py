@@ -37,7 +37,11 @@ def _write_file(tmp_path: Path, rel_path: str, content: str) -> FileEntry:
     if dot != -1:
         ext = rel_path[dot:]
     return FileEntry(
-        path=rel_path, size=len(content), extension=ext, hash="abc123", category="source"
+        path=rel_path,
+        size=len(content),
+        extension=ext,
+        hash="abc123",
+        category="source",
     )
 
 
@@ -62,7 +66,11 @@ class TestEmptyResults:
 
     def test_no_workdir_returns_empty(self) -> None:
         entry = FileEntry(
-            path="src/store.ts", size=100, extension=".ts", hash="abc123", category="source"
+            path="src/store.ts",
+            size=100,
+            extension=".ts",
+            hash="abc123",
+            category="source",
         )
         inventory = _make_inventory([entry])
         result = analyze_state_management(inventory, _make_profile(), workdir=None)
@@ -184,7 +192,9 @@ const apiSlice = createSlice({
         assert result[0].store_name == "api"
         assert result[0].actions == []
 
-    def test_configure_store_skipped_when_create_slice_present(self, tmp_path: Path) -> None:
+    def test_configure_store_skipped_when_create_slice_present(
+        self, tmp_path: Path
+    ) -> None:
         """configureStore is not double-counted when createSlice is also in the file."""
         entry = _write_file(
             tmp_path,

@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-044 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-05-01 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-05-01 12:52 |
+| **Completed** | 2026-05-01 12:55 |
+| **Duration** | 2h 4m |
+| **Owner** | team-lead |
 | **Category** | App |
 
 ## Problem Statement
@@ -48,7 +48,21 @@ Both the GUI and CLI enforce identical URL validation at the boundary, returning
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Promote validator to public + wire into HarvestConfig | developer | — | Done |
+| 2 | Verify parity + tests | tech-qa | 01 | Done |
+
+> Skipped: BA, Architect (mechanical refactor + boundary-validation wiring).
+
+### Verification (Tech-QA)
+
+- ✅ `_validate_clone_url` (private, BEAN-043) promoted to `validate_clone_url` (public). Single canonical strict validator in `harvester/git_ops.py`.
+- ✅ `services.clone_service.validate_git_url` is now a thin GUI-facing wrapper that calls `validate_clone_url` and converts `GitCloneError` → user-facing message string. GUI behavior preserved (still returns `None | str`).
+- ✅ `HarvestConfig.__post_init__` calls `validate_clone_url` and converts `GitCloneError` → `ConfigValidationError`. Both CLI and direct constructors now reject malformed URLs at the boundary.
+- ✅ Whitespace-rejection (was only in GUI) absorbed into the canonical validator so all callers get the same policy.
+- ✅ New `TestHarvestConfigUrlValidation` covers accept (https/ssh/scp-like/abs path) and reject (`--upload-pack`, `ftp://`, no-scheme, spaces).
+- ✅ All 4 pre-existing `test_clone_service.py` tests still pass without modification — the GUI wrapper preserves the `None | str` contract.
+- ✅ `uv run pytest` — **1701 passed** (up from 1693).
+- ✅ `uv run ruff check src/ tests/` — All checks passed.
 
 ## Notes
 
@@ -60,11 +74,12 @@ Both the GUI and CLI enforce identical URL validation at the boundary, returning
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Promote validator to public + wire into HarvestConfig | developer | — | — | — | — |
+| 2 | Verify parity + tests | tech-qa | — | — | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
+| **Total Tasks** | 2 |
+| **Total Duration** | 2h 4m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

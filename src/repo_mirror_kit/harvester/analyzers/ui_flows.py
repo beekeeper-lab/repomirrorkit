@@ -233,7 +233,9 @@ def _scan_wizards(content: str, file_path: str) -> list[UIFlowSurface]:
             if name not in steps:
                 steps.append(name)
 
-    first_match = wizard_matches[0] if wizard_matches else _ACTIVE_STEP_RE.search(content)
+    first_match = (
+        wizard_matches[0] if wizard_matches else _ACTIVE_STEP_RE.search(content)
+    )
     if first_match is None:
         return []
 
@@ -417,9 +419,7 @@ def _scan_modal_chains(content: str, file_path: str) -> list[UIFlowSurface]:
                 source_refs=[
                     SourceRef(
                         file_path=file_path,
-                        start_line=_line_number(
-                            content, modal_components[0].start()
-                        ),
+                        start_line=_line_number(content, modal_components[0].start()),
                     )
                 ],
             )
@@ -466,9 +466,7 @@ def _scan_onboarding(content: str, file_path: str) -> list[UIFlowSurface]:
 
     component_name = PurePosixPath(file_path).stem
     first_match = component_matches[0] if component_matches else None
-    start_line = (
-        _line_number(content, first_match.start()) if first_match else 1
-    )
+    start_line = _line_number(content, first_match.start()) if first_match else 1
 
     surfaces.append(
         UIFlowSurface(

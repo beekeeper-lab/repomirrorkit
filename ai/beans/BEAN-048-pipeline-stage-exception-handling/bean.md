@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-048 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-05-01 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-05-01 13:03 |
+| **Completed** | 2026-05-01 13:08 |
+| **Duration** | 2h 17m |
+| **Owner** | team-lead |
 | **Category** | App |
 
 ## Problem Statement
@@ -53,7 +53,22 @@ Each pipeline stage catches only the domain exceptions that stage can legitimate
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Replace generic except Exception with domain tuples | developer | — | Done |
+| 2 | Verify domain catch + bug propagation | tech-qa | 01 | Done |
+
+> Skipped: BA, Architect (mechanical refactor; tightening per stage uses already-defined exceptions).
+
+### Verification (Tech-QA)
+
+- ✅ All 9 `except Exception` blocks in `pipeline.py` replaced. New per-stage tuples documented at the top of the file:
+  - `_STAGE_A_EXCEPTIONS = (GitCloneError, GitRefError, GitNotFoundError)` for stage A.
+  - `_FS_EXCEPTIONS = (OSError,)` for stages B/C/C2/D/E/F/G — these are dominated by filesystem I/O. (Stage C2 catches its own LLM errors internally inside `enrich_surfaces`.)
+  - Outer wrapper narrowed from `except Exception` to `except (OSError, MemoryError)` for catastrophic-but-not-bug cases.
+- ✅ `grep "except Exception" src/repo_mirror_kit/harvester/pipeline.py` empty.
+- ✅ Updated existing parametrized `test_error_in_stage_returns_failure` to inject the appropriate domain exception per stage (`GitCloneError` for A, `OSError` for B-G). All 7 parametrizations pass.
+- ✅ Updated 3 other tests (`test_error_leaves_state_for_resume`, `test_resume_skips_completed_stage_a`, `test_callback_fires_stage_error_on_failure`) to use `OSError` instead of `RuntimeError`.
+- ✅ New `test_programming_bug_propagates_not_swallowed` injects `AttributeError` into Stage B and asserts the pipeline propagates it via `pytest.raises(AttributeError)` rather than catching it as a stage failure. **This is the load-bearing assertion that the tightening actually changes behavior.**
+- ✅ Suite: 1718 passed (up from 1717). Ruff clean.
 
 ## Notes
 
@@ -65,11 +80,12 @@ Each pipeline stage catches only the domain exceptions that stage can legitimate
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Replace generic except Exception with domain tuples | developer | — | — | — | — |
+| 2 | Verify domain catch + bug propagation | tech-qa | — | — | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
+| **Total Tasks** | 2 |
+| **Total Duration** | 2h 17m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

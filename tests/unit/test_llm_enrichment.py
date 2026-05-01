@@ -7,8 +7,6 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from repo_mirror_kit.harvester.analyzers.surfaces import (
     RouteSurface,
     SourceRef,
@@ -61,7 +59,9 @@ def _make_surfaces(count: int = 2) -> SurfaceCollection:
             name=f"route_{i}",
             path=f"/route/{i}",
             method="GET",
-            source_refs=[SourceRef(file_path=f"src/routes/r{i}.py", start_line=1, end_line=10)],
+            source_refs=[
+                SourceRef(file_path=f"src/routes/r{i}.py", start_line=1, end_line=10)
+            ],
         )
         for i in range(count)
     ]
@@ -103,7 +103,8 @@ class TestEnrichSurfacesSkipConditions:
         surfaces = _make_surfaces()
 
         with patch(
-            "repo_mirror_kit.harvester.llm.enrichment.HAS_ANTHROPIC", False,
+            "repo_mirror_kit.harvester.llm.enrichment.HAS_ANTHROPIC",
+            False,
         ):
             result = enrich_surfaces(surfaces, config, Path("/tmp"))
 
@@ -120,10 +121,16 @@ class TestEnrichSurfacesSkipConditions:
         surfaces = _make_surfaces()
 
         # Patch the config's api_key check by patching the attribute read
-        with patch(
-            "repo_mirror_kit.harvester.llm.enrichment.HAS_ANTHROPIC", True,
-        ), patch.object(
-            type(config), "llm_api_key", new_callable=lambda: property(lambda self: None),
+        with (
+            patch(
+                "repo_mirror_kit.harvester.llm.enrichment.HAS_ANTHROPIC",
+                True,
+            ),
+            patch.object(
+                type(config),
+                "llm_api_key",
+                new_callable=lambda: property(lambda self: None),
+            ),
         ):
             result = enrich_surfaces(surfaces, config, Path("/tmp"))
 

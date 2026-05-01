@@ -17,6 +17,11 @@ DEFAULT_EXCLUDE_GLOBS: tuple[str, ...] = (
 
 DEFAULT_MAX_FILE_BYTES: int = 1_000_000
 
+# Default cap on the total on-disk size of a cloned working copy (excluding
+# ``.git``). 500 MiB is generous for typical repositories but bounded enough
+# to prevent runaway behavior from pathological or malicious inputs.
+DEFAULT_MAX_TOTAL_BYTES: int = 500 * 1024 * 1024
+
 VALID_LOG_LEVELS: frozenset[str] = frozenset({"debug", "info", "warn", "error"})
 
 
@@ -39,7 +44,9 @@ class HarvestConfig:
         fail_on_gaps: Whether to fail with exit code 2 if coverage gaps are found.
         log_level: Logging level (debug, info, warn, error).
         llm_enabled: Whether to enable LLM enrichment of surfaces.
-        llm_api_key: Anthropic API key for LLM enrichment.
+        llm_api_key: Anthropic API key for LLM enrichment. Sourced from the
+            ``ANTHROPIC_API_KEY`` environment variable only — there is no CLI
+            flag for it, so the key cannot leak into shell history or argv.
         llm_model: Claude model to use for LLM enrichment.
     """
 
@@ -49,17 +56,29 @@ class HarvestConfig:
     include: tuple[str, ...] = ()
     exclude: tuple[str, ...] = DEFAULT_EXCLUDE_GLOBS
     max_file_bytes: int = DEFAULT_MAX_FILE_BYTES
+    max_total_bytes: int = DEFAULT_MAX_TOTAL_BYTES
     resume: bool = False
     fail_on_gaps: bool = True
     log_level: str = "info"
     llm_enabled: bool = False
     llm_api_key: str | None = None
-    llm_model: str = "claude-sonnet-4-20250514"
+    llm_model: str = "claude-sonnet-4-6"
 
     def __post_init__(self) -> None:
         """Validate configuration values after initialization."""
+        # Import locally to avoid a top-level circular import: git_ops also
+        # ships clone exceptions used elsewhere by config consumers.
+        from repo_mirror_kit.harvester.git_ops import (
+            GitCloneError,
+            validate_clone_url,
+        )
+
         if not self.repo:
             raise ConfigValidationError("--repo is required and cannot be empty")
+        try:
+            validate_clone_url(self.repo)
+        except GitCloneError as exc:
+            raise ConfigValidationError(str(exc)) from exc
         normalized_level = self.log_level.lower()
         if normalized_level not in VALID_LOG_LEVELS:
             raise ConfigValidationError(
@@ -72,11 +91,30 @@ class HarvestConfig:
             raise ConfigValidationError(
                 f"--max-file-bytes must be positive, got {self.max_file_bytes}"
             )
-        if self.llm_enabled and not self.llm_api_key:
+        if self.max_total_bytes <= 0:
             raise ConfigValidationError(
-                "--llm-api-key (or ANTHROPIC_API_KEY env var) is required"
-                " when --llm-enabled is set"
+                f"--max-total-bytes must be positive, got {self.max_total_bytes}"
             )
+        if self.llm_enabled and not self.llm_api_key:
+            # BEAN-056: --llm is default-on, so a missing API key must NOT
+            # raise — it would break every default invocation. Emit a clear,
+            # actionable warning to stderr and silently downgrade
+            # llm_enabled to False so the run continues in structural-only
+            # mode. Users who don't want the warning can pass --no-llm.
+            import sys
+
+            sys.stderr.write(
+                "\n"
+                "⚠ ANTHROPIC_API_KEY is not set — falling back to "
+                "structural-only mode (no LLM enrichment).\n"
+                "\n"
+                "  Get a key: https://console.anthropic.com/settings/keys\n"
+                "  Then run:  export ANTHROPIC_API_KEY=sk-ant-...\n"
+                "\n"
+                "  To suppress this warning, pass --no-llm.\n"
+                "\n"
+            )
+            object.__setattr__(self, "llm_enabled", False)
 
 
 def parse_glob_patterns(value: str) -> tuple[str, ...]:

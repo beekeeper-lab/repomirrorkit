@@ -61,22 +61,22 @@
 | BEAN-037 | CLAUDE.md Generator (Stage G) | App | High | Done | team-lead |
 | BEAN-038 | File Coverage Analysis & Uncovered File Detection | App | High | Done | team-lead |
 | BEAN-039 | Claude-Kit Health Check | Infra | Medium | Done | team-lead |
-| BEAN-040 | Fix Stale Project Framing in Docs | App | Low | Approved | (unassigned) |
-| BEAN-041 | Bump Default LLM Model to Sonnet 4.6 | App | Medium | Approved | (unassigned) |
-| BEAN-042 | Delete Vestigial `runtime_verify` Package | App | Low | Approved | (unassigned) |
-| BEAN-043 | Harden `git clone` Argv (Terminator + URL Scheme) | App | High | Unapproved | (unassigned) |
-| BEAN-044 | CLI URL Validation Parity with GUI | App | High | Unapproved | (unassigned) |
-| BEAN-045 | Drop `--llm-api-key` CLI Flag, Helpful Missing-Key Error | App | High | Unapproved | (unassigned) |
-| BEAN-046 | Mitigate LLM Prompt Injection from Repo Content | App | High | Unapproved | (unassigned) |
-| BEAN-047 | Cloned-Repo Total-Size Cap | App | Medium | Unapproved | (unassigned) |
-| BEAN-048 | Tighten Pipeline Per-Stage Exception Handling | App | Medium | Unapproved | (unassigned) |
-| BEAN-049 | Fix Misleading Pipeline Resume-Skip Branches | App | Medium | Unapproved | (unassigned) |
-| BEAN-050 | Fixture-Repo End-to-End Integration Test | App | High | Approved | (unassigned) |
-| BEAN-051 | Generate Top-Level `REQUIREMENTS.md` Aggregator | App | High | Unapproved | (unassigned) |
-| BEAN-052 | Generate `.env.example` from Config Surfaces | App | Medium | Unapproved | (unassigned) |
-| BEAN-053 | Generate `RUNBOOK.md` from Build/Deploy Surfaces | App | Medium | Unapproved | (unassigned) |
-| BEAN-054 | Behavioral-Spec Analyzer (Docstrings + Test Names) | App | High | Unapproved | (unassigned) |
-| BEAN-055 | Data-Model Relationships Report (with Mermaid ER) | App | Medium | Unapproved | (unassigned) |
-| BEAN-056 | LLM Enrichment Default-On with Graceful Missing-Key UX | App | Medium | Unapproved | (unassigned) |
-| BEAN-057 | Split `analyzers/models.py` by Framework (Tracer Bullet) | App | Low | Unapproved | (unassigned) |
-| BEAN-058 | Fix `telemetry-stamp` Hook Path Resolution | Infra | High | Unapproved | (unassigned) |
+| BEAN-040 | Fix Stale Project Framing in Docs | App | Low | Done | team-lead |
+| BEAN-041 | Bump Default LLM Model to Sonnet 4.6 | App | Medium | Done | team-lead |
+| BEAN-042 | Delete Vestigial `runtime_verify` Package | App | Low | Done | team-lead |
+| BEAN-043 | Harden `git clone` Argv (Terminator + URL Scheme) | App | High | Done | team-lead |
+| BEAN-044 | CLI URL Validation Parity with GUI | App | High | Done | team-lead |
+| BEAN-045 | Drop `--llm-api-key` CLI Flag, Helpful Missing-Key Error | App | High | Done | team-lead |
+| BEAN-046 | Mitigate LLM Prompt Injection from Repo Content | App | High | Done | team-lead |
+| BEAN-047 | Cloned-Repo Total-Size Cap | App | Medium | Done | team-lead |
+| BEAN-048 | Tighten Pipeline Per-Stage Exception Handling | App | Medium | Done | team-lead |
+| BEAN-049 | Fix Misleading Pipeline Resume-Skip Branches | App | Medium | Done | team-lead |
+| BEAN-050 | Fixture-Repo End-to-End Integration Test | App | High | Done | team-lead |
+| BEAN-051 | Generate Top-Level `REQUIREMENTS.md` Aggregator | App | High | Done | team-lead |
+| BEAN-052 | Generate `.env.example` from Config Surfaces | App | Medium | Done | team-lead |
+| BEAN-053 | Generate `RUNBOOK.md` from Build/Deploy Surfaces | App | Medium | Done | team-lead |
+| BEAN-054 | Behavioral-Spec Analyzer (Docstrings + Test Names) | App | High | Done | team-lead |
+| BEAN-055 | Data-Model Relationships Report (with Mermaid ER) | App | Medium | Done | team-lead |
+| BEAN-056 | LLM Enrichment Default-On with Graceful Missing-Key UX | App | Medium | Done | team-lead |
+| BEAN-057 | Split `analyzers/models.py` by Framework (Tracer Bullet) | App | Low | Done | team-lead |
+| BEAN-058 | Fix `telemetry-stamp` Hook Path Resolution | Infra | High | Done | team-lead |

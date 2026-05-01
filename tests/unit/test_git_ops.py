@@ -14,10 +14,192 @@ from repo_mirror_kit.harvester.git_ops import (
     GitNotFoundError,
     GitRefError,
     _check_symlinks,
+    _compute_total_size,
     _normalize_file,
     _normalize_line_endings,
     clone_repository,
+    validate_clone_url,
 )
+
+
+class TestValidateCloneUrl:
+    """Tests for the URL allow-list validator (BEAN-043)."""
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://github.com/user/repo.git",
+            "http://example.com/repo",
+            "ssh://git@github.com/user/repo.git",
+            "file:///srv/repos/local.git",
+            "git@github.com:user/repo.git",
+            "/abs/local/path",
+            "/var/repos/foo.git",
+        ],
+    )
+    def test_accepts_supported_forms(self, url: str) -> None:
+        # Should return without raising.
+        validate_clone_url(url)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "--upload-pack=evil.sh",
+            "--config=core.sshCommand=evil",
+            "-not-a-url",
+        ],
+    )
+    def test_rejects_dash_prefixed_urls(self, url: str) -> None:
+        with pytest.raises(GitCloneError, match=r"cannot start with '-'"):
+            validate_clone_url(url)
+
+    def test_rejects_empty_url(self) -> None:
+        with pytest.raises(GitCloneError, match=r"cannot be empty"):
+            validate_clone_url("")
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "ftp://example.com/repo",
+            "relative/path",
+            "github.com/user/repo",
+            "user@host",  # missing path part
+        ],
+    )
+    def test_rejects_unsupported_schemes(self, url: str) -> None:
+        with pytest.raises(GitCloneError, match=r"does not match a supported scheme"):
+            validate_clone_url(url)
+
+
+class TestSizeCap:
+    """Tests for the cloned-repo total-size cap (BEAN-047)."""
+
+    def test_compute_total_size_excludes_dotgit(self, tmp_path: Path) -> None:
+        # Create some content + a .git dir with a large file inside.
+        (tmp_path / "file_a.txt").write_bytes(b"a" * 100)
+        (tmp_path / "file_b.txt").write_bytes(b"b" * 200)
+        git_dir = tmp_path / ".git"
+        git_dir.mkdir()
+        (git_dir / "objects.pack").write_bytes(b"x" * 10_000)
+
+        # Should sum only the two top-level files, not the .git pack.
+        assert _compute_total_size(tmp_path) == 300
+
+    def test_compute_total_size_skips_symlinks(self, tmp_path: Path) -> None:
+        (tmp_path / "real.txt").write_bytes(b"r" * 50)
+        (tmp_path / "link.txt").symlink_to(tmp_path / "real.txt")
+        # Only the regular file's size is counted.
+        assert _compute_total_size(tmp_path) == 50
+
+    @patch(
+        "repo_mirror_kit.harvester.git_ops.shutil.which", return_value="/usr/bin/git"
+    )
+    @patch("repo_mirror_kit.harvester.git_ops.subprocess.run")
+    def test_clone_aborts_when_total_size_exceeds_cap(
+        self,
+        mock_run: MagicMock,
+        mock_which: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        workdir = tmp_path / "repo"
+
+        def fake_clone(
+            *args: object, **_kwargs: object
+        ) -> subprocess.CompletedProcess[str]:
+            # Simulate git clone creating a workdir with a large file.
+            workdir.mkdir(parents=True, exist_ok=True)
+            (workdir / "huge.bin").write_bytes(b"x" * 1024)
+            return subprocess.CompletedProcess(args=[], returncode=0, stderr="")
+
+        mock_run.side_effect = fake_clone
+
+        with pytest.raises(GitCloneError, match=r"exceeds cap"):
+            clone_repository(
+                "https://example.com/repo.git",
+                None,
+                workdir,
+                max_total_bytes=100,
+            )
+        # Partial clone must be cleaned up.
+        assert not workdir.exists()
+
+    @patch(
+        "repo_mirror_kit.harvester.git_ops.shutil.which", return_value="/usr/bin/git"
+    )
+    @patch("repo_mirror_kit.harvester.git_ops.subprocess.run")
+    def test_clone_succeeds_when_total_size_under_cap(
+        self,
+        mock_run: MagicMock,
+        mock_which: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        workdir = tmp_path / "repo"
+
+        def fake_clone(
+            *args: object, **_kwargs: object
+        ) -> subprocess.CompletedProcess[str]:
+            workdir.mkdir(parents=True, exist_ok=True)
+            (workdir / "small.txt").write_bytes(b"hi")
+            return subprocess.CompletedProcess(args=[], returncode=0, stderr="")
+
+        mock_run.side_effect = fake_clone
+
+        result = clone_repository(
+            "https://example.com/repo.git",
+            None,
+            workdir,
+            max_total_bytes=10_000,
+        )
+        assert result.repo_dir == workdir
+        assert workdir.exists()
+
+
+class TestCloneArgv:
+    """Verify ``git clone`` argv includes ``--`` before the URL (BEAN-043)."""
+
+    @patch(
+        "repo_mirror_kit.harvester.git_ops.shutil.which", return_value="/usr/bin/git"
+    )
+    @patch("repo_mirror_kit.harvester.git_ops.subprocess.run")
+    def test_argv_contains_terminator_before_url(
+        self,
+        mock_run: MagicMock,
+        mock_which: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_run.return_value = MagicMock(returncode=0, stderr="")
+        url = "https://github.com/user/repo.git"
+        try:
+            clone_repository(url, None, tmp_path / "repo")
+        except Exception:  # noqa: S110 - argv shape is the only contract under test
+            pass
+
+        # Find the call that invoked `git clone`.
+        clone_call = next(
+            (
+                c
+                for c in mock_run.call_args_list
+                if c.args and c.args[0][:2] == ["git", "clone"]
+            ),
+            None,
+        )
+        assert clone_call is not None, "expected a git clone subprocess call"
+        argv = clone_call.args[0]
+        # `--` must appear immediately before the URL.
+        assert "--" in argv, f"argv missing terminator: {argv}"
+        dash_idx = argv.index("--")
+        assert argv[dash_idx + 1] == url, f"`--` must precede URL; argv was {argv}"
+
+    @patch(
+        "repo_mirror_kit.harvester.git_ops.shutil.which", return_value="/usr/bin/git"
+    )
+    def test_invalid_url_rejected_before_subprocess(
+        self,
+        mock_which: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        with pytest.raises(GitCloneError):
+            clone_repository("--upload-pack=evil", None, tmp_path / "repo")
 
 
 class TestCheckGitAvailable:
@@ -98,6 +280,7 @@ class TestCloneRepository:
             "git",
             "clone",
             "--progress",
+            "--",
             "https://example.com/repo.git",
             str(workdir),
         ]

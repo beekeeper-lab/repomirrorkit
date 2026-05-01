@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-052 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-05-01 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-05-01 16:36 |
+| **Completed** | 2026-05-01 16:38 |
+| **Duration** | 5h 47m |
+| **Owner** | team-lead |
 | **Category** | App |
 
 ## Problem Statement
@@ -57,7 +57,22 @@ After a successful harvest run, `<out>/.env.example` contains every environment 
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | env_example.py generator + assembler wire-up | developer | — | Done |
+| 2 | Verify dedupe/sort/heuristics/integration | tech-qa | 01 | Done |
+
+> Skipped: BA, Architect (small derived-artifact generator).
+
+### Verification (Tech-QA)
+
+- ✅ `harvester/generator/env_example.py` exists with `generate_env_example(surfaces, output_dir) → Path`. Writes `<output_dir>/.env.example`.
+- ✅ Wired into `assembler.py` step 5 (after REQUIREMENTS.md). Always runs (no gating); empty collections produce a header-only file.
+- ✅ Dedup by env_var_name (first occurrence wins; deterministic order preserved by SurfaceCollection iteration).
+- ✅ Alphabetical sort across the file.
+- ✅ Placeholder heuristics by name suffix: `_URL/_URI/_ENDPOINT/_HOST/_HOSTNAME` → `https://example.com`; `_PORT` → `8080`; `_TOKEN/_KEY/_SECRET/_PASSWORD/_PASSWD/_API_KEY/_PRIVATE_KEY` → `your-secret-here`; `DEBUG/_DEBUG/_VERBOSE` → `false`; `_TIMEOUT/_INTERVAL` → `30`; otherwise → `changeme`.
+- ✅ Each entry has a comment line above it. Comment uses LLM-enriched `inferred_intent` if present, else `Used in: <files>`, else source-refs, else "Source location unknown".
+- ✅ Placeholder is **never** copied from `default_value` so generated values are not mistaken for real defaults.
+- ✅ 14 unit tests in `tests/unit/test_env_example.py`: heuristic rules (parametrized), file location, empty collection, dedupe, sort order, comment-precedes-key, placeholder application, empty-name skip, enrichment-intent preference.
+- ✅ Suite: 1741 passed (up from 1727; +14 new). Ruff clean.
 
 ## Notes
 
@@ -70,11 +85,12 @@ After a successful harvest run, `<out>/.env.example` contains every environment 
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | env_example.py generator + assembler wire-up | developer | — | — | — | — |
+| 2 | Verify dedupe/sort/heuristics/integration | tech-qa | — | — | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
+| **Total Tasks** | 2 |
+| **Total Duration** | 5h 47m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

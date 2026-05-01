@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "repo-mirror-kit"
 version = "0.1.0"
-description = "A desktop tool for mirroring git repositories"
+description = "Requirements harvester: analyze a Git repository and emit structured requirement artifacts and a Claude Code project scaffold."
 requires-python = ">=3.12"
 dependencies = [
     "PySide6>=6.7",
@@ -33,6 +33,7 @@ packages = ["src/repo_mirror_kit"]
 target-version = "py312"
 line-length = 88
 src = ["src"]
+extend-exclude = ["tests/fixtures"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "S", "B", "A", "C4", "RUF"]
@@ -40,6 +41,7 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "S108"]
+"tests/integration/conftest.py" = ["S101", "S108", "S603", "S607"]
 "src/repo_mirror_kit/services/clone_service.py" = ["S603", "S607"]
 "src/repo_mirror_kit/harvester/git_ops.py" = ["S603", "S607"]
 
@@ -54,3 +56,7 @@ warn_unused_configs = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+norecursedirs = ["fixtures"]
+markers = [
+    "integration: end-to-end harvester pipeline tests against checked-in fixture projects (slower; opt-out with -m 'not integration')",
+]

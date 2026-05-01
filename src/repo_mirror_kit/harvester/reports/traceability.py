@@ -337,7 +337,11 @@ def _build_middleware_to_routes(surfaces: SurfaceCollection) -> str:
     lines.append("|-----------|------|------------|")
 
     for mw in surfaces.middleware:
-        applies = ", ".join(f"`{a}`" for a in mw.applies_to) if mw.applies_to else "all routes"
+        applies = (
+            ", ".join(f"`{a}`" for a in mw.applies_to)
+            if mw.applies_to
+            else "all routes"
+        )
         lines.append(f"| {mw.name} | {mw.middleware_type} | {applies} |")
 
     lines.append("")

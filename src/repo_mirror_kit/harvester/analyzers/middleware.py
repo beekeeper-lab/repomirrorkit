@@ -204,8 +204,7 @@ def _scan_express_koa(content: str, file_path: str) -> list[MiddlewareSurface]:
         # Skip if already matched by Express pattern at same offset.
         already_matched = any(
             s.source_refs
-            and s.source_refs[0].start_line
-            == _line_number(content, match.start())
+            and s.source_refs[0].start_line == _line_number(content, match.start())
             for s in surfaces
         )
         if already_matched:

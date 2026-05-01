@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-058 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-05-01 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-05-01 10:51 |
+| **Completed** | 2026-05-01 10:56 |
+| **Duration** | 6m |
+| **Owner** | team-lead |
 | **Category** | Infra |
 
 ## Problem Statement
@@ -61,7 +61,10 @@ The `telemetry-stamp.py` hook fires successfully on every bean.md, tasks/*.md, a
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Fix hook path in `.claude/shared/settings.json` | developer | — | Pending |
+| 2 | Verify hook fires + audit other commands | tech-qa | 01 | Pending |
+
+> Skipped: BA (no requirements gathering needed for one-line config fix); Architect (single-line consistency change to match established convention at lines 18/27).
 
 ## Notes
 
@@ -71,15 +74,40 @@ The `telemetry-stamp.py` hook fires successfully on every bean.md, tasks/*.md, a
 - Cross-repo touchpoint: foundry → claude-kit. Per the project rule "Never push to claude-kit from this repo — only foundry pushes," the foundry PR happens in a separate working tree, not here.
 - Other hooks worth checking for the same pattern when this bean runs: any other `command:` strings in `settings.json` that use `.claude/...` relative paths.
 
+### Implementation chosen — Option A path documented + working-tree fix applied
+
+- **Working-tree fix** (immediate): edited `.claude/shared/settings.json:38` from `python3 .claude/shared/hooks/telemetry-stamp.py` to `python3 "$CLAUDE_PROJECT_DIR/.claude/shared/hooks/telemetry-stamp.py"`. This is a working-tree edit inside the `claude-kit` submodule. **Not committed in the submodule** (would create a SHA divergence from foundry's upstream). **Parent repo records no submodule SHA bump.** The fix lives until the next `git submodule update` or fresh clone.
+- **Foundry PR todo** (persistent fix — must be done from a foundry working tree, not from here):
+  - Repo: `git@github.com:beekeeper-lab/claude-kit.git`
+  - File: `settings.json` (root)
+  - Line: 38
+  - Change: bring `telemetry-stamp.py` invocation into the same convention already used at lines 18 and 27 for `bash_safety.py` and `write_safety.py`. Exact diff:
+    ```diff
+    -            "command": "python3 .claude/shared/hooks/telemetry-stamp.py"
+    +            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/shared/hooks/telemetry-stamp.py\""
+    ```
+  - Rationale for foundry reviewer: single-line consistency fix; `$CLAUDE_PROJECT_DIR` is already proven to work in the same file (lines 18, 27); fixes a hook-cwd-resolution bug observed in repomirrorkit during a multi-bean editing session.
+- **Option B (local override) was investigated and rejected.** `claude-sync.sh` deep-merges `shared/settings.json` and `local/settings.json` with **list concatenation** for hook arrays (see `.claude/shared/scripts/claude-sync.sh:299-310`). A local override cannot remove the broken hook entry — it can only add another one alongside it, leaving the broken entry to keep firing. The only clean fix is upstream in the submodule.
+
+### Verification (Tech-QA)
+
+- ✅ Hook smoke-test: editing this very bean.md file and BEAN-058's task files during this session fired the hook with **no error messages** and **correctly stamped** Started/Completed/Duration on Task 01 (Duration `< 1m` recorded automatically; see Telemetry table below).
+- ✅ Audit: `grep -nE '"command":' .claude/shared/settings.json | grep -v 'CLAUDE_PROJECT_DIR' | grep -v 'npx' | grep -v 'branch='` returns no offenders. Line 38 was the lone holdout.
+- ⚠️ Pre-existing test/lint issues, **not regressions from this bean** (settings.json is not covered by ruff or pytest):
+  - `uv run ruff check src/ tests/` reports 12 `I001` import-block-format errors in pre-existing test files (e.g., `tests/unit/test_analyzer_ui_flows.py`). All 12 are `--fix`-able with `ruff check --fix`. Recommended follow-up bean.
+  - `uv run pytest` reports 1 failure: `tests/unit/test_generator.py::TestAssembler::test_result_counts`. The assertion `len(result.generated_files) == result.agent_count + result.stack_count + 1` is stale — the assembler also copies `.claude/` infrastructure (`assembler.py:91-101`), inflating `generated_files` to 277 vs the expected ~5. Test contract needs updating to either count the copied infra or exclude it. Recommended follow-up bean.
+  - These will affect `/long-run`'s pytest gate on subsequent beans. Decision deferred to the user before continuing the autonomous loop.
+
 ## Telemetry
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Fix hook path in `.claude/shared/settings.json` | developer | < 1m | 1,505,864 | 2,045 | $2.46 |
+| 2 | Verify hook fires + audit other commands | tech-qa | < 1m | 38,607,863 | 299,141 | $108.72 |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
-| **Total Tokens In** | — |
-| **Total Tokens Out** | — |
+| **Total Tasks** | 2 |
+| **Total Duration** | 1m |
+| **Total Tokens In** | 40,113,727 |
+| **Total Tokens Out** | 301,186 |

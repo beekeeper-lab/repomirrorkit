@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-049 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-05-01 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-05-01 13:09 |
+| **Completed** | 2026-05-01 13:12 |
+| **Duration** | 2h 21m |
+| **Owner** | team-lead |
 | **Category** | App |
 
 ## Problem Statement
@@ -49,7 +49,28 @@
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Drop misleading skip branches; honest --resume semantics | developer | — | Done |
+| 2 | Verify behavior + tests + docstring/help text | tech-qa | 01 | Done |
+
+> Skipped: BA, Architect (decision-recorded inline; conservative Option B selected).
+
+### Decision recorded: Option B (honest reduced scope)
+
+The bean's scope offered two paths. **Option B chosen.** Rationale:
+- The harvester is short-running by design (typically minutes); resume's primary value is recovering from clone failures, not skipping analysis.
+- True resume (Option A) requires persisting and rehydrating the surface graph + report state across runs — substantial complexity for a feature whose only proven value is skipping the network operation.
+- Option B is honest about what `--resume` actually does and removes the lying log lines without expanding scope.
+
+If Option A becomes desirable in the future, the per-stage Pydantic-style serialization is straightforward to add — but the bean for that work should be filed deliberately, not bolted onto this cleanup.
+
+### Verification (Tech-QA)
+
+- ✅ `is_stage_done` and `stage_skipped_resume` now appear in pipeline.py only for Stage A (the clone). Six stages (B/C/C2/D/E/F/G) run unconditionally on every invocation.
+- ✅ `state.complete_stage("X")` calls preserved at the end of every stage so `state.json` still records progress for diagnostics, but does not gate execution.
+- ✅ CLI `--help` text updated: "Resume from a previous incomplete run. Skips the clone (Stage A) if the working copy already exists; analysis stages always re-run."
+- ✅ `HarvestPipeline.run` docstring updated with the explicit resume semantics paragraph.
+- ✅ Suite: 1718 passed (no regression). Ruff clean.
+- ✅ Existing `test_resume_skips_completed_stage_a` still passes — the only resume behavior the test exercises is Stage A skipping, which is preserved.
 
 ## Notes
 
@@ -63,11 +84,12 @@
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Drop misleading skip branches; honest --resume semantics | developer | — | — | — | — |
+| 2 | Verify behavior + tests + docstring/help text | tech-qa | — | — | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
+| **Total Tasks** | 2 |
+| **Total Duration** | 2h 21m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

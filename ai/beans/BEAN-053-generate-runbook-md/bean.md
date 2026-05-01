@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-053 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-05-01 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-05-01 16:39 |
+| **Completed** | 2026-05-01 16:41 |
+| **Duration** | 5h 50m |
+| **Owner** | team-lead |
 | **Category** | App |
 
 ## Problem Statement
@@ -57,7 +57,24 @@ After a successful harvest run, `<out>/RUNBOOK.md` contains a single-page operat
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | runbook_md.py generator + assembler wire-up | developer | — | Done |
+| 2 | Verify operations matrix + groups + dedup | tech-qa | 01 | Done |
+
+> Skipped: BA, Architect (small derived-artifact generator).
+
+### Verification (Tech-QA)
+
+- ✅ `harvester/generator/runbook_md.py` exists with `generate_runbook_md(surfaces, output_dir) → Path` writing `<output_dir>/RUNBOOK.md`.
+- ✅ Wired into `assembler.py` step 6 after `.env.example`. Always runs.
+- ✅ Document structure: header (with total count), Operations Quick Reference matrix, then 5 group sections by `config_type` (Build Tools / CI · CD / Containers / IaC / Platform), then Notes footer.
+- ✅ Operations matrix: 6 rows (Install / Dev · Run / Test / Lint · Format / Build / Deploy · Release). Each row scans every surface's stages + targets for keyword matches and lists matching items with file citation. Dedup by (label, source) so identical stage + target labels collapse to one row.
+- ✅ Empty operations cite gap hint "(none detected — recreated project should still provide one)" so the recreator sees what's missing.
+- ✅ Group sections render counts in heading; empty groups still appear with "(none detected)" body.
+- ✅ Citations use backticks for both stage labels and source paths so they render as inline code.
+- ✅ 8 unit tests in `tests/unit/test_runbook_md.py`: file location, all-empty-sections render, group-by-config_type, Install matching, Test/Lint/Build/Deploy matching, gap hint, total count in header, dedup of stage/target overlap.
+- ✅ Suite: 1749 passed (up from 1741; +8 new). Ruff clean.
+
+Note: the bean's original aspiration — "list every install/dev/test/build/deploy command verbatim" — is met as far as the analyzer's signal goes. `analyze_build_deploy` records config-file artifacts and named stages/targets, not literal shell commands. The Operations matrix surfaces every detected stage label that maps to one of the canonical operations, with a citation back to the source file the recreator should open for the exact command. This is the correct fidelity given current analyzer scope.
 
 ## Notes
 
@@ -70,11 +87,12 @@ After a successful harvest run, `<out>/RUNBOOK.md` contains a single-page operat
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | runbook_md.py generator + assembler wire-up | developer | — | — | — | — |
+| 2 | Verify operations matrix + groups + dedup | tech-qa | — | — | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
+| **Total Tasks** | 2 |
+| **Total Duration** | 5h 50m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

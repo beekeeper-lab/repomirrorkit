@@ -14,9 +14,13 @@ from pathlib import Path
 import structlog
 
 from repo_mirror_kit.harvester.analyzers.surfaces import SurfaceCollection
+from repo_mirror_kit.harvester.beans.writer import WrittenBean
 from repo_mirror_kit.harvester.detectors.base import StackProfile
 from repo_mirror_kit.harvester.generator.agents import GeneratedAgent, generate_agents
 from repo_mirror_kit.harvester.generator.claude_md import generate_claude_md
+from repo_mirror_kit.harvester.generator.env_example import generate_env_example
+from repo_mirror_kit.harvester.generator.requirements_md import generate_requirements_md
+from repo_mirror_kit.harvester.generator.runbook_md import generate_runbook_md
 from repo_mirror_kit.harvester.generator.stacks import generate_stacks
 
 logger = structlog.get_logger()
@@ -63,6 +67,7 @@ def assemble_project_folder(
     project_name: str,
     surfaces: SurfaceCollection,
     profile: StackProfile,
+    beans: list[WrittenBean] | None = None,
 ) -> GeneratorResult:
     """Assemble a complete Claude Code project folder.
 
@@ -139,6 +144,49 @@ def assemble_project_folder(
     generated_files.append(claude_md_path)
 
     logger.info("generator_claude_md_done")
+
+    # Step 4 (BEAN-051): Top-level REQUIREMENTS.md aggregator at the harvest
+    # output root (parent of project-folder/). This is the front door of the
+    # harvest output.
+    if beans is not None:
+        requirements_path = generate_requirements_md(
+            project_name=project_name,
+            surfaces=surfaces,
+            profile=profile,
+            beans=beans,
+            output_dir=output_dir,
+        )
+        generated_files.append(requirements_path)
+        logger.info(
+            "generator_requirements_md_done",
+            path=str(requirements_path),
+            bean_count=len(beans),
+        )
+
+    # Step 5 (BEAN-052): .env.example derived from config surfaces, written
+    # at the harvest output root.
+    env_example_path = generate_env_example(
+        surfaces=surfaces,
+        output_dir=output_dir,
+    )
+    generated_files.append(env_example_path)
+    logger.info(
+        "generator_env_example_done",
+        path=str(env_example_path),
+        config_count=len(surfaces.config),
+    )
+
+    # Step 6 (BEAN-053): RUNBOOK.md derived from build/deploy surfaces.
+    runbook_path = generate_runbook_md(
+        surfaces=surfaces,
+        output_dir=output_dir,
+    )
+    generated_files.append(runbook_path)
+    logger.info(
+        "generator_runbook_md_done",
+        path=str(runbook_path),
+        build_deploy_count=len(surfaces.build_deploy),
+    )
 
     result = GeneratorResult(
         output_dir=project_dir,

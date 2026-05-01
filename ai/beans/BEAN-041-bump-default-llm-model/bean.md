@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-041 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-05-01 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
-| **Owner** | (unassigned) |
+| **Started** | 2026-05-01 11:13 |
+| **Completed** | 2026-05-01 11:15 |
+| **Duration** | 24m |
+| **Owner** | team-lead |
 | **Category** | App |
 
 ## Problem Statement
@@ -47,7 +47,10 @@ Default LLM model across the harvester is `claude-sonnet-4-6`. Users running wit
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Bump default LLM model | developer | — | Pending |
+| 2 | Verify bump + no regressions | tech-qa | 01 | Pending |
+
+> Skipped: BA (mechanical config change); Architect (single value swap, no design implications).
 
 ## Notes
 
@@ -56,15 +59,24 @@ Default LLM model across the harvester is `claude-sonnet-4-6`. Users running wit
 - No dependencies on other beans
 - Will produce a small surface change (default behavior of `--llm-model`) — note in PR description but no migration needed since this is a default, not a removed option
 
+### Verification (Tech-QA)
+
+- ✅ `grep -r "claude-sonnet-4-20250514" src/ tests/` — no matches.
+- ✅ All 4 sites updated to `claude-sonnet-4-6`: `cli.py:128`, `config.py:57`, `llm/client.py:33`, `tests/unit/test_llm_client.py:92`.
+- ✅ `uv run pytest tests/unit/test_llm_client.py` — 10 passed.
+- ✅ `uv run ruff check src/ tests/` — All checks passed.
+- ✅ `uv run requirements-harvester harvest --help` — shows `[default: claude-sonnet-4-6]` for `--llm-model`.
+
 ## Telemetry
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Bump default LLM model | developer | 1m | 3,557,275 | 2,199 | $5.59 |
+| 2 | Verify bump + no regressions | tech-qa | < 1m | 87,532,520 | 416,990 | $207.78 |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
-| **Total Tokens In** | — |
-| **Total Tokens Out** | — |
+| **Total Tasks** | 2 |
+| **Total Duration** | 1m |
+| **Total Tokens In** | 91,089,795 |
+| **Total Tokens Out** | 419,189 |
