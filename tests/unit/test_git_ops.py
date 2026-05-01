@@ -16,8 +16,104 @@ from repo_mirror_kit.harvester.git_ops import (
     _check_symlinks,
     _normalize_file,
     _normalize_line_endings,
+    _validate_clone_url,
     clone_repository,
 )
+
+
+class TestValidateCloneUrl:
+    """Tests for the URL allow-list validator (BEAN-043)."""
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://github.com/user/repo.git",
+            "http://example.com/repo",
+            "ssh://git@github.com/user/repo.git",
+            "file:///srv/repos/local.git",
+            "git@github.com:user/repo.git",
+            "/abs/local/path",
+            "/var/repos/foo.git",
+        ],
+    )
+    def test_accepts_supported_forms(self, url: str) -> None:
+        # Should return without raising.
+        _validate_clone_url(url)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "--upload-pack=evil.sh",
+            "--config=core.sshCommand=evil",
+            "-not-a-url",
+        ],
+    )
+    def test_rejects_dash_prefixed_urls(self, url: str) -> None:
+        with pytest.raises(GitCloneError, match=r"cannot start with '-'"):
+            _validate_clone_url(url)
+
+    def test_rejects_empty_url(self) -> None:
+        with pytest.raises(GitCloneError, match=r"cannot be empty"):
+            _validate_clone_url("")
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "ftp://example.com/repo",
+            "relative/path",
+            "github.com/user/repo",
+            "user@host",  # missing path part
+        ],
+    )
+    def test_rejects_unsupported_schemes(self, url: str) -> None:
+        with pytest.raises(GitCloneError, match=r"does not match a supported scheme"):
+            _validate_clone_url(url)
+
+
+class TestCloneArgv:
+    """Verify ``git clone`` argv includes ``--`` before the URL (BEAN-043)."""
+
+    @patch(
+        "repo_mirror_kit.harvester.git_ops.shutil.which", return_value="/usr/bin/git"
+    )
+    @patch("repo_mirror_kit.harvester.git_ops.subprocess.run")
+    def test_argv_contains_terminator_before_url(
+        self,
+        mock_run: MagicMock,
+        mock_which: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        mock_run.return_value = MagicMock(returncode=0, stderr="")
+        url = "https://github.com/user/repo.git"
+        try:
+            clone_repository(url, None, tmp_path / "repo")
+        except Exception:  # noqa: S110 - argv shape is the only contract under test
+            pass
+
+        # Find the call that invoked `git clone`.
+        clone_call = next(
+            (c for c in mock_run.call_args_list if c.args and c.args[0][:2] == ["git", "clone"]),
+            None,
+        )
+        assert clone_call is not None, "expected a git clone subprocess call"
+        argv = clone_call.args[0]
+        # `--` must appear immediately before the URL.
+        assert "--" in argv, f"argv missing terminator: {argv}"
+        dash_idx = argv.index("--")
+        assert argv[dash_idx + 1] == url, (
+            f"`--` must precede URL; argv was {argv}"
+        )
+
+    @patch(
+        "repo_mirror_kit.harvester.git_ops.shutil.which", return_value="/usr/bin/git"
+    )
+    def test_invalid_url_rejected_before_subprocess(
+        self,
+        mock_which: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        with pytest.raises(GitCloneError):
+            clone_repository("--upload-pack=evil", None, tmp_path / "repo")
 
 
 class TestCheckGitAvailable:
@@ -98,6 +194,7 @@ class TestCloneRepository:
             "git",
             "clone",
             "--progress",
+            "--",
             "https://example.com/repo.git",
             str(workdir),
         ]
