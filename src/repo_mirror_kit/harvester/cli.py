@@ -125,7 +125,7 @@ def main() -> None:
 )
 @click.option(
     "--llm-model",
-    default="claude-sonnet-4-20250514",
+    default="claude-sonnet-4-6",
     help="Claude model to use for LLM enrichment.",
     show_default=True,
 )

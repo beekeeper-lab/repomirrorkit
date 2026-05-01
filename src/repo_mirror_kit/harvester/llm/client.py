@@ -30,7 +30,7 @@ class LLMClient:
     def __init__(
         self,
         api_key: str,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = "claude-sonnet-4-6",
         requests_per_minute: int = 30,
     ) -> None:
         if not HAS_ANTHROPIC:
