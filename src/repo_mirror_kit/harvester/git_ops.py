@@ -7,6 +7,7 @@ safety checks for Stage A of the harvester pipeline.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -15,6 +16,20 @@ from pathlib import Path
 import structlog
 
 logger = structlog.get_logger()
+
+# scp-like git URL form, e.g. ``git@github.com:user/repo.git``.
+_SCP_LIKE_URL_RE = re.compile(r"^[\w.-]+@[\w.-]+:[\w./~-]+$")
+
+# Supported URL prefixes for ``git clone``. Anything not starting with one of
+# these (or an absolute path, or matching the scp-like form above) is rejected
+# by ``_validate_clone_url`` to prevent argv-flag confusion and unsupported
+# transport vectors.
+_VALID_URL_PREFIXES: tuple[str, ...] = (
+    "https://",
+    "http://",
+    "ssh://",
+    "file://",
+)
 
 
 class GitNotFoundError(Exception):
@@ -27,6 +42,38 @@ class GitCloneError(Exception):
 
 class GitRefError(Exception):
     """Raised when a git ref checkout fails."""
+
+
+def _validate_clone_url(url: str) -> None:
+    """Validate that *url* is one of the supported clone source forms.
+
+    Rejects empty strings, URLs starting with ``-`` (could be misparsed by
+    ``git clone`` as a flag), and anything outside the documented allow-list
+    (``https://``, ``http://``, ``ssh://``, ``file://``, scp-like
+    ``user@host:path``, or absolute local paths beginning with ``/``).
+
+    Raises:
+        GitCloneError: If *url* fails validation.
+    """
+    if not url:
+        raise GitCloneError("Repository URL cannot be empty")
+    if url.startswith("-"):
+        raise GitCloneError(
+            f"Repository URL cannot start with '-' (could be parsed as a "
+            f"git flag): {url!r}"
+        )
+    if url.startswith(_VALID_URL_PREFIXES):
+        return
+    if _SCP_LIKE_URL_RE.match(url):
+        return
+    if url.startswith("/"):
+        return
+    raise GitCloneError(
+        "Repository URL does not match a supported scheme "
+        "(https://, http://, ssh://, file://, "
+        "scp-like user@host:path, or absolute local path): "
+        f"{url!r}"
+    )
 
 
 @dataclass
@@ -84,6 +131,7 @@ def clone_repository(
         GitRefError: If the specified ref cannot be checked out.
     """
     check_git_available()
+    _validate_clone_url(url)
 
     logger.info("clone_starting", url=url, ref=ref, workdir=str(workdir))
 
@@ -119,7 +167,9 @@ def _run_clone(url: str, workdir: Path) -> None:
     Raises:
         GitCloneError: If the clone process fails.
     """
-    cmd = ["git", "clone", "--progress", url, str(workdir)]
+    # ``--`` ensures that a URL beginning with ``-`` cannot be reinterpreted by
+    # git as a flag (defense-in-depth alongside ``_validate_clone_url``).
+    cmd = ["git", "clone", "--progress", "--", url, str(workdir)]
     logger.info("clone_running", cmd=cmd)
 
     try:
