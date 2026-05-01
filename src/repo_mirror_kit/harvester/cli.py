@@ -95,6 +95,14 @@ def main() -> None:
     show_default=True,
 )
 @click.option(
+    "--max-total-bytes",
+    default=500 * 1024 * 1024,
+    type=int,
+    help="Maximum total on-disk size of the cloned repo (excluding .git). "
+    "Cloning aborts and the partial clone is removed if exceeded.",
+    show_default=True,
+)
+@click.option(
     "--resume",
     is_flag=True,
     default=False,
@@ -132,6 +140,7 @@ def harvest(
     include: str | None,
     exclude: str | None,
     max_file_bytes: int,
+    max_total_bytes: int,
     resume: bool,
     fail_on_gaps: bool,
     log_level: str,
@@ -152,6 +161,7 @@ def harvest(
             include=parse_glob_patterns(include) if include else (),
             exclude=merge_exclude_globs(exclude),
             max_file_bytes=max_file_bytes,
+            max_total_bytes=max_total_bytes,
             resume=resume,
             fail_on_gaps=fail_on_gaps,
             log_level=log_level,

@@ -14,6 +14,7 @@ from repo_mirror_kit.harvester.git_ops import (
     GitNotFoundError,
     GitRefError,
     _check_symlinks,
+    _compute_total_size,
     _normalize_file,
     _normalize_line_endings,
     clone_repository,
@@ -68,6 +69,85 @@ class TestValidateCloneUrl:
     def test_rejects_unsupported_schemes(self, url: str) -> None:
         with pytest.raises(GitCloneError, match=r"does not match a supported scheme"):
             validate_clone_url(url)
+
+
+class TestSizeCap:
+    """Tests for the cloned-repo total-size cap (BEAN-047)."""
+
+    def test_compute_total_size_excludes_dotgit(self, tmp_path: Path) -> None:
+        # Create some content + a .git dir with a large file inside.
+        (tmp_path / "file_a.txt").write_bytes(b"a" * 100)
+        (tmp_path / "file_b.txt").write_bytes(b"b" * 200)
+        git_dir = tmp_path / ".git"
+        git_dir.mkdir()
+        (git_dir / "objects.pack").write_bytes(b"x" * 10_000)
+
+        # Should sum only the two top-level files, not the .git pack.
+        assert _compute_total_size(tmp_path) == 300
+
+    def test_compute_total_size_skips_symlinks(self, tmp_path: Path) -> None:
+        (tmp_path / "real.txt").write_bytes(b"r" * 50)
+        (tmp_path / "link.txt").symlink_to(tmp_path / "real.txt")
+        # Only the regular file's size is counted.
+        assert _compute_total_size(tmp_path) == 50
+
+    @patch(
+        "repo_mirror_kit.harvester.git_ops.shutil.which", return_value="/usr/bin/git"
+    )
+    @patch("repo_mirror_kit.harvester.git_ops.subprocess.run")
+    def test_clone_aborts_when_total_size_exceeds_cap(
+        self,
+        mock_run: MagicMock,
+        mock_which: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        workdir = tmp_path / "repo"
+
+        def fake_clone(*args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+            # Simulate git clone creating a workdir with a large file.
+            workdir.mkdir(parents=True, exist_ok=True)
+            (workdir / "huge.bin").write_bytes(b"x" * 1024)
+            return subprocess.CompletedProcess(args=[], returncode=0, stderr="")
+
+        mock_run.side_effect = fake_clone
+
+        with pytest.raises(GitCloneError, match=r"exceeds cap"):
+            clone_repository(
+                "https://example.com/repo.git",
+                None,
+                workdir,
+                max_total_bytes=100,
+            )
+        # Partial clone must be cleaned up.
+        assert not workdir.exists()
+
+    @patch(
+        "repo_mirror_kit.harvester.git_ops.shutil.which", return_value="/usr/bin/git"
+    )
+    @patch("repo_mirror_kit.harvester.git_ops.subprocess.run")
+    def test_clone_succeeds_when_total_size_under_cap(
+        self,
+        mock_run: MagicMock,
+        mock_which: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        workdir = tmp_path / "repo"
+
+        def fake_clone(*args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+            workdir.mkdir(parents=True, exist_ok=True)
+            (workdir / "small.txt").write_bytes(b"hi")
+            return subprocess.CompletedProcess(args=[], returncode=0, stderr="")
+
+        mock_run.side_effect = fake_clone
+
+        result = clone_repository(
+            "https://example.com/repo.git",
+            None,
+            workdir,
+            max_total_bytes=10_000,
+        )
+        assert result.repo_dir == workdir
+        assert workdir.exists()
 
 
 class TestCloneArgv:

@@ -450,7 +450,12 @@ class HarvestPipeline:
     ) -> CloneResult:
         """Stage A: clone repository and normalize."""
         repo_dir = output_dir / "repo"
-        return clone_repository(config.repo, config.ref, repo_dir)
+        return clone_repository(
+            config.repo,
+            config.ref,
+            repo_dir,
+            max_total_bytes=config.max_total_bytes,
+        )
 
     def _run_stage_b(
         self,
