@@ -18,6 +18,7 @@ from repo_mirror_kit.harvester.beans.writer import WrittenBean
 from repo_mirror_kit.harvester.detectors.base import StackProfile
 from repo_mirror_kit.harvester.generator.agents import GeneratedAgent, generate_agents
 from repo_mirror_kit.harvester.generator.claude_md import generate_claude_md
+from repo_mirror_kit.harvester.generator.env_example import generate_env_example
 from repo_mirror_kit.harvester.generator.requirements_md import generate_requirements_md
 from repo_mirror_kit.harvester.generator.stacks import generate_stacks
 
@@ -160,6 +161,19 @@ def assemble_project_folder(
             path=str(requirements_path),
             bean_count=len(beans),
         )
+
+    # Step 5 (BEAN-052): .env.example derived from config surfaces, written
+    # at the harvest output root.
+    env_example_path = generate_env_example(
+        surfaces=surfaces,
+        output_dir=output_dir,
+    )
+    generated_files.append(env_example_path)
+    logger.info(
+        "generator_env_example_done",
+        path=str(env_example_path),
+        config_count=len(surfaces.config),
+    )
 
     result = GeneratorResult(
         output_dir=project_dir,
