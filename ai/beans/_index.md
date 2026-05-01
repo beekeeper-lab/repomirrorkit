@@ -64,7 +64,7 @@
 | BEAN-040 | Fix Stale Project Framing in Docs | App | Low | Done | team-lead |
 | BEAN-041 | Bump Default LLM Model to Sonnet 4.6 | App | Medium | Done | team-lead |
 | BEAN-042 | Delete Vestigial `runtime_verify` Package | App | Low | Done | team-lead |
-| BEAN-043 | Harden `git clone` Argv (Terminator + URL Scheme) | App | High | In Progress | team-lead |
+| BEAN-043 | Harden `git clone` Argv (Terminator + URL Scheme) | App | High | Done | team-lead |
 | BEAN-044 | CLI URL Validation Parity with GUI | App | High | Approved | (unassigned) |
 | BEAN-045 | Drop `--llm-api-key` CLI Flag, Helpful Missing-Key Error | App | High | Approved | (unassigned) |
 | BEAN-046 | Mitigate LLM Prompt Injection from Repo Content | App | High | Approved | (unassigned) |
