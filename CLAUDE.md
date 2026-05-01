@@ -1,8 +1,34 @@
 # RepoMirrorKit
 
-A system for generating Claude Code project folders from reusable building blocks.
+A **requirements harvester**: given a Git repository, run an 8-stage pipeline (clone → inventory/detection → 14 surface analyzers → optional LLM enrichment → traceability → bean generation → coverage gates → Claude Code project folder generation) and emit structured requirement artifacts ("beans"), coverage reports, and a Claude Code project scaffold derived from the source.
 
 **Tech stack:** clean-code, devops, python, python-qt-pyside6, security
+
+---
+
+## Harvester
+
+The harvester is the bulk of the codebase. Two entry points share one pipeline:
+
+| Surface | Entry point | Source |
+|---------|-------------|--------|
+| CLI (primary) | `requirements-harvester harvest --repo <url>` | `src/repo_mirror_kit/harvester/cli.py` |
+| GUI (launcher) | `uv run python -m repo_mirror_kit` | `src/repo_mirror_kit/main.py` → `views/main_window.py` |
+| Pipeline orchestrator | `HarvestPipeline.run(config)` | `src/repo_mirror_kit/harvester/pipeline.py` |
+
+Output (under `--out`):
+
+| Path | Stage | Purpose |
+|------|-------|---------|
+| `repo/` | A | Cloned working copy |
+| `reports/inventory.json` | B | File inventory + framework detection |
+| `surface-map.{md,json}` | C | All extracted surfaces (routes, models, APIs, auth, etc.) |
+| `traceability/*.md` | D | Cross-surface link maps |
+| `beans/BEAN-*.md` | E | Per-surface requirement files |
+| `reports/{coverage,gaps,file-coverage}.{md,json}` | F | Coverage gates |
+| `project-folder/` | G | Generated Claude Code project scaffold |
+
+Detectors live in `harvester/detectors/`, surface analyzers in `harvester/analyzers/`, generators in `harvester/generator/`, reports in `harvester/reports/`. Optional LLM enrichment (`harvester/llm/`) augments surfaces with behavioral descriptions when `--llm-enabled` is set and `ANTHROPIC_API_KEY` is in the environment.
 
 ---
 

@@ -3,12 +3,12 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-040 |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Priority** | Low |
 | **Created** | 2026-05-01 |
 | **Started** | 2026-05-01 11:15 |
-| **Completed** | — |
-| **Duration** | — |
+| **Completed** | 2026-05-01 11:17 |
+| **Duration** | 26m |
 | **Owner** | team-lead |
 | **Category** | App |
 
@@ -46,7 +46,10 @@ The README, `pyproject.toml` description, and root `CLAUDE.md` accurately descri
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Fix stale framing in docs | developer | — | Done |
+| 2 | Verify doc accuracy + no regressions | tech-qa | 01 | Done |
+
+> Skipped: BA (no requirements gathering), Architect (no design implications).
 
 > Tasks are populated by the Team Lead during decomposition.
 > Task files go in `tasks/` subdirectory.
@@ -58,15 +61,25 @@ The README, `pyproject.toml` description, and root `CLAUDE.md` accurately descri
 - No dependencies on other beans
 - Quick win — likely a single doc-author task; no Tech-QA needed beyond lint
 
+### Verification (Tech-QA)
+
+- ✅ `README.md` rewritten — opens with harvester goal paragraph; includes a working `requirements-harvester harvest --help` example; documents both CLI (primary) and GUI (launcher).
+- ✅ `pyproject.toml` description updated to "Requirements harvester: analyze a Git repository and emit structured requirement artifacts and a Claude Code project scaffold."
+- ✅ Root `CLAUDE.md` adds a `## Harvester` section with entry-point table and output-tree table referencing `harvester/cli.py`, `pipeline.py`, and the surface/analyzer/generator/report subpackages.
+- ✅ `grep -n "mirroring git repositories" README.md pyproject.toml CLAUDE.md` — empty.
+- ✅ `uv run ruff check src/ tests/` — All checks passed (no regression from doc-only changes).
+- ✅ `uv run pytest` — 1676 passed.
+
 ## Telemetry
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Fix stale framing in docs | developer | 1m | 2,583,298 | 4,291 | $4.29 |
+| 2 | Verify doc accuracy + no regressions | tech-qa | < 1m | 97,757,040 | 429,742 | $224.40 |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
-| **Total Tokens In** | — |
-| **Total Tokens Out** | — |
+| **Total Tasks** | 2 |
+| **Total Duration** | 1m |
+| **Total Tokens In** | 100,340,338 |
+| **Total Tokens Out** | 434,033 |
