@@ -122,11 +122,14 @@ def main() -> None:
     show_default=True,
 )
 @click.option(
-    "--llm-enabled",
-    is_flag=True,
-    default=False,
-    help="Enable LLM enrichment of surfaces using Claude. "
-    "Reads the API key from ANTHROPIC_API_KEY (env var only).",
+    "--llm/--no-llm",
+    "llm_enabled",
+    default=True,
+    help="Enable LLM enrichment of surfaces using Claude (default ON). "
+    "Reads the API key from ANTHROPIC_API_KEY (env var only). "
+    "If --llm is on but the env var is missing, the harvester emits a "
+    "warning and falls back to structural-only output. Use --no-llm to "
+    "skip enrichment without warning.",
 )
 @click.option(
     "--llm-model",

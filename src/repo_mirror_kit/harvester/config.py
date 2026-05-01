@@ -96,17 +96,25 @@ class HarvestConfig:
                 f"--max-total-bytes must be positive, got {self.max_total_bytes}"
             )
         if self.llm_enabled and not self.llm_api_key:
-            raise ConfigValidationError(
-                "ANTHROPIC_API_KEY is not set, but --llm-enabled was passed.\n"
+            # BEAN-056: --llm is default-on, so a missing API key must NOT
+            # raise — it would break every default invocation. Emit a clear,
+            # actionable warning to stderr and silently downgrade
+            # llm_enabled to False so the run continues in structural-only
+            # mode. Users who don't want the warning can pass --no-llm.
+            import sys
+
+            sys.stderr.write(
                 "\n"
-                "  1. Get an API key: https://console.anthropic.com/settings/keys\n"
-                "  2. Export it before running the harvester:\n"
-                "       export ANTHROPIC_API_KEY=sk-ant-...\n"
+                "⚠ ANTHROPIC_API_KEY is not set — falling back to "
+                "structural-only mode (no LLM enrichment).\n"
                 "\n"
-                "The key is read from the environment only (never logged, "
-                "never accepted on the command line). To run without LLM "
-                "enrichment, omit --llm-enabled."
+                "  Get a key: https://console.anthropic.com/settings/keys\n"
+                "  Then run:  export ANTHROPIC_API_KEY=sk-ant-...\n"
+                "\n"
+                "  To suppress this warning, pass --no-llm.\n"
+                "\n"
             )
+            object.__setattr__(self, "llm_enabled", False)
 
 
 def parse_glob_patterns(value: str) -> tuple[str, ...]:
