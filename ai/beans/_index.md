@@ -61,7 +61,7 @@
 | BEAN-037 | CLAUDE.md Generator (Stage G) | App | High | Done | team-lead |
 | BEAN-038 | File Coverage Analysis & Uncovered File Detection | App | High | Done | team-lead |
 | BEAN-039 | Claude-Kit Health Check | Infra | Medium | Done | team-lead |
-| BEAN-040 | Fix Stale Project Framing in Docs | App | Low | In Progress | team-lead |
+| BEAN-040 | Fix Stale Project Framing in Docs | App | Low | Done | team-lead |
 | BEAN-041 | Bump Default LLM Model to Sonnet 4.6 | App | Medium | Done | team-lead |
 | BEAN-042 | Delete Vestigial `runtime_verify` Package | App | Low | Approved | (unassigned) |
 | BEAN-043 | Harden `git clone` Argv (Terminator + URL Scheme) | App | High | Unapproved | (unassigned) |
