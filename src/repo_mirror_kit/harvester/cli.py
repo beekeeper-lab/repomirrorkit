@@ -106,7 +106,8 @@ def main() -> None:
     "--resume",
     is_flag=True,
     default=False,
-    help="Resume from a previous incomplete run.",
+    help="Resume from a previous incomplete run. Skips the clone (Stage A) "
+    "if the working copy already exists; analysis stages always re-run.",
 )
 @click.option(
     "--fail-on-gaps/--no-fail-on-gaps",
