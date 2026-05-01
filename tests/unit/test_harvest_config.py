@@ -17,29 +17,59 @@ from repo_mirror_kit.harvester.config import (
 
 
 class TestHarvestConfigLLMKey:
-    """When --llm-enabled is set without ANTHROPIC_API_KEY, raise a helpful
-    multi-line error (BEAN-045)."""
+    """LLM enrichment + missing-key behavior (BEAN-045 + BEAN-056).
 
-    def test_missing_key_with_llm_enabled_raises_helpful_error(self) -> None:
-        with pytest.raises(ConfigValidationError) as exc_info:
-            HarvestConfig(
-                repo="https://example.com/repo.git",
-                llm_enabled=True,
-                llm_api_key=None,
-            )
-        msg = str(exc_info.value)
-        # Helpful guidance markers
-        assert "ANTHROPIC_API_KEY" in msg
-        assert "https://console.anthropic.com/settings/keys" in msg
-        assert "export ANTHROPIC_API_KEY=" in msg
+    Default-on per BEAN-056: a missing key must NOT raise — it would break
+    every default invocation. Instead we emit a stderr warning and
+    silently downgrade llm_enabled to False. Helpful pointer text is
+    preserved from BEAN-045.
+    """
 
-    def test_present_key_with_llm_enabled_succeeds(self) -> None:
-        # Should not raise.
-        HarvestConfig(
+    def test_missing_key_with_llm_enabled_warns_and_downgrades(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        config = HarvestConfig(
+            repo="https://example.com/repo.git",
+            llm_enabled=True,
+            llm_api_key=None,
+        )
+        # Downgraded silently, not raised.
+        assert config.llm_enabled is False
+
+        # Warning text on stderr with the actionable guidance.
+        captured = capsys.readouterr()
+        assert "ANTHROPIC_API_KEY" in captured.err
+        assert "https://console.anthropic.com/settings/keys" in captured.err
+        assert "export ANTHROPIC_API_KEY=" in captured.err
+        assert "--no-llm" in captured.err
+
+    def test_present_key_with_llm_enabled_succeeds(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        config = HarvestConfig(
             repo="https://example.com/repo.git",
             llm_enabled=True,
             llm_api_key="sk-ant-fake",
         )
+        assert config.llm_enabled is True
+        # No warning when the key is present.
+        assert capsys.readouterr().err == ""
+
+    def test_explicit_disable_does_not_warn(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        # llm_enabled=False (the --no-llm path) must never warn, even
+        # when the key happens to be missing too.
+        config = HarvestConfig(
+            repo="https://example.com/repo.git",
+            llm_enabled=False,
+            llm_api_key=None,
+        )
+        assert config.llm_enabled is False
+        assert capsys.readouterr().err == ""
 
 
 class TestHarvestConfigUrlValidation:
