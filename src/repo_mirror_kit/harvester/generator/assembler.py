@@ -20,6 +20,7 @@ from repo_mirror_kit.harvester.generator.agents import GeneratedAgent, generate_
 from repo_mirror_kit.harvester.generator.claude_md import generate_claude_md
 from repo_mirror_kit.harvester.generator.env_example import generate_env_example
 from repo_mirror_kit.harvester.generator.requirements_md import generate_requirements_md
+from repo_mirror_kit.harvester.generator.runbook_md import generate_runbook_md
 from repo_mirror_kit.harvester.generator.stacks import generate_stacks
 
 logger = structlog.get_logger()
@@ -173,6 +174,18 @@ def assemble_project_folder(
         "generator_env_example_done",
         path=str(env_example_path),
         config_count=len(surfaces.config),
+    )
+
+    # Step 6 (BEAN-053): RUNBOOK.md derived from build/deploy surfaces.
+    runbook_path = generate_runbook_md(
+        surfaces=surfaces,
+        output_dir=output_dir,
+    )
+    generated_files.append(runbook_path)
+    logger.info(
+        "generator_runbook_md_done",
+        path=str(runbook_path),
+        build_deploy_count=len(surfaces.build_deploy),
     )
 
     result = GeneratorResult(
