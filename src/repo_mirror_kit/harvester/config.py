@@ -54,7 +54,7 @@ class HarvestConfig:
     log_level: str = "info"
     llm_enabled: bool = False
     llm_api_key: str | None = None
-    llm_model: str = "claude-sonnet-4-20250514"
+    llm_model: str = "claude-sonnet-4-6"
 
     def __post_init__(self) -> None:
         """Validate configuration values after initialization."""

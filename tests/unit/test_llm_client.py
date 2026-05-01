@@ -89,7 +89,7 @@ class TestLLMClientInit:
 
             client = client_mod.LLMClient(api_key="sk-test")
 
-            assert client._model == "claude-sonnet-4-20250514"
+            assert client._model == "claude-sonnet-4-6"
 
 
 # ---------------------------------------------------------------------------
