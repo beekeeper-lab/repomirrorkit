@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from repo_mirror_kit.harvester.analyzers.ui_flows import analyze_ui_flows
 from repo_mirror_kit.harvester.analyzers.surfaces import UIFlowSurface
+from repo_mirror_kit.harvester.analyzers.ui_flows import analyze_ui_flows
 from repo_mirror_kit.harvester.detectors.base import StackProfile
 from repo_mirror_kit.harvester.inventory import FileEntry, InventoryResult
 

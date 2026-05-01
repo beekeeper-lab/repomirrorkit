@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import time
 from types import SimpleNamespace
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # HAS_ANTHROPIC flag
@@ -251,7 +249,6 @@ class TestRateLimiting:
 class TestAnthropicNotInstalled:
     def test_raises_import_error_when_anthropic_missing(self) -> None:
         with patch.dict("sys.modules", {"anthropic": None}):
-            from importlib import reload
 
             import repo_mirror_kit.harvester.llm.client as client_mod
 
