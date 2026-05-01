@@ -68,7 +68,7 @@
 | BEAN-044 | CLI URL Validation Parity with GUI | App | High | Done | team-lead |
 | BEAN-045 | Drop `--llm-api-key` CLI Flag, Helpful Missing-Key Error | App | High | Done | team-lead |
 | BEAN-046 | Mitigate LLM Prompt Injection from Repo Content | App | High | Done | team-lead |
-| BEAN-047 | Cloned-Repo Total-Size Cap | App | Medium | In Progress | team-lead |
+| BEAN-047 | Cloned-Repo Total-Size Cap | App | Medium | Done | team-lead |
 | BEAN-048 | Tighten Pipeline Per-Stage Exception Handling | App | Medium | Approved | (unassigned) |
 | BEAN-049 | Fix Misleading Pipeline Resume-Skip Branches | App | Medium | Approved | (unassigned) |
 | BEAN-050 | Fixture-Repo End-to-End Integration Test | App | High | Done | team-lead |
