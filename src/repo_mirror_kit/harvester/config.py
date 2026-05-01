@@ -17,6 +17,11 @@ DEFAULT_EXCLUDE_GLOBS: tuple[str, ...] = (
 
 DEFAULT_MAX_FILE_BYTES: int = 1_000_000
 
+# Default cap on the total on-disk size of a cloned working copy (excluding
+# ``.git``). 500 MiB is generous for typical repositories but bounded enough
+# to prevent runaway behavior from pathological or malicious inputs.
+DEFAULT_MAX_TOTAL_BYTES: int = 500 * 1024 * 1024
+
 VALID_LOG_LEVELS: frozenset[str] = frozenset({"debug", "info", "warn", "error"})
 
 
@@ -51,6 +56,7 @@ class HarvestConfig:
     include: tuple[str, ...] = ()
     exclude: tuple[str, ...] = DEFAULT_EXCLUDE_GLOBS
     max_file_bytes: int = DEFAULT_MAX_FILE_BYTES
+    max_total_bytes: int = DEFAULT_MAX_TOTAL_BYTES
     resume: bool = False
     fail_on_gaps: bool = True
     log_level: str = "info"
@@ -84,6 +90,10 @@ class HarvestConfig:
         if self.max_file_bytes <= 0:
             raise ConfigValidationError(
                 f"--max-file-bytes must be positive, got {self.max_file_bytes}"
+            )
+        if self.max_total_bytes <= 0:
+            raise ConfigValidationError(
+                f"--max-total-bytes must be positive, got {self.max_total_bytes}"
             )
         if self.llm_enabled and not self.llm_api_key:
             raise ConfigValidationError(

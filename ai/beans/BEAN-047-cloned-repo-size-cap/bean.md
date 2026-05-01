@@ -3,12 +3,12 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-047 |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-05-01 |
 | **Started** | 2026-05-01 13:01 |
-| **Completed** | — |
-| **Duration** | — |
+| **Completed** | 2026-05-01 13:03 |
+| **Duration** | 2h 12m |
 | **Owner** | team-lead |
 | **Category** | App |
 
@@ -49,7 +49,20 @@ The harvester refuses to process a clone whose total on-disk size exceeds a conf
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
+| 1 | Add --max-total-bytes + post-clone size check | developer | — | Done |
+| 2 | Verify cap behavior + tests | tech-qa | 01 | Done |
+
+> Skipped: BA, Architect (small additive feature, well-defined surface).
+
+### Verification (Tech-QA)
+
+- ✅ `--max-total-bytes` CLI flag added (default 500 MiB = 524,288,000 bytes); shown in `--help`.
+- ✅ `HarvestConfig.max_total_bytes` field with `DEFAULT_MAX_TOTAL_BYTES` constant; validated as positive in `__post_init__`.
+- ✅ `_compute_total_size(workdir)` walks the working copy summing regular-file sizes, skips `.git`, skips symlinks.
+- ✅ `clone_repository` accepts `max_total_bytes` keyword; after clone, computes total and raises `GitCloneError("...exceeds cap...")` if over the limit. Partial clone is removed via `shutil.rmtree` so no half-state on disk.
+- ✅ `pipeline.HarvestPipeline._run_stage_a` passes `config.max_total_bytes` through.
+- ✅ 4 new tests in `TestSizeCap`: `_compute_total_size` excludes `.git`, skips symlinks; `clone_repository` aborts + cleans up when over cap; succeeds when under cap.
+- ✅ Suite: 1717 passed (up from 1713). Ruff clean.
 
 ## Notes
 
@@ -61,11 +74,12 @@ The harvester refuses to process a clone whose total on-disk size exceeds a conf
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Add --max-total-bytes + post-clone size check | developer | — | — | — | — |
+| 2 | Verify cap behavior + tests | tech-qa | — | — | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
+| **Total Tasks** | 2 |
+| **Total Duration** | 2h 12m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

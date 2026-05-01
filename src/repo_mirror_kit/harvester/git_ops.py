@@ -121,10 +121,34 @@ def check_git_available() -> None:
         raise GitNotFoundError(msg)
 
 
+def _compute_total_size(workdir: Path) -> int:
+    """Sum the on-disk size of regular files under *workdir* (excluding ``.git``).
+
+    Symlinks are not followed. Returns the total in bytes.
+    """
+    total = 0
+    for dirpath, dirnames, filenames in os.walk(workdir):
+        # Skip the .git directory entirely.
+        if ".git" in Path(dirpath).parts:
+            dirnames.clear()
+            continue
+        for name in filenames:
+            fp = Path(dirpath) / name
+            if fp.is_symlink():
+                continue
+            try:
+                total += fp.stat().st_size
+            except OSError:
+                continue
+    return total
+
+
 def clone_repository(
     url: str,
     ref: str | None,
     workdir: Path,
+    *,
+    max_total_bytes: int | None = None,
 ) -> CloneResult:
     """Clone a repository, checkout a ref, and normalize the working copy.
 
@@ -152,6 +176,22 @@ def clone_repository(
     logger.info("clone_starting", url=url, ref=ref, workdir=str(workdir))
 
     _run_clone(url, workdir)
+
+    if max_total_bytes is not None:
+        actual = _compute_total_size(workdir)
+        if actual > max_total_bytes:
+            # Clean up the partial clone so we never leave a half-state on disk.
+            shutil.rmtree(workdir, ignore_errors=True)
+            raise GitCloneError(
+                f"Cloned repository size {actual} bytes exceeds cap "
+                f"of {max_total_bytes} bytes. Increase --max-total-bytes "
+                f"or use --include/--exclude to narrow scope."
+            )
+        logger.info(
+            "clone_size_ok",
+            actual_bytes=actual,
+            cap_bytes=max_total_bytes,
+        )
 
     if ref is not None:
         _checkout_ref(ref, workdir)
