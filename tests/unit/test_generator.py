@@ -437,9 +437,12 @@ class TestAssembler:
         )
         assert result.agent_count >= 3
         assert result.stack_count >= 1
-        # total = agents + stacks + CLAUDE.md
+        # generated_files contains agents + stacks + CLAUDE.md plus any
+        # .claude/ infrastructure copied by assembler step 0
+        # (assembler.py:91-101). Use >= rather than == so the test does not
+        # break each time kit assets are added or removed upstream.
         assert (
-            len(result.generated_files) == result.agent_count + result.stack_count + 1
+            len(result.generated_files) >= result.agent_count + result.stack_count + 1
         )
 
     def test_conditional_agents(self, tmp_path: Path) -> None:
