@@ -16,6 +16,36 @@ from repo_mirror_kit.harvester.config import (
 )
 
 
+class TestHarvestConfigUrlValidation:
+    """HarvestConfig must enforce the canonical clone-URL allow-list (BEAN-044)."""
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://github.com/user/repo.git",
+            "ssh://git@github.com/user/repo.git",
+            "git@github.com:user/repo.git",
+            "/abs/local/path",
+        ],
+    )
+    def test_accepts_supported_urls(self, url: str) -> None:
+        # Should construct without raising.
+        HarvestConfig(repo=url)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "--upload-pack=evil",
+            "ftp://bad/scheme",
+            "github.com/no/scheme",
+            "with spaces invalid",
+        ],
+    )
+    def test_rejects_invalid_urls(self, url: str) -> None:
+        with pytest.raises(ConfigValidationError):
+            HarvestConfig(repo=url)
+
+
 class TestHarvestConfigDefaults:
     """Verify that HarvestConfig defaults match the spec."""
 

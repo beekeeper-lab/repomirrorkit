@@ -16,8 +16,8 @@ from repo_mirror_kit.harvester.git_ops import (
     _check_symlinks,
     _normalize_file,
     _normalize_line_endings,
-    _validate_clone_url,
     clone_repository,
+    validate_clone_url,
 )
 
 
@@ -38,7 +38,7 @@ class TestValidateCloneUrl:
     )
     def test_accepts_supported_forms(self, url: str) -> None:
         # Should return without raising.
-        _validate_clone_url(url)
+        validate_clone_url(url)
 
     @pytest.mark.parametrize(
         "url",
@@ -50,11 +50,11 @@ class TestValidateCloneUrl:
     )
     def test_rejects_dash_prefixed_urls(self, url: str) -> None:
         with pytest.raises(GitCloneError, match=r"cannot start with '-'"):
-            _validate_clone_url(url)
+            validate_clone_url(url)
 
     def test_rejects_empty_url(self) -> None:
         with pytest.raises(GitCloneError, match=r"cannot be empty"):
-            _validate_clone_url("")
+            validate_clone_url("")
 
     @pytest.mark.parametrize(
         "url",
@@ -67,7 +67,7 @@ class TestValidateCloneUrl:
     )
     def test_rejects_unsupported_schemes(self, url: str) -> None:
         with pytest.raises(GitCloneError, match=r"does not match a supported scheme"):
-            _validate_clone_url(url)
+            validate_clone_url(url)
 
 
 class TestCloneArgv:
