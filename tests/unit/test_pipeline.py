@@ -393,8 +393,24 @@ class TestPipelineErrorHandling:
 
         target = stage_to_target[failing_stage]
 
+        # Domain exception each stage's tightened handler is supposed to catch.
+        # Stage A clones a git repo (GitCloneError); stages B-G are
+        # filesystem-bound and catch OSError. See pipeline.py BEAN-048
+        # exception tuples.
+        from repo_mirror_kit.harvester.git_ops import GitCloneError
+
+        stage_to_exc: dict[str, Exception] = {
+            "A": GitCloneError("boom"),
+            "B": OSError("boom"),
+            "C": OSError("boom"),
+            "D": OSError("boom"),
+            "E": OSError("boom"),
+            "F": OSError("boom"),
+            "G": OSError("boom"),
+        }
+
         with contextlib.ExitStack() as stack:
-            _enter_all_patches(stack, rv, side_effects={target: RuntimeError("boom")})
+            _enter_all_patches(stack, rv, side_effects={target: stage_to_exc[failing_stage]})
             pipeline = HarvestPipeline()
             result = pipeline.run(config)
 
@@ -403,6 +419,20 @@ class TestPipelineErrorHandling:
         assert result.error_message is not None
         assert "boom" in result.error_message
 
+    def test_programming_bug_propagates_not_swallowed(self, tmp_path: Path) -> None:
+        """BEAN-048: AttributeError (a programming bug) must NOT be silenced
+        by the per-stage handlers. It propagates so it fails loudly."""
+        config = _make_config(tmp_path)
+        rv = _build_patches(tmp_path)
+
+        with contextlib.ExitStack() as stack:
+            _enter_all_patches(
+                stack, rv, side_effects={_SCAN: AttributeError("typo bug")}
+            )
+            pipeline = HarvestPipeline()
+            with pytest.raises(AttributeError, match="typo bug"):
+                pipeline.run(config)
+
     def test_error_leaves_state_for_resume(self, tmp_path: Path) -> None:
         config = _make_config(tmp_path)
         rv = _build_patches(tmp_path)
@@ -410,7 +440,7 @@ class TestPipelineErrorHandling:
         # Make stage B fail so A is checkpointed
         with contextlib.ExitStack() as stack:
             _enter_all_patches(
-                stack, rv, side_effects={_SCAN: RuntimeError("disk full")}
+                stack, rv, side_effects={_SCAN: OSError("disk full")}
             )
             pipeline = HarvestPipeline()
             result = pipeline.run(config)
@@ -437,7 +467,7 @@ class TestPipelineResume:
 
         # First run: fail at stage B so A is checkpointed
         with contextlib.ExitStack() as stack:
-            _enter_all_patches(stack, rv, side_effects={_SCAN: RuntimeError("fail")})
+            _enter_all_patches(stack, rv, side_effects={_SCAN: OSError("fail")})
             pipeline = HarvestPipeline()
             pipeline.run(config)
 
@@ -510,7 +540,7 @@ class TestPipelineCallbacks:
             _enter_all_patches(
                 stack,
                 rv,
-                side_effects={_ANALYZE_ROUTES: RuntimeError("extractor crash")},
+                side_effects={_ANALYZE_ROUTES: OSError("extractor crash")},
             )
             pipeline = HarvestPipeline(callback=events.append)
             pipeline.run(config)

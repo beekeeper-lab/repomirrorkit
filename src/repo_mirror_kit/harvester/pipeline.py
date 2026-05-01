@@ -42,7 +42,13 @@ from repo_mirror_kit.harvester.generator.assembler import (
     GeneratorResult,
     assemble_project_folder,
 )
-from repo_mirror_kit.harvester.git_ops import CloneResult, clone_repository
+from repo_mirror_kit.harvester.git_ops import (
+    CloneResult,
+    GitCloneError,
+    GitNotFoundError,
+    GitRefError,
+    clone_repository,
+)
 from repo_mirror_kit.harvester.harvest_logging import configure_logging
 from repo_mirror_kit.harvester.inventory import InventoryResult, scan, write_report
 from repo_mirror_kit.harvester.reports.coverage import (
@@ -68,6 +74,30 @@ logger = structlog.get_logger()
 
 # Ordered stage names matching the spec
 STAGE_NAMES: list[str] = ["A", "B", "C", "C2", "D", "E", "F", "G"]
+
+# Per-stage domain exception tuples (BEAN-048).
+#
+# Each stage catches only the exceptions it can legitimately raise as part of
+# normal operation. Anything else — ``AttributeError``, ``TypeError``,
+# ``KeyError``, ``NameError``, etc. — is a programming bug and is allowed to
+# propagate out of the pipeline so it fails loudly during development.
+#
+# The outermost ``except`` only intercepts truly catastrophic-but-not-bug
+# conditions (``MemoryError``); see :meth:`HarvestPipeline.run`.
+
+# Stage A clones a git repository.
+_STAGE_A_EXCEPTIONS: tuple[type[BaseException], ...] = (
+    GitCloneError,
+    GitRefError,
+    GitNotFoundError,
+)
+
+# Stages B-G are dominated by filesystem I/O over the cloned working copy and
+# the output directory. ``OSError`` covers the realistic operational failures
+# (``ENOENT``, ``EACCES``, ``ENOSPC``, ``EIO``, …). Stage C2 (LLM enrichment)
+# additionally catches its own internal errors inside :func:`enrich_surfaces`,
+# so by the time control returns here the only escapes are filesystem-shaped.
+_FS_EXCEPTIONS: tuple[type[BaseException], ...] = (OSError,)
 
 
 class PipelineEventType(StrEnum):
@@ -198,7 +228,7 @@ class HarvestPipeline:
                 self._emit(PipelineEventType.STAGE_START, "A", "Cloning repository")
                 try:
                     clone_result = self._run_stage_a(config, output_dir)
-                except Exception as exc:
+                except _STAGE_A_EXCEPTIONS as exc:
                     return self._handle_stage_error("A", exc, state, output_dir)
                 state.complete_stage("A")
                 self._emit(
@@ -228,7 +258,7 @@ class HarvestPipeline:
                     inventory_result, profile = self._run_stage_b(
                         config, workdir, output_dir
                     )
-                except Exception as exc:
+                except _FS_EXCEPTIONS as exc:
                     return self._handle_stage_error("B", exc, state, output_dir)
                 state.complete_stage("B")
                 self._emit(
@@ -259,7 +289,7 @@ class HarvestPipeline:
                     surfaces = self._run_stage_c(
                         workdir, inventory_result, profile, output_dir
                     )
-                except Exception as exc:
+                except _FS_EXCEPTIONS as exc:
                     return self._handle_stage_error("C", exc, state, output_dir)
                 state.complete_stage("C")
                 self._emit(
@@ -295,7 +325,7 @@ class HarvestPipeline:
                 )
                 try:
                     surfaces = self._run_stage_c2(surfaces, config, workdir)
-                except Exception as exc:
+                except _FS_EXCEPTIONS as exc:
                     return self._handle_stage_error("C2", exc, state, output_dir)
                 state.complete_stage("C2")
                 self._emit(
@@ -315,7 +345,7 @@ class HarvestPipeline:
                 )
                 try:
                     self._run_stage_d(surfaces, output_dir)
-                except Exception as exc:
+                except _FS_EXCEPTIONS as exc:
                     return self._handle_stage_error("D", exc, state, output_dir)
                 state.complete_stage("D")
                 self._emit(
@@ -335,7 +365,7 @@ class HarvestPipeline:
                 )
                 try:
                     beans = self._run_stage_e(surfaces, output_dir, state)
-                except Exception as exc:
+                except _FS_EXCEPTIONS as exc:
                     return self._handle_stage_error("E", exc, state, output_dir)
                 state.complete_stage("E")
                 self._emit(
@@ -359,7 +389,7 @@ class HarvestPipeline:
                     evaluation, gap_report = self._run_stage_f(
                         surfaces, beans, inventory_result, output_dir
                     )
-                except Exception as exc:
+                except _FS_EXCEPTIONS as exc:
                     return self._handle_stage_error("F", exc, state, output_dir)
                 state.complete_stage("F")
                 self._emit(
@@ -388,7 +418,7 @@ class HarvestPipeline:
                     generator_result = self._run_stage_g(
                         config, surfaces, profile, output_dir
                     )
-                except Exception as exc:
+                except _FS_EXCEPTIONS as exc:
                     return self._handle_stage_error("G", exc, state, output_dir)
                 state.complete_stage("G")
                 self._emit(
@@ -403,7 +433,13 @@ class HarvestPipeline:
                     config, surfaces, profile, output_dir
                 )
 
-        except Exception as exc:
+        except (OSError, MemoryError) as exc:
+            # Last-resort catch for catastrophic-but-not-bug failures that
+            # escaped the per-stage handlers (e.g. a filesystem error in
+            # bookkeeping code outside any stage's try/except).
+            # ``Exception`` is intentionally NOT caught here: programming
+            # bugs (TypeError/AttributeError/KeyError/...) propagate so they
+            # fail loudly rather than be silenced as "unknown" failures.
             logger.error("pipeline_unexpected_error", error=str(exc))
             state.finalize()
             return HarvestResult(
