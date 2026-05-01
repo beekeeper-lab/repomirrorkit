@@ -20,6 +20,7 @@ from repo_mirror_kit.harvester.analyzers import (
     SurfaceCollection,
     analyze_api_endpoints,
     analyze_auth,
+    analyze_behavioral_spec,
     analyze_build_deploy,
     analyze_components,
     analyze_config,
@@ -639,6 +640,19 @@ class HarvestPipeline:
                 "C",
                 f"General logic (uncovered files): {len(general_logic)} found",
             )
+
+        # BEAN-054: behavioral-spec post-pass attaches docstring/JSDoc/test-name
+        # signal to surface enrichment dicts. Runs after all surface analyzers
+        # so it sees the complete collection.
+        analyze_behavioral_spec(inventory, profile, workdir, surfaces)
+        signal_count = sum(
+            1 for s in surfaces if "behavioral_signals" in s.enrichment
+        )
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Behavioral signals attached: {signal_count}",
+        )
 
         write_surface_map(output_dir, surfaces, profile)
 

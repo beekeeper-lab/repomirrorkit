@@ -91,6 +91,42 @@ def _bullet_list(items: list[str], empty_msg: str = "- (none)") -> str:
     return "\n".join(f"- {item}" for item in items)
 
 
+def _format_behavioral_signals(signals: dict[str, Any]) -> str:
+    """Render BEAN-054 behavioral_signals (docstring/jsdoc/test_names) as
+    a fallback for the Behavioral description section when LLM enrichment
+    is absent. Returns a string containing whichever signals are present;
+    if all are empty, falls back to the TODO placeholder."""
+    parts: list[str] = []
+
+    docstring = signals.get("docstring")
+    if isinstance(docstring, str) and docstring.strip():
+        parts.append(
+            "**From source docstring:**\n\n"
+            f"> {docstring.strip().replace(chr(10), chr(10) + '> ')}"
+        )
+
+    jsdoc = signals.get("jsdoc")
+    if isinstance(jsdoc, str) and jsdoc.strip():
+        parts.append(
+            "**From JSDoc comment:**\n\n"
+            f"> {jsdoc.strip().replace(chr(10), chr(10) + '> ')}"
+        )
+
+    test_names = signals.get("test_names")
+    if isinstance(test_names, list) and test_names:
+        formatted = "\n".join(f"- `{name}`" for name in test_names[:10])
+        parts.append(
+            "**Behavior expressed by tests** (test names that reference this surface):\n\n"
+            f"{formatted}"
+        )
+
+    if not parts:
+        return (
+            "TODO: Describe the expected behavior from a user/system perspective."
+        )
+    return "\n\n".join(parts)
+
+
 def _render_enrichment_sections(surface: Surface) -> str:
     """Render behavioral enrichment sections shared across all renderers.
 
@@ -107,11 +143,14 @@ def _render_enrichment_sections(surface: Surface) -> str:
     enrichment = surface.enrichment
     lines: list[str] = []
 
-    # Behavioral description
+    # Behavioral description — prefer LLM enrichment, fall back to BEAN-054
+    # behavioral_signals (docstring/JSDoc/test names), then a TODO placeholder.
     lines.append("## Behavioral description")
     lines.append("")
     if enrichment and enrichment.get("behavioral_description"):
         lines.append(enrichment["behavioral_description"])
+    elif enrichment and enrichment.get("behavioral_signals"):
+        lines.append(_format_behavioral_signals(enrichment["behavioral_signals"]))
     else:
         lines.append(
             "TODO: Describe the expected behavior from a user/system perspective."
