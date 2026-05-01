@@ -58,8 +58,19 @@ class HarvestConfig:
 
     def __post_init__(self) -> None:
         """Validate configuration values after initialization."""
+        # Import locally to avoid a top-level circular import: git_ops also
+        # ships clone exceptions used elsewhere by config consumers.
+        from repo_mirror_kit.harvester.git_ops import (
+            GitCloneError,
+            validate_clone_url,
+        )
+
         if not self.repo:
             raise ConfigValidationError("--repo is required and cannot be empty")
+        try:
+            validate_clone_url(self.repo)
+        except GitCloneError as exc:
+            raise ConfigValidationError(str(exc)) from exc
         normalized_level = self.log_level.lower()
         if normalized_level not in VALID_LOG_LEVELS:
             raise ConfigValidationError(

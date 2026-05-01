@@ -36,19 +36,26 @@ def validate_project_name(name: str) -> str | None:
 
 
 def validate_git_url(url: str) -> str | None:
-    """Validate a git URL for basic format.
+    """GUI-friendly wrapper over the canonical clone-URL validator.
 
-    Args:
-        url: The git URL to validate.
-
-    Returns:
-        An error message if invalid, or None if valid.
+    Returns an error message string (for inline display next to the input
+    field) or ``None`` if the URL is acceptable. Delegates the actual
+    allow-list to ``harvester.git_ops.validate_clone_url`` so the GUI and
+    the CLI/HarvestConfig boundary enforce the same policy.
     """
-    if not url or not url.strip():
-        return "Git URL is required."
-    url = url.strip()
-    if " " in url:
-        return "Git URL cannot contain spaces."
+    # Local import to avoid a circular at module-import time.
+    from repo_mirror_kit.harvester.git_ops import (
+        GitCloneError,
+        validate_clone_url,
+    )
+
+    try:
+        validate_clone_url(url)
+    except GitCloneError as exc:
+        # Surface a user-friendly first sentence; the underlying message
+        # already explains the specific failure (empty, dash-prefixed,
+        # unsupported scheme, etc.).
+        return str(exc)
     return None
 
 

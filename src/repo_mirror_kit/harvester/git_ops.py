@@ -44,19 +44,35 @@ class GitRefError(Exception):
     """Raised when a git ref checkout fails."""
 
 
-def _validate_clone_url(url: str) -> None:
+def validate_clone_url(url: str) -> None:
     """Validate that *url* is one of the supported clone source forms.
 
-    Rejects empty strings, URLs starting with ``-`` (could be misparsed by
-    ``git clone`` as a flag), and anything outside the documented allow-list
-    (``https://``, ``http://``, ``ssh://``, ``file://``, scp-like
-    ``user@host:path``, or absolute local paths beginning with ``/``).
+    The single canonical URL validator for the harvester. Used by:
+
+    - ``clone_repository`` (defense-in-depth before the subprocess call)
+    - ``HarvestConfig.__post_init__`` (boundary validation at config build)
+    - ``services.clone_service.validate_git_url`` (GUI-friendly wrapper that
+      converts the raised exception to a user-facing message string)
+
+    Rejects empty/whitespace strings, URLs starting with ``-`` (could be
+    misparsed by ``git clone`` as a flag), URLs containing whitespace, and
+    anything outside the documented allow-list (``https://``, ``http://``,
+    ``ssh://``, ``file://``, scp-like ``user@host:path``, or absolute local
+    paths beginning with ``/``).
 
     Raises:
         GitCloneError: If *url* fails validation.
     """
-    if not url:
+    if not url or not url.strip():
         raise GitCloneError("Repository URL cannot be empty")
+    if url != url.strip():
+        raise GitCloneError(
+            f"Repository URL cannot have leading or trailing whitespace: {url!r}"
+        )
+    if " " in url:
+        raise GitCloneError(
+            f"Repository URL cannot contain spaces: {url!r}"
+        )
     if url.startswith("-"):
         raise GitCloneError(
             f"Repository URL cannot start with '-' (could be parsed as a "
@@ -131,7 +147,7 @@ def clone_repository(
         GitRefError: If the specified ref cannot be checked out.
     """
     check_git_available()
-    _validate_clone_url(url)
+    validate_clone_url(url)
 
     logger.info("clone_starting", url=url, ref=ref, workdir=str(workdir))
 
