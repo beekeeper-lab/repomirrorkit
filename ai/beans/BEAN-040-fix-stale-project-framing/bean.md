@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-040 |
-| **Status** | Approved |
+| **Status** | In Progress |
 | **Priority** | Low |
 | **Created** | 2026-05-01 |
-| **Started** | — |
+| **Started** | 2026-05-01 11:15 |
 | **Completed** | — |
 | **Duration** | — |
-| **Owner** | (unassigned) |
+| **Owner** | team-lead |
 | **Category** | App |
 
 ## Problem Statement
