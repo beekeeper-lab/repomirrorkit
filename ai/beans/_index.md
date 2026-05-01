@@ -71,7 +71,7 @@
 | BEAN-047 | Cloned-Repo Total-Size Cap | App | Medium | Unapproved | (unassigned) |
 | BEAN-048 | Tighten Pipeline Per-Stage Exception Handling | App | Medium | Unapproved | (unassigned) |
 | BEAN-049 | Fix Misleading Pipeline Resume-Skip Branches | App | Medium | Unapproved | (unassigned) |
-| BEAN-050 | Fixture-Repo End-to-End Integration Test | App | High | Approved | (unassigned) |
+| BEAN-050 | Fixture-Repo End-to-End Integration Test | App | High | In Progress | team-lead |
 | BEAN-051 | Generate Top-Level `REQUIREMENTS.md` Aggregator | App | High | Unapproved | (unassigned) |
 | BEAN-052 | Generate `.env.example` from Config Surfaces | App | Medium | Unapproved | (unassigned) |
 | BEAN-053 | Generate `RUNBOOK.md` from Build/Deploy Surfaces | App | Medium | Unapproved | (unassigned) |
