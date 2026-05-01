@@ -183,6 +183,13 @@ class HarvestPipeline:
     def run(self, config: HarvestConfig) -> HarvestResult:
         """Execute the full pipeline.
 
+        ``--resume`` semantics: Stage A (clone) is skipped if the working
+        copy already exists on disk; all later stages (B-G) always re-run
+        because their outputs are not persisted across runs and re-running
+        is fast relative to the slow network operation. ``state.json``
+        still records per-stage completion for diagnostics, but does not
+        gate stage execution.
+
         Args:
             config: Harvest configuration.
 
@@ -248,61 +255,51 @@ class HarvestPipeline:
             workdir = clone_result.repo_dir
 
             # --- Stage B: Inventory + Detection ---
-            if not state.is_stage_done("B"):
-                self._emit(
-                    PipelineEventType.STAGE_START,
-                    "B",
-                    "Scanning inventory and detecting frameworks",
-                )
-                try:
-                    inventory_result, profile = self._run_stage_b(
-                        config, workdir, output_dir
-                    )
-                except _FS_EXCEPTIONS as exc:
-                    return self._handle_stage_error("B", exc, state, output_dir)
-                state.complete_stage("B")
-                self._emit(
-                    PipelineEventType.STAGE_COMPLETE,
-                    "B",
-                    "Inventory and detection complete",
-                    {
-                        "files": inventory_result.total_files,
-                        "stacks": list(profile.stacks.keys()),
-                    },
-                )
-            else:
-                logger.info("stage_skipped_resume", stage="B")
-                # On resume, re-run inventory and detection since results are
-                # needed by later stages and are fast to recompute
+            # Always runs (BEAN-049): outputs are not persisted across runs,
+            # and the operation is fast relative to clone. ``--resume``
+            # genuinely skips only Stage A.
+            self._emit(
+                PipelineEventType.STAGE_START,
+                "B",
+                "Scanning inventory and detecting frameworks",
+            )
+            try:
                 inventory_result, profile = self._run_stage_b(
                     config, workdir, output_dir
                 )
+            except _FS_EXCEPTIONS as exc:
+                return self._handle_stage_error("B", exc, state, output_dir)
+            state.complete_stage("B")
+            self._emit(
+                PipelineEventType.STAGE_COMPLETE,
+                "B",
+                "Inventory and detection complete",
+                {
+                    "files": inventory_result.total_files,
+                    "stacks": list(profile.stacks.keys()),
+                },
+            )
 
             # --- Stage C: Surface Extraction ---
-            if not state.is_stage_done("C"):
-                self._emit(
-                    PipelineEventType.STAGE_START,
-                    "C",
-                    "Extracting surfaces",
-                )
-                try:
-                    surfaces = self._run_stage_c(
-                        workdir, inventory_result, profile, output_dir
-                    )
-                except _FS_EXCEPTIONS as exc:
-                    return self._handle_stage_error("C", exc, state, output_dir)
-                state.complete_stage("C")
-                self._emit(
-                    PipelineEventType.STAGE_COMPLETE,
-                    "C",
-                    "Surface extraction complete",
-                    {"total_surfaces": len(surfaces)},
-                )
-            else:
-                logger.info("stage_skipped_resume", stage="C")
+            # Always runs (BEAN-049 — see Stage B note).
+            self._emit(
+                PipelineEventType.STAGE_START,
+                "C",
+                "Extracting surfaces",
+            )
+            try:
                 surfaces = self._run_stage_c(
                     workdir, inventory_result, profile, output_dir
                 )
+            except _FS_EXCEPTIONS as exc:
+                return self._handle_stage_error("C", exc, state, output_dir)
+            state.complete_stage("C")
+            self._emit(
+                PipelineEventType.STAGE_COMPLETE,
+                "C",
+                "Surface extraction complete",
+                {"total_surfaces": len(surfaces)},
+            )
 
             # Handle empty repository gracefully
             if len(surfaces) == 0:
@@ -317,121 +314,105 @@ class HarvestPipeline:
                 )
 
             # --- Stage C2: LLM Enrichment (optional) ---
-            if not state.is_stage_done("C2"):
-                self._emit(
-                    PipelineEventType.STAGE_START,
-                    "C2",
-                    "Enriching surfaces with LLM",
-                )
-                try:
-                    surfaces = self._run_stage_c2(surfaces, config, workdir)
-                except _FS_EXCEPTIONS as exc:
-                    return self._handle_stage_error("C2", exc, state, output_dir)
-                state.complete_stage("C2")
-                self._emit(
-                    PipelineEventType.STAGE_COMPLETE,
-                    "C2",
-                    "LLM enrichment complete",
-                )
-            else:
-                logger.info("stage_skipped_resume", stage="C2")
+            # Always runs (BEAN-049). enrich_surfaces is a no-op when
+            # llm_enabled is False or no API key is set, so this is safe.
+            self._emit(
+                PipelineEventType.STAGE_START,
+                "C2",
+                "Enriching surfaces with LLM",
+            )
+            try:
+                surfaces = self._run_stage_c2(surfaces, config, workdir)
+            except _FS_EXCEPTIONS as exc:
+                return self._handle_stage_error("C2", exc, state, output_dir)
+            state.complete_stage("C2")
+            self._emit(
+                PipelineEventType.STAGE_COMPLETE,
+                "C2",
+                "LLM enrichment complete",
+            )
 
             # --- Stage D: Traceability ---
-            if not state.is_stage_done("D"):
-                self._emit(
-                    PipelineEventType.STAGE_START,
-                    "D",
-                    "Building traceability maps",
-                )
-                try:
-                    self._run_stage_d(surfaces, output_dir)
-                except _FS_EXCEPTIONS as exc:
-                    return self._handle_stage_error("D", exc, state, output_dir)
-                state.complete_stage("D")
-                self._emit(
-                    PipelineEventType.STAGE_COMPLETE,
-                    "D",
-                    "Traceability complete",
-                )
-            else:
-                logger.info("stage_skipped_resume", stage="D")
+            # Always runs (BEAN-049).
+            self._emit(
+                PipelineEventType.STAGE_START,
+                "D",
+                "Building traceability maps",
+            )
+            try:
+                self._run_stage_d(surfaces, output_dir)
+            except _FS_EXCEPTIONS as exc:
+                return self._handle_stage_error("D", exc, state, output_dir)
+            state.complete_stage("D")
+            self._emit(
+                PipelineEventType.STAGE_COMPLETE,
+                "D",
+                "Traceability complete",
+            )
 
             # --- Stage E: Bean Generation ---
-            if not state.is_stage_done("E"):
-                self._emit(
-                    PipelineEventType.STAGE_START,
-                    "E",
-                    "Generating beans",
-                )
-                try:
-                    beans = self._run_stage_e(surfaces, output_dir, state)
-                except _FS_EXCEPTIONS as exc:
-                    return self._handle_stage_error("E", exc, state, output_dir)
-                state.complete_stage("E")
-                self._emit(
-                    PipelineEventType.STAGE_COMPLETE,
-                    "E",
-                    "Bean generation complete",
-                    {"bean_count": len(beans)},
-                )
-            else:
-                logger.info("stage_skipped_resume", stage="E")
-                beans = write_beans(surfaces, output_dir, state)
+            # Always runs (BEAN-049).
+            self._emit(
+                PipelineEventType.STAGE_START,
+                "E",
+                "Generating beans",
+            )
+            try:
+                beans = self._run_stage_e(surfaces, output_dir, state)
+            except _FS_EXCEPTIONS as exc:
+                return self._handle_stage_error("E", exc, state, output_dir)
+            state.complete_stage("E")
+            self._emit(
+                PipelineEventType.STAGE_COMPLETE,
+                "E",
+                "Bean generation complete",
+                {"bean_count": len(beans)},
+            )
 
             # --- Stage F: Coverage Gates ---
-            if not state.is_stage_done("F"):
-                self._emit(
-                    PipelineEventType.STAGE_START,
-                    "F",
-                    "Evaluating coverage gates",
-                )
-                try:
-                    evaluation, gap_report = self._run_stage_f(
-                        surfaces, beans, inventory_result, output_dir
-                    )
-                except _FS_EXCEPTIONS as exc:
-                    return self._handle_stage_error("F", exc, state, output_dir)
-                state.complete_stage("F")
-                self._emit(
-                    PipelineEventType.STAGE_COMPLETE,
-                    "F",
-                    "Coverage gates complete",
-                    {
-                        "all_passed": evaluation.all_passed,
-                        "gap_count": gap_report.total_gaps,
-                    },
-                )
-            else:
-                logger.info("stage_skipped_resume", stage="F")
+            # Always runs (BEAN-049).
+            self._emit(
+                PipelineEventType.STAGE_START,
+                "F",
+                "Evaluating coverage gates",
+            )
+            try:
                 evaluation, gap_report = self._run_stage_f(
                     surfaces, beans, inventory_result, output_dir
                 )
+            except _FS_EXCEPTIONS as exc:
+                return self._handle_stage_error("F", exc, state, output_dir)
+            state.complete_stage("F")
+            self._emit(
+                PipelineEventType.STAGE_COMPLETE,
+                "F",
+                "Coverage gates complete",
+                {
+                    "all_passed": evaluation.all_passed,
+                    "gap_count": gap_report.total_gaps,
+                },
+            )
 
             # --- Stage G: Generate Project Folder ---
-            if not state.is_stage_done("G"):
-                self._emit(
-                    PipelineEventType.STAGE_START,
-                    "G",
-                    "Generating Claude Code project folder",
-                )
-                try:
-                    generator_result = self._run_stage_g(
-                        config, surfaces, profile, output_dir
-                    )
-                except _FS_EXCEPTIONS as exc:
-                    return self._handle_stage_error("G", exc, state, output_dir)
-                state.complete_stage("G")
-                self._emit(
-                    PipelineEventType.STAGE_COMPLETE,
-                    "G",
-                    "Project folder generation complete",
-                    {"generated_files": len(generator_result.generated_files)},
-                )
-            else:
-                logger.info("stage_skipped_resume", stage="G")
+            # Always runs (BEAN-049).
+            self._emit(
+                PipelineEventType.STAGE_START,
+                "G",
+                "Generating Claude Code project folder",
+            )
+            try:
                 generator_result = self._run_stage_g(
                     config, surfaces, profile, output_dir
                 )
+            except _FS_EXCEPTIONS as exc:
+                return self._handle_stage_error("G", exc, state, output_dir)
+            state.complete_stage("G")
+            self._emit(
+                PipelineEventType.STAGE_COMPLETE,
+                "G",
+                "Project folder generation complete",
+                {"generated_files": len(generator_result.generated_files)},
+            )
 
         except (OSError, MemoryError) as exc:
             # Last-resort catch for catastrophic-but-not-bug failures that
