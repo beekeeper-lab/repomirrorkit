@@ -64,13 +64,13 @@
 | BEAN-040 | Fix Stale Project Framing in Docs | App | Low | Done | team-lead |
 | BEAN-041 | Bump Default LLM Model to Sonnet 4.6 | App | Medium | Done | team-lead |
 | BEAN-042 | Delete Vestigial `runtime_verify` Package | App | Low | Done | team-lead |
-| BEAN-043 | Harden `git clone` Argv (Terminator + URL Scheme) | App | High | Unapproved | (unassigned) |
-| BEAN-044 | CLI URL Validation Parity with GUI | App | High | Unapproved | (unassigned) |
-| BEAN-045 | Drop `--llm-api-key` CLI Flag, Helpful Missing-Key Error | App | High | Unapproved | (unassigned) |
-| BEAN-046 | Mitigate LLM Prompt Injection from Repo Content | App | High | Unapproved | (unassigned) |
-| BEAN-047 | Cloned-Repo Total-Size Cap | App | Medium | Unapproved | (unassigned) |
-| BEAN-048 | Tighten Pipeline Per-Stage Exception Handling | App | Medium | Unapproved | (unassigned) |
-| BEAN-049 | Fix Misleading Pipeline Resume-Skip Branches | App | Medium | Unapproved | (unassigned) |
+| BEAN-043 | Harden `git clone` Argv (Terminator + URL Scheme) | App | High | Approved | (unassigned) |
+| BEAN-044 | CLI URL Validation Parity with GUI | App | High | Approved | (unassigned) |
+| BEAN-045 | Drop `--llm-api-key` CLI Flag, Helpful Missing-Key Error | App | High | Approved | (unassigned) |
+| BEAN-046 | Mitigate LLM Prompt Injection from Repo Content | App | High | Approved | (unassigned) |
+| BEAN-047 | Cloned-Repo Total-Size Cap | App | Medium | Approved | (unassigned) |
+| BEAN-048 | Tighten Pipeline Per-Stage Exception Handling | App | Medium | Approved | (unassigned) |
+| BEAN-049 | Fix Misleading Pipeline Resume-Skip Branches | App | Medium | Approved | (unassigned) |
 | BEAN-050 | Fixture-Repo End-to-End Integration Test | App | High | Done | team-lead |
 | BEAN-051 | Generate Top-Level `REQUIREMENTS.md` Aggregator | App | High | Unapproved | (unassigned) |
 | BEAN-052 | Generate `.env.example` from Config Surfaces | App | Medium | Unapproved | (unassigned) |
