@@ -74,7 +74,7 @@
 | BEAN-050 | Fixture-Repo End-to-End Integration Test | App | High | Done | team-lead |
 | BEAN-051 | Generate Top-Level `REQUIREMENTS.md` Aggregator | App | High | Done | team-lead |
 | BEAN-052 | Generate `.env.example` from Config Surfaces | App | Medium | Done | team-lead |
-| BEAN-053 | Generate `RUNBOOK.md` from Build/Deploy Surfaces | App | Medium | In Progress | team-lead |
+| BEAN-053 | Generate `RUNBOOK.md` from Build/Deploy Surfaces | App | Medium | Done | team-lead |
 | BEAN-054 | Behavioral-Spec Analyzer (Docstrings + Test Names) | App | High | Approved | (unassigned) |
 | BEAN-055 | Data-Model Relationships Report (with Mermaid ER) | App | Medium | Approved | (unassigned) |
 | BEAN-056 | LLM Enrichment Default-On with Graceful Missing-Key UX | App | Medium | Approved | (unassigned) |
