@@ -79,4 +79,4 @@
 | BEAN-055 | Data-Model Relationships Report (with Mermaid ER) | App | Medium | Unapproved | (unassigned) |
 | BEAN-056 | LLM Enrichment Default-On with Graceful Missing-Key UX | App | Medium | Unapproved | (unassigned) |
 | BEAN-057 | Split `analyzers/models.py` by Framework (Tracer Bullet) | App | Low | Unapproved | (unassigned) |
-| BEAN-058 | Fix `telemetry-stamp` Hook Path Resolution | Infra | High | In Progress | team-lead |
+| BEAN-058 | Fix `telemetry-stamp` Hook Path Resolution | Infra | High | Done | team-lead |
