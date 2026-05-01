@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -115,13 +116,8 @@ def main() -> None:
     "--llm-enabled",
     is_flag=True,
     default=False,
-    help="Enable LLM enrichment of surfaces using Claude.",
-)
-@click.option(
-    "--llm-api-key",
-    default=None,
-    envvar="ANTHROPIC_API_KEY",
-    help="Anthropic API key for LLM enrichment. Defaults to ANTHROPIC_API_KEY env var.",
+    help="Enable LLM enrichment of surfaces using Claude. "
+    "Reads the API key from ANTHROPIC_API_KEY (env var only).",
 )
 @click.option(
     "--llm-model",
@@ -140,10 +136,14 @@ def harvest(
     fail_on_gaps: bool,
     log_level: str,
     llm_enabled: bool,
-    llm_api_key: str | None,
     llm_model: str,
 ) -> None:
     """Run the requirements harvester against a repository."""
+    # API key is sourced from the environment only — never accepted on
+    # argv (would leak into shell history and ps output). The HarvestConfig
+    # validator below raises a helpful ConfigValidationError if --llm-enabled
+    # is set without ANTHROPIC_API_KEY.
+    llm_api_key = os.environ.get("ANTHROPIC_API_KEY")
     try:
         config = HarvestConfig(
             repo=repo,
