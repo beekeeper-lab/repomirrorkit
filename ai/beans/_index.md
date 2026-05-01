@@ -76,7 +76,7 @@
 | BEAN-052 | Generate `.env.example` from Config Surfaces | App | Medium | Done | team-lead |
 | BEAN-053 | Generate `RUNBOOK.md` from Build/Deploy Surfaces | App | Medium | Done | team-lead |
 | BEAN-054 | Behavioral-Spec Analyzer (Docstrings + Test Names) | App | High | Done | team-lead |
-| BEAN-055 | Data-Model Relationships Report (with Mermaid ER) | App | Medium | Approved | (unassigned) |
+| BEAN-055 | Data-Model Relationships Report (with Mermaid ER) | App | Medium | In Progress | team-lead |
 | BEAN-056 | LLM Enrichment Default-On with Graceful Missing-Key UX | App | Medium | Done | team-lead |
 | BEAN-057 | Split `analyzers/models.py` by Framework (Tracer Bullet) | App | Low | Approved | (unassigned) |
 | BEAN-058 | Fix `telemetry-stamp` Hook Path Resolution | Infra | High | Done | team-lead |
