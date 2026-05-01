@@ -47,16 +47,32 @@ class TestGenerateRunbookMd:
         # Operations matrix is present.
         assert "## Operations Quick Reference" in text
         # All operations show their "(none detected)" hint when nothing matches.
-        for op in ("Install", "Dev / Run", "Test", "Lint / Format", "Build", "Deploy / Release"):
+        for op in (
+            "Install",
+            "Dev / Run",
+            "Test",
+            "Lint / Format",
+            "Build",
+            "Deploy / Release",
+        ):
             assert op in text
 
     def test_groups_by_config_type(self, tmp_path: Path) -> None:
         coll = SurfaceCollection(
             build_deploy=[
                 _bd("Dockerfile", "container", "docker", stages=["build", "runtime"]),
-                _bd("Makefile", "build_tool", "make", targets=["install", "test", "build"]),
-                _bd(".github/workflows/ci.yml", "ci_cd", "github-actions",
-                    stages=["lint", "test"]),
+                _bd(
+                    "Makefile",
+                    "build_tool",
+                    "make",
+                    targets=["install", "test", "build"],
+                ),
+                _bd(
+                    ".github/workflows/ci.yml",
+                    "ci_cd",
+                    "github-actions",
+                    stages=["lint", "test"],
+                ),
             ],
         )
         text = generate_runbook_md(coll, tmp_path).read_text()
@@ -73,8 +89,12 @@ class TestGenerateRunbookMd:
     def test_operations_matrix_matches_install(self, tmp_path: Path) -> None:
         coll = SurfaceCollection(
             build_deploy=[
-                _bd("Makefile", "build_tool", "make",
-                    targets=["install", "deps", "test", "build"]),
+                _bd(
+                    "Makefile",
+                    "build_tool",
+                    "make",
+                    targets=["install", "deps", "test", "build"],
+                ),
             ],
         )
         text = generate_runbook_md(coll, tmp_path).read_text()
@@ -89,8 +109,12 @@ class TestGenerateRunbookMd:
     ) -> None:
         coll = SurfaceCollection(
             build_deploy=[
-                _bd("Makefile", "build_tool", "make",
-                    targets=["test", "lint", "build", "deploy"]),
+                _bd(
+                    "Makefile",
+                    "build_tool",
+                    "make",
+                    targets=["test", "lint", "build", "deploy"],
+                ),
             ],
         )
         text = generate_runbook_md(coll, tmp_path).read_text()
@@ -108,7 +132,10 @@ class TestGenerateRunbookMd:
         text = generate_runbook_md(coll, tmp_path).read_text()
         # Install/Build/Deploy missing — gap hint should appear for each.
         # Use a fragment of the gap hint.
-        assert text.count("(none detected — recreated project should still provide one)") >= 3
+        assert (
+            text.count("(none detected — recreated project should still provide one)")
+            >= 3
+        )
 
     def test_total_count_in_header(self, tmp_path: Path) -> None:
         coll = SurfaceCollection(
@@ -125,8 +152,9 @@ class TestGenerateRunbookMd:
     ) -> None:
         coll = SurfaceCollection(
             build_deploy=[
-                _bd("Makefile", "build_tool", "make",
-                    stages=["test"], targets=["test"]),
+                _bd(
+                    "Makefile", "build_tool", "make", stages=["test"], targets=["test"]
+                ),
             ]
         )
         text = generate_runbook_md(coll, tmp_path).read_text()

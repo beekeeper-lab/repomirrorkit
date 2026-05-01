@@ -212,7 +212,9 @@ class ModelSurface(Surface):
                 "fields": [f.to_dict() for f in self.fields],
                 "relationships": self.relationships,
                 "persistence_refs": self.persistence_refs,
-                "relationship_details": [r.to_dict() for r in self.relationship_details],
+                "relationship_details": [
+                    r.to_dict() for r in self.relationship_details
+                ],
             }
         )
         return result

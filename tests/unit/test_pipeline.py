@@ -410,7 +410,9 @@ class TestPipelineErrorHandling:
         }
 
         with contextlib.ExitStack() as stack:
-            _enter_all_patches(stack, rv, side_effects={target: stage_to_exc[failing_stage]})
+            _enter_all_patches(
+                stack, rv, side_effects={target: stage_to_exc[failing_stage]}
+            )
             pipeline = HarvestPipeline()
             result = pipeline.run(config)
 
@@ -439,9 +441,7 @@ class TestPipelineErrorHandling:
 
         # Make stage B fail so A is checkpointed
         with contextlib.ExitStack() as stack:
-            _enter_all_patches(
-                stack, rv, side_effects={_SCAN: OSError("disk full")}
-            )
+            _enter_all_patches(stack, rv, side_effects={_SCAN: OSError("disk full")})
             pipeline = HarvestPipeline()
             result = pipeline.run(config)
 

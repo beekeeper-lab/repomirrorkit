@@ -70,9 +70,7 @@ def validate_clone_url(url: str) -> None:
             f"Repository URL cannot have leading or trailing whitespace: {url!r}"
         )
     if " " in url:
-        raise GitCloneError(
-            f"Repository URL cannot contain spaces: {url!r}"
-        )
+        raise GitCloneError(f"Repository URL cannot contain spaces: {url!r}")
     if url.startswith("-"):
         raise GitCloneError(
             f"Repository URL cannot start with '-' (could be parsed as a "

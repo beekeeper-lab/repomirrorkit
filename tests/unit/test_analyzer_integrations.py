@@ -37,7 +37,11 @@ def _write_file(tmp_path: Path, rel_path: str, content: str) -> FileEntry:
     if dot != -1:
         ext = rel_path[dot:]
     return FileEntry(
-        path=rel_path, size=len(content), extension=ext, hash="abc123", category="source"
+        path=rel_path,
+        size=len(content),
+        extension=ext,
+        hash="abc123",
+        category="source",
     )
 
 
@@ -62,7 +66,11 @@ class TestEmptyResults:
 
     def test_no_workdir_returns_empty(self) -> None:
         entry = FileEntry(
-            path="src/api.ts", size=100, extension=".ts", hash="abc123", category="source"
+            path="src/api.ts",
+            size=100,
+            extension=".ts",
+            hash="abc123",
+            category="source",
         )
         inventory = _make_inventory([entry])
         result = analyze_integrations(inventory, _make_profile(), workdir=None)
@@ -459,7 +467,9 @@ stub = MyServiceStub(channel)
 
         grpc_surfaces = [s for s in result if s.integration_type == "grpc"]
         assert len(grpc_surfaces) >= 1
-        stub_surfaces = [s for s in grpc_surfaces if "MyServiceStub" in s.target_service]
+        stub_surfaces = [
+            s for s in grpc_surfaces if "MyServiceStub" in s.target_service
+        ]
         assert len(stub_surfaces) >= 1
 
 

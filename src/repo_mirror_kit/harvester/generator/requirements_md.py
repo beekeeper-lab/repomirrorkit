@@ -24,36 +24,56 @@ from repo_mirror_kit.harvester.detectors.base import StackProfile
 # Sections rendered in this order. Each tuple is (section title,
 # surface_type discriminator, getter returning the list, "(none)" hint).
 _SECTIONS: tuple[tuple[str, str, str, str], ...] = (
-    ("Routes / Pages", "route", "routes",
-     "No HTTP routes or UI pages detected."),
-    ("APIs", "api", "apis",
-     "No API endpoints detected."),
-    ("Data Models", "model", "models",
-     "No data models detected."),
-    ("Authentication & Authorization", "auth", "auth",
-     "No auth surfaces detected."),
-    ("UI Components", "component", "components",
-     "No reusable UI components detected."),
-    ("UI Flows", "ui_flow", "ui_flows",
-     "No multi-step UI flows detected."),
-    ("State Management", "state_mgmt", "state_mgmt",
-     "No client-side state stores detected."),
-    ("Middleware", "middleware", "middleware",
-     "No middleware surfaces detected."),
-    ("Configuration & Environment", "config", "config",
-     "No configuration / env-var usage detected."),
-    ("External Integrations", "integration", "integrations",
-     "No external integrations detected."),
-    ("Cross-Cutting Concerns", "crosscutting", "crosscutting",
-     "No cross-cutting concerns detected (logging/errors/telemetry/jobs)."),
-    ("Dependencies", "dependency", "dependencies",
-     "No declared dependencies detected."),
-    ("Build & Deploy", "build_deploy", "build_deploy",
-     "No build/deploy configuration detected."),
-    ("Testing", "test_pattern", "test_patterns",
-     "No tests detected."),
-    ("Other Logic", "general_logic", "general_logic",
-     "No additional uncovered logic detected."),
+    ("Routes / Pages", "route", "routes", "No HTTP routes or UI pages detected."),
+    ("APIs", "api", "apis", "No API endpoints detected."),
+    ("Data Models", "model", "models", "No data models detected."),
+    ("Authentication & Authorization", "auth", "auth", "No auth surfaces detected."),
+    ("UI Components", "component", "components", "No reusable UI components detected."),
+    ("UI Flows", "ui_flow", "ui_flows", "No multi-step UI flows detected."),
+    (
+        "State Management",
+        "state_mgmt",
+        "state_mgmt",
+        "No client-side state stores detected.",
+    ),
+    ("Middleware", "middleware", "middleware", "No middleware surfaces detected."),
+    (
+        "Configuration & Environment",
+        "config",
+        "config",
+        "No configuration / env-var usage detected.",
+    ),
+    (
+        "External Integrations",
+        "integration",
+        "integrations",
+        "No external integrations detected.",
+    ),
+    (
+        "Cross-Cutting Concerns",
+        "crosscutting",
+        "crosscutting",
+        "No cross-cutting concerns detected (logging/errors/telemetry/jobs).",
+    ),
+    (
+        "Dependencies",
+        "dependency",
+        "dependencies",
+        "No declared dependencies detected.",
+    ),
+    (
+        "Build & Deploy",
+        "build_deploy",
+        "build_deploy",
+        "No build/deploy configuration detected.",
+    ),
+    ("Testing", "test_pattern", "test_patterns", "No tests detected."),
+    (
+        "Other Logic",
+        "general_logic",
+        "general_logic",
+        "No additional uncovered logic detected.",
+    ),
 )
 
 
@@ -85,7 +105,9 @@ def generate_requirements_md(
     return path
 
 
-def _index_beans_by_surface(beans: Iterable[WrittenBean]) -> dict[tuple[str, str], WrittenBean]:
+def _index_beans_by_surface(
+    beans: Iterable[WrittenBean],
+) -> dict[tuple[str, str], WrittenBean]:
     """Build a (surface_type, surface_name) -> WrittenBean map for link resolution."""
     return {(b.surface_type, b.title): b for b in beans}
 
@@ -106,9 +128,7 @@ def _render(
     for section_title, surface_type, attr_name, empty_hint in _SECTIONS:
         items: list[Surface] = list(getattr(surfaces, attr_name))
         parts.append(
-            _render_section(
-                section_title, surface_type, items, empty_hint, bean_index
-            )
+            _render_section(section_title, surface_type, items, empty_hint, bean_index)
         )
 
     parts.append(_render_reports_footer())

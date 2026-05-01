@@ -153,9 +153,7 @@ def _python_docstring_at(tree: ast.Module, ref: SourceRef) -> str | None:
     enclosing_start = -1
 
     for node in ast.walk(tree):
-        if not isinstance(
-            node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
-        ):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             continue
         start = node.lineno
         end = getattr(node, "end_lineno", None) or start
@@ -322,9 +320,7 @@ def _tokenize_surface_name(name: str) -> set[str]:
     spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", name)
     spaced = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", spaced)
     return {
-        token.lower()
-        for token in re.split(r"[^A-Za-z0-9]+", spaced)
-        if len(token) > 2
+        token.lower() for token in re.split(r"[^A-Za-z0-9]+", spaced) if len(token) > 2
     }
 
 

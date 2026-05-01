@@ -102,8 +102,7 @@ def _placeholder_for(name: str) -> str:
     """
     upper = name.upper()
     if any(
-        upper.endswith(s)
-        for s in ("_URL", "_URI", "_ENDPOINT", "_HOST", "_HOSTNAME")
+        upper.endswith(s) for s in ("_URL", "_URI", "_ENDPOINT", "_HOST", "_HOSTNAME")
     ):
         return "https://example.com"
     if upper.endswith("_PORT"):

@@ -315,9 +315,7 @@ def analyze_state_management(
                             source_refs=[
                                 SourceRef(
                                     file_path=entry.path,
-                                    start_line=_line_number(
-                                        content, match.start()
-                                    ),
+                                    start_line=_line_number(content, match.start()),
                                 )
                             ],
                         )

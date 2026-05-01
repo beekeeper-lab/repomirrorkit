@@ -49,10 +49,7 @@ class TestDjangoExtraction:
         assert rels[0].cascade == "SET_NULL"
 
     def test_many_to_many(self) -> None:
-        src = (
-            "class Post(models.Model):\n"
-            "    tags = models.ManyToManyField('Tag')\n"
-        )
+        src = "class Post(models.Model):\n    tags = models.ManyToManyField('Tag')\n"
         rels = _scan_relationships(src, "Post", "x.py", {})
         assert rels[0].kind == "many_to_many"
         assert rels[0].target_model == "Tag"
@@ -70,8 +67,7 @@ class TestDjangoExtraction:
 class TestSqlAlchemyExtraction:
     def test_foreign_key_column(self) -> None:
         src = (
-            "class Post(Base):\n"
-            "    user_id = Column(Integer, ForeignKey('users.id'))\n"
+            "class Post(Base):\n    user_id = Column(Integer, ForeignKey('users.id'))\n"
         )
         rels = _scan_relationships(src, "Post", "models.py", {})
         # Falls back to the literal table name 'users' since no User model
@@ -150,8 +146,12 @@ class TestRenderReport:
                     name="User",
                     entity_name="User",
                     fields=[
-                        ModelField(name="id", field_type="int", constraints=["primary_key"]),
-                        ModelField(name="email", field_type="str", constraints=["unique"]),
+                        ModelField(
+                            name="id", field_type="int", constraints=["primary_key"]
+                        ),
+                        ModelField(
+                            name="email", field_type="str", constraints=["unique"]
+                        ),
                     ],
                     source_refs=[SourceRef(file_path="models.py", start_line=10)],
                 )
@@ -192,9 +192,7 @@ class TestRenderReport:
         assert "author_id" in text
 
     def test_mermaid_skipped_when_no_relationships(self, tmp_path: Path) -> None:
-        coll = SurfaceCollection(
-            models=[ModelSurface(name="User", entity_name="User")]
-        )
+        coll = SurfaceCollection(models=[ModelSurface(name="User", entity_name="User")])
         text = write_data_model_report(coll, tmp_path).read_text()
         # Mermaid block should NOT be present.
         assert "```mermaid" not in text
@@ -237,8 +235,12 @@ class TestRenderReport:
                     name="A",
                     entity_name="A",
                     relationship_details=[
-                        ModelRelationship(source_model="A", target_model="B", kind="many_to_one"),
-                        ModelRelationship(source_model="A", target_model="C", kind="many_to_one"),
+                        ModelRelationship(
+                            source_model="A", target_model="B", kind="many_to_one"
+                        ),
+                        ModelRelationship(
+                            source_model="A", target_model="C", kind="many_to_one"
+                        ),
                     ],
                 ),
                 ModelSurface(name="B", entity_name="B"),

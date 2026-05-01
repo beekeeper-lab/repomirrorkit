@@ -54,15 +54,11 @@ class TestBuildEnrichmentPromptWrapping:
         assert "def handler(): return []" in prompt
 
     def test_surface_name_wrapped(self) -> None:
-        prompt = build_enrichment_prompt(
-            "route", "ListUsers", {}, "code"
-        )
+        prompt = build_enrichment_prompt("route", "ListUsers", {}, "code")
         assert "<repo_name>ListUsers</repo_name>" in prompt
 
     def test_metadata_wrapped(self) -> None:
-        prompt = build_enrichment_prompt(
-            "route", "X", {"path": "/u"}, "code"
-        )
+        prompt = build_enrichment_prompt("route", "X", {"path": "/u"}, "code")
         assert "<repo_metadata>" in prompt
         assert "</repo_metadata>" in prompt
         assert "/u" in prompt

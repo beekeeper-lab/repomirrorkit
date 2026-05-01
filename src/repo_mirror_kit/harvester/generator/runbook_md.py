@@ -87,9 +87,7 @@ def _render_operations_matrix(items: list[BuildDeploySurface]) -> str:
         matches = _match_operation(items, keywords)
         if matches:
             for stage_or_target, source_path in matches:
-                lines.append(
-                    f"| {op_name} | `{stage_or_target}` | `{source_path}` |"
-                )
+                lines.append(f"| {op_name} | `{stage_or_target}` | `{source_path}` |")
         else:
             lines.append(
                 f"| {op_name} | _(none detected — recreated project should still provide one)_ | — |"

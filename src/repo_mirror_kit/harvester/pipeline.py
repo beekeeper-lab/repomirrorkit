@@ -88,7 +88,7 @@ STAGE_NAMES: list[str] = ["A", "B", "C", "C2", "D", "E", "F", "G"]
 # conditions (``MemoryError``); see :meth:`HarvestPipeline.run`.
 
 # Stage A clones a git repository.
-_STAGE_A_EXCEPTIONS: tuple[type[BaseException], ...] = (
+_STAGE_A_EXCEPTIONS: tuple[type[Exception], ...] = (
     GitCloneError,
     GitRefError,
     GitNotFoundError,
@@ -99,7 +99,7 @@ _STAGE_A_EXCEPTIONS: tuple[type[BaseException], ...] = (
 # (``ENOENT``, ``EACCES``, ``ENOSPC``, ``EIO``, …). Stage C2 (LLM enrichment)
 # additionally catches its own internal errors inside :func:`enrich_surfaces`,
 # so by the time control returns here the only escapes are filesystem-shaped.
-_FS_EXCEPTIONS: tuple[type[BaseException], ...] = (OSError,)
+_FS_EXCEPTIONS: tuple[type[Exception], ...] = (OSError,)
 
 
 class PipelineEventType(StrEnum):
@@ -646,9 +646,7 @@ class HarvestPipeline:
         # signal to surface enrichment dicts. Runs after all surface analyzers
         # so it sees the complete collection.
         analyze_behavioral_spec(inventory, profile, workdir, surfaces)
-        signal_count = sum(
-            1 for s in surfaces if "behavioral_signals" in s.enrichment
-        )
+        signal_count = sum(1 for s in surfaces if "behavioral_signals" in s.enrichment)
         self._emit(
             PipelineEventType.PROGRESS_UPDATE,
             "C",

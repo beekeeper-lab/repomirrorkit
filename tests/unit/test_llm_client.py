@@ -71,7 +71,9 @@ class TestLLMClientInit:
 
             reload(client_mod)
 
-            client = client_mod.LLMClient(api_key="sk-test", model="claude-test", requests_per_minute=60)
+            client = client_mod.LLMClient(
+                api_key="sk-test", model="claude-test", requests_per_minute=60
+            )
 
             assert client._model == "claude-test"
             assert client._rpm == 60
@@ -249,14 +251,15 @@ class TestRateLimiting:
 class TestAnthropicNotInstalled:
     def test_raises_import_error_when_anthropic_missing(self) -> None:
         with patch.dict("sys.modules", {"anthropic": None}):
-
             import repo_mirror_kit.harvester.llm.client as client_mod
 
             # Force HAS_ANTHROPIC to False to simulate missing package
             original = client_mod.HAS_ANTHROPIC
             client_mod.HAS_ANTHROPIC = False
             try:
-                with pytest.raises(ImportError, match="anthropic package is not installed"):
+                with pytest.raises(
+                    ImportError, match="anthropic package is not installed"
+                ):
                     client_mod.LLMClient(api_key="sk-test")
             finally:
                 client_mod.HAS_ANTHROPIC = original

@@ -177,7 +177,11 @@ def _scan_relationships(
     for match in _SQLA_REL_RE.finditer(source_text):
         target = _normalize_model_name(match.group("target"))
         rest = match.group("rest") or ""
-        kind = "one_to_many" if "uselist" not in rest or "uselist=True" in rest else "one_to_one"
+        kind = (
+            "one_to_many"
+            if "uselist" not in rest or "uselist=True" in rest
+            else "one_to_one"
+        )
         cascade = _extract_cascade(rest)
         rels.append(
             ModelRelationship(
@@ -261,9 +265,7 @@ def _render_mermaid(models: list[ModelSurface]) -> str:
     lines = ["## ER Diagram", ""]
 
     if not any(m.relationship_details for m in models):
-        lines.append(
-            "_(no relationships detected — Mermaid ER diagram skipped)_\n"
-        )
+        lines.append("_(no relationships detected — Mermaid ER diagram skipped)_\n")
         return "\n".join(lines) + "\n"
 
     lines.append("```mermaid")
@@ -348,11 +350,7 @@ def _render_models_section(models: list[ModelSurface]) -> str:
 
 def _render_relationships_table(models: list[ModelSurface]) -> str:
     lines = ["## All Relationships", ""]
-    rels = [
-        (model, rel)
-        for model in models
-        for rel in model.relationship_details
-    ]
+    rels = [(model, rel) for model in models for rel in model.relationship_details]
     if not rels:
         lines.append("_(no relationships detected across all models)_\n")
         return "\n".join(lines) + "\n"

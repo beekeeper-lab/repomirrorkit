@@ -121,9 +121,7 @@ def _format_behavioral_signals(signals: dict[str, Any]) -> str:
         )
 
     if not parts:
-        return (
-            "TODO: Describe the expected behavior from a user/system perspective."
-        )
+        return "TODO: Describe the expected behavior from a user/system perspective."
     return "\n\n".join(parts)
 
 

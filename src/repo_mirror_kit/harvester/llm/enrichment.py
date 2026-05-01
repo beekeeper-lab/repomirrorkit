@@ -82,11 +82,14 @@ def enrich_surfaces(
                 PipelineEvent,
                 PipelineEventType,
             )
-            callback(PipelineEvent(
-                event_type=PipelineEventType.PROGRESS_UPDATE,
-                stage="C2",
-                message=f"Enriched {i + 1}/{total} surfaces",
-            ))
+
+            callback(
+                PipelineEvent(
+                    event_type=PipelineEventType.PROGRESS_UPDATE,
+                    stage="C2",
+                    message=f"Enriched {i + 1}/{total} surfaces",
+                )
+            )
 
     logger.info(
         "llm_enrichment_complete",

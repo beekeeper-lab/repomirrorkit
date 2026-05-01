@@ -52,46 +52,41 @@ def create_user():
 
         tree = parse(src.read_text())
         # Line 3 is the docstring of list_users; line 8 is create_user's.
-        assert _python_docstring_at(
-            tree, SourceRef(file_path="app.py", start_line=3)
-        ) == "Return all users as JSON."
-        assert _python_docstring_at(
-            tree, SourceRef(file_path="app.py", start_line=8)
-        ) == "Create a new user from request body."
+        assert (
+            _python_docstring_at(tree, SourceRef(file_path="app.py", start_line=3))
+            == "Return all users as JSON."
+        )
+        assert (
+            _python_docstring_at(tree, SourceRef(file_path="app.py", start_line=8))
+            == "Create a new user from request body."
+        )
 
     def test_falls_back_to_module_docstring(self, tmp_path: Path) -> None:
         src = tmp_path / "app.py"
-        src.write_text(
-            '"""Module-level summary."""\n\n'
-            'x = 1\n'
-        )
+        src.write_text('"""Module-level summary."""\n\nx = 1\n')
         from ast import parse
 
         tree = parse(src.read_text())
-        assert _python_docstring_at(
-            tree, SourceRef(file_path="app.py", start_line=3)
-        ) == "Module-level summary."
+        assert (
+            _python_docstring_at(tree, SourceRef(file_path="app.py", start_line=3))
+            == "Module-level summary."
+        )
 
     def test_returns_none_when_no_docstring(self, tmp_path: Path) -> None:
         from ast import parse
 
         tree = parse("def foo():\n    return 1\n")
-        result = _python_docstring_at(
-            tree, SourceRef(file_path="x.py", start_line=1)
-        )
+        result = _python_docstring_at(tree, SourceRef(file_path="x.py", start_line=1))
         assert result is None
 
     def test_picks_class_docstring(self, tmp_path: Path) -> None:
         from ast import parse
 
-        tree = parse(
-            'class User:\n'
-            '    """Persistent user record."""\n'
-            '    pass\n'
+        tree = parse('class User:\n    """Persistent user record."""\n    pass\n')
+        assert (
+            _python_docstring_at(tree, SourceRef(file_path="x.py", start_line=2))
+            == "Persistent user record."
         )
-        assert _python_docstring_at(
-            tree, SourceRef(file_path="x.py", start_line=2)
-        ) == "Persistent user record."
 
 
 # ---------------------------------------------------------------------------
@@ -213,14 +208,14 @@ class TestAnalyzeBehavioralSpec:
     def test_attaches_python_docstring_to_route(self, tmp_path: Path) -> None:
         # Source file with a docstring.
         (tmp_path / "app.py").write_text(
-            'from flask import Flask\n'
-            'app = Flask(__name__)\n'
-            '\n'
-            '\n'
+            "from flask import Flask\n"
+            "app = Flask(__name__)\n"
+            "\n"
+            "\n"
             '@app.route("/api/users")\n'
-            'def list_users():\n'
+            "def list_users():\n"
             '    """Return all users as JSON."""\n'
-            '    return []\n'
+            "    return []\n"
         )
         coll = SurfaceCollection(
             routes=[
@@ -274,8 +269,7 @@ class TestAnalyzeBehavioralSpec:
         test_path = tmp_path / "tests" / "test_user.py"
         test_path.parent.mkdir()
         test_path.write_text(
-            "def test_user_can_log_in(): pass\n"
-            "def test_unrelated(): pass\n"
+            "def test_user_can_log_in(): pass\ndef test_unrelated(): pass\n"
         )
         coll = SurfaceCollection(
             routes=[
@@ -327,9 +321,7 @@ class TestAnalyzeBehavioralSpec:
                     name="MysterySurface",
                     path="/x",
                     method="GET",
-                    source_refs=[
-                        SourceRef(file_path="missing.py", start_line=1)
-                    ],
+                    source_refs=[SourceRef(file_path="missing.py", start_line=1)],
                 )
             ]
         )
@@ -350,9 +342,7 @@ class TestAnalyzeBehavioralSpec:
                     name="X",
                     path="/x",
                     method="GET",
-                    source_refs=[
-                        SourceRef(file_path="broken.py", start_line=1)
-                    ],
+                    source_refs=[SourceRef(file_path="broken.py", start_line=1)],
                 )
             ]
         )

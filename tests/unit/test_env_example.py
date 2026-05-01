@@ -73,9 +73,7 @@ class TestGenerateEnvExample:
         )
 
     def test_writes_file_to_top_level(self, tmp_path: Path) -> None:
-        path = generate_env_example(
-            self._surfaces_with_vars("DATABASE_URL"), tmp_path
-        )
+        path = generate_env_example(self._surfaces_with_vars("DATABASE_URL"), tmp_path)
         assert path == tmp_path / ".env.example"
         assert path.is_file()
 

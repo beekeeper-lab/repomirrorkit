@@ -68,34 +68,219 @@ def _surfaces_with_enrichment() -> list[tuple[str, Surface, str]]:
     """Return (label, surface, bean_id) tuples WITH enrichment data."""
     e = _ENRICHMENT
     return [
-        ("route", RouteSurface(name="dash", path="/dash", method="GET", source_refs=[_ref()], enrichment=dict(e)), "BEAN-001"),
-        ("component", ComponentSurface(name="widget", props=["x"], source_refs=[_ref()], enrichment=dict(e)), "BEAN-002"),
-        ("api", ApiSurface(name="get_data", method="GET", path="/api/data", source_refs=[_ref()], enrichment=dict(e)), "BEAN-003"),
-        ("model", ModelSurface(name="User", fields=[ModelField(name="id", field_type="int")], source_refs=[_ref()], enrichment=dict(e)), "BEAN-004"),
-        ("auth", AuthSurface(name="rbac", roles=["admin"], source_refs=[_ref()], enrichment=dict(e)), "BEAN-005"),
-        ("config", ConfigSurface(name="DB_URL", env_var_name="DB_URL", source_refs=[_ref()], enrichment=dict(e)), "BEAN-006"),
-        ("crosscutting", CrosscuttingSurface(name="logging", concern_type="logging", source_refs=[_ref()], enrichment=dict(e)), "BEAN-007"),
-        ("state_mgmt", StateMgmtSurface(name="app_store", store_name="app", pattern="redux", actions=["inc"], selectors=["getCount"], source_refs=[_ref()], enrichment=dict(e)), "BEAN-008"),
-        ("middleware", MiddlewareSurface(name="cors", middleware_type="http", applies_to=["/api/*"], transforms=["add CORS headers"], source_refs=[_ref()], enrichment=dict(e)), "BEAN-009"),
-        ("integration", IntegrationSurface(name="payment_hook", integration_type="webhook", target_service="Stripe", protocol="HTTPS", data_exchanged=["payment_event"], source_refs=[_ref()], enrichment=dict(e)), "BEAN-010"),
-        ("ui_flow", UIFlowSurface(name="onboarding", flow_type="wizard", entry_point="/signup", steps=["create account", "verify email"], exit_points=["/dashboard"], source_refs=[_ref()], enrichment=dict(e)), "BEAN-011"),
+        (
+            "route",
+            RouteSurface(
+                name="dash",
+                path="/dash",
+                method="GET",
+                source_refs=[_ref()],
+                enrichment=dict(e),
+            ),
+            "BEAN-001",
+        ),
+        (
+            "component",
+            ComponentSurface(
+                name="widget", props=["x"], source_refs=[_ref()], enrichment=dict(e)
+            ),
+            "BEAN-002",
+        ),
+        (
+            "api",
+            ApiSurface(
+                name="get_data",
+                method="GET",
+                path="/api/data",
+                source_refs=[_ref()],
+                enrichment=dict(e),
+            ),
+            "BEAN-003",
+        ),
+        (
+            "model",
+            ModelSurface(
+                name="User",
+                fields=[ModelField(name="id", field_type="int")],
+                source_refs=[_ref()],
+                enrichment=dict(e),
+            ),
+            "BEAN-004",
+        ),
+        (
+            "auth",
+            AuthSurface(
+                name="rbac", roles=["admin"], source_refs=[_ref()], enrichment=dict(e)
+            ),
+            "BEAN-005",
+        ),
+        (
+            "config",
+            ConfigSurface(
+                name="DB_URL",
+                env_var_name="DB_URL",
+                source_refs=[_ref()],
+                enrichment=dict(e),
+            ),
+            "BEAN-006",
+        ),
+        (
+            "crosscutting",
+            CrosscuttingSurface(
+                name="logging",
+                concern_type="logging",
+                source_refs=[_ref()],
+                enrichment=dict(e),
+            ),
+            "BEAN-007",
+        ),
+        (
+            "state_mgmt",
+            StateMgmtSurface(
+                name="app_store",
+                store_name="app",
+                pattern="redux",
+                actions=["inc"],
+                selectors=["getCount"],
+                source_refs=[_ref()],
+                enrichment=dict(e),
+            ),
+            "BEAN-008",
+        ),
+        (
+            "middleware",
+            MiddlewareSurface(
+                name="cors",
+                middleware_type="http",
+                applies_to=["/api/*"],
+                transforms=["add CORS headers"],
+                source_refs=[_ref()],
+                enrichment=dict(e),
+            ),
+            "BEAN-009",
+        ),
+        (
+            "integration",
+            IntegrationSurface(
+                name="payment_hook",
+                integration_type="webhook",
+                target_service="Stripe",
+                protocol="HTTPS",
+                data_exchanged=["payment_event"],
+                source_refs=[_ref()],
+                enrichment=dict(e),
+            ),
+            "BEAN-010",
+        ),
+        (
+            "ui_flow",
+            UIFlowSurface(
+                name="onboarding",
+                flow_type="wizard",
+                entry_point="/signup",
+                steps=["create account", "verify email"],
+                exit_points=["/dashboard"],
+                source_refs=[_ref()],
+                enrichment=dict(e),
+            ),
+            "BEAN-011",
+        ),
     ]
 
 
 def _surfaces_without_enrichment() -> list[tuple[str, Surface, str]]:
     """Return (label, surface, bean_id) tuples WITHOUT enrichment data."""
     return [
-        ("route", RouteSurface(name="dash", path="/dash", method="GET", source_refs=[_ref()]), "BEAN-001"),
-        ("component", ComponentSurface(name="widget", props=["x"], source_refs=[_ref()]), "BEAN-002"),
-        ("api", ApiSurface(name="get_data", method="GET", path="/api/data", source_refs=[_ref()]), "BEAN-003"),
-        ("model", ModelSurface(name="User", fields=[ModelField(name="id", field_type="int")], source_refs=[_ref()]), "BEAN-004"),
-        ("auth", AuthSurface(name="rbac", roles=["admin"], source_refs=[_ref()]), "BEAN-005"),
-        ("config", ConfigSurface(name="DB_URL", env_var_name="DB_URL", source_refs=[_ref()]), "BEAN-006"),
-        ("crosscutting", CrosscuttingSurface(name="logging", concern_type="logging", source_refs=[_ref()]), "BEAN-007"),
-        ("state_mgmt", StateMgmtSurface(name="app_store", store_name="app", pattern="redux", actions=["inc"], selectors=["getCount"], source_refs=[_ref()]), "BEAN-008"),
-        ("middleware", MiddlewareSurface(name="cors", middleware_type="http", applies_to=["/api/*"], transforms=["add CORS headers"], source_refs=[_ref()]), "BEAN-009"),
-        ("integration", IntegrationSurface(name="payment_hook", integration_type="webhook", target_service="Stripe", protocol="HTTPS", data_exchanged=["payment_event"], source_refs=[_ref()]), "BEAN-010"),
-        ("ui_flow", UIFlowSurface(name="onboarding", flow_type="wizard", entry_point="/signup", steps=["create account", "verify email"], exit_points=["/dashboard"], source_refs=[_ref()]), "BEAN-011"),
+        (
+            "route",
+            RouteSurface(name="dash", path="/dash", method="GET", source_refs=[_ref()]),
+            "BEAN-001",
+        ),
+        (
+            "component",
+            ComponentSurface(name="widget", props=["x"], source_refs=[_ref()]),
+            "BEAN-002",
+        ),
+        (
+            "api",
+            ApiSurface(
+                name="get_data", method="GET", path="/api/data", source_refs=[_ref()]
+            ),
+            "BEAN-003",
+        ),
+        (
+            "model",
+            ModelSurface(
+                name="User",
+                fields=[ModelField(name="id", field_type="int")],
+                source_refs=[_ref()],
+            ),
+            "BEAN-004",
+        ),
+        (
+            "auth",
+            AuthSurface(name="rbac", roles=["admin"], source_refs=[_ref()]),
+            "BEAN-005",
+        ),
+        (
+            "config",
+            ConfigSurface(name="DB_URL", env_var_name="DB_URL", source_refs=[_ref()]),
+            "BEAN-006",
+        ),
+        (
+            "crosscutting",
+            CrosscuttingSurface(
+                name="logging", concern_type="logging", source_refs=[_ref()]
+            ),
+            "BEAN-007",
+        ),
+        (
+            "state_mgmt",
+            StateMgmtSurface(
+                name="app_store",
+                store_name="app",
+                pattern="redux",
+                actions=["inc"],
+                selectors=["getCount"],
+                source_refs=[_ref()],
+            ),
+            "BEAN-008",
+        ),
+        (
+            "middleware",
+            MiddlewareSurface(
+                name="cors",
+                middleware_type="http",
+                applies_to=["/api/*"],
+                transforms=["add CORS headers"],
+                source_refs=[_ref()],
+            ),
+            "BEAN-009",
+        ),
+        (
+            "integration",
+            IntegrationSurface(
+                name="payment_hook",
+                integration_type="webhook",
+                target_service="Stripe",
+                protocol="HTTPS",
+                data_exchanged=["payment_event"],
+                source_refs=[_ref()],
+            ),
+            "BEAN-010",
+        ),
+        (
+            "ui_flow",
+            UIFlowSurface(
+                name="onboarding",
+                flow_type="wizard",
+                entry_point="/signup",
+                steps=["create account", "verify email"],
+                exit_points=["/dashboard"],
+                source_refs=[_ref()],
+            ),
+            "BEAN-011",
+        ),
     ]
 
 
@@ -113,7 +298,10 @@ class TestBehavioralSectionsPresent:
         ids=[t[0] for t in _surfaces_with_enrichment()],
     )
     def test_behavioral_description_section_present(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "## Behavioral description" in result
@@ -124,7 +312,10 @@ class TestBehavioralSectionsPresent:
         ids=[t[0] for t in _surfaces_with_enrichment()],
     )
     def test_acceptance_criteria_section_present(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "## Acceptance criteria (Given/When/Then)" in result
@@ -135,7 +326,10 @@ class TestBehavioralSectionsPresent:
         ids=[t[0] for t in _surfaces_with_enrichment()],
     )
     def test_data_flow_section_present(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "## Data flow" in result
@@ -153,7 +347,10 @@ class TestEnrichmentContentPopulated:
         ids=[t[0] for t in _surfaces_with_enrichment()],
     )
     def test_behavioral_description_contains_enrichment(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "This route serves the main dashboard." in result
@@ -164,7 +361,10 @@ class TestEnrichmentContentPopulated:
         ids=[t[0] for t in _surfaces_with_enrichment()],
     )
     def test_given_when_then_contains_enrichment(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "a logged-in user" in result
@@ -177,7 +377,10 @@ class TestEnrichmentContentPopulated:
         ids=[t[0] for t in _surfaces_with_enrichment()],
     )
     def test_data_flow_contains_enrichment(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "Data flows from metrics-service through the API gateway." in result
@@ -195,7 +398,10 @@ class TestTodoPlaceholders:
         ids=[t[0] for t in _surfaces_without_enrichment()],
     )
     def test_behavioral_description_has_todo(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "TODO: Describe the expected behavior" in result
@@ -206,7 +412,10 @@ class TestTodoPlaceholders:
         ids=[t[0] for t in _surfaces_without_enrichment()],
     )
     def test_acceptance_criteria_has_todo(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "TODO: Define Given/When/Then acceptance criteria." in result
@@ -217,7 +426,10 @@ class TestTodoPlaceholders:
         ids=[t[0] for t in _surfaces_without_enrichment()],
     )
     def test_data_flow_has_todo(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "TODO: Describe the data flow for this surface." in result
@@ -235,7 +447,10 @@ class TestFrontmatterEnrichmentFields:
         ids=[t[0] for t in _surfaces_with_enrichment()],
     )
     def test_frontmatter_has_priority(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "priority: high" in result
@@ -246,7 +461,10 @@ class TestFrontmatterEnrichmentFields:
         ids=[t[0] for t in _surfaces_with_enrichment()],
     )
     def test_frontmatter_has_dependencies(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "auth-service" in result
@@ -258,7 +476,10 @@ class TestFrontmatterEnrichmentFields:
         ids=[t[0] for t in _surfaces_without_enrichment()],
     )
     def test_frontmatter_default_priority_when_no_enrichment(
-        self, label: str, surface: Surface, bean_id: str,
+        self,
+        label: str,
+        surface: Surface,
+        bean_id: str,
     ) -> None:
         result = render_bean(surface, bean_id)
         assert "priority: unassessed" in result

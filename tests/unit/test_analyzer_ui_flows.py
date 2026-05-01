@@ -37,7 +37,11 @@ def _write_file(tmp_path: Path, rel_path: str, content: str) -> FileEntry:
     if dot != -1:
         ext = rel_path[dot:]
     return FileEntry(
-        path=rel_path, size=len(content), extension=ext, hash="abc123", category="source"
+        path=rel_path,
+        size=len(content),
+        extension=ext,
+        hash="abc123",
+        category="source",
     )
 
 
@@ -62,7 +66,11 @@ class TestEmptyResults:
 
     def test_no_workdir_returns_empty(self) -> None:
         entry = FileEntry(
-            path="src/wizard.tsx", size=100, extension=".tsx", hash="abc123", category="source"
+            path="src/wizard.tsx",
+            size=100,
+            extension=".tsx",
+            hash="abc123",
+            category="source",
         )
         inventory = _make_inventory([entry])
         result = analyze_ui_flows(inventory, _make_profile(), workdir=None)

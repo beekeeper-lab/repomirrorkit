@@ -103,7 +103,9 @@ class TestSizeCap:
     ) -> None:
         workdir = tmp_path / "repo"
 
-        def fake_clone(*args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        def fake_clone(
+            *args: object, **_kwargs: object
+        ) -> subprocess.CompletedProcess[str]:
             # Simulate git clone creating a workdir with a large file.
             workdir.mkdir(parents=True, exist_ok=True)
             (workdir / "huge.bin").write_bytes(b"x" * 1024)
@@ -133,7 +135,9 @@ class TestSizeCap:
     ) -> None:
         workdir = tmp_path / "repo"
 
-        def fake_clone(*args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        def fake_clone(
+            *args: object, **_kwargs: object
+        ) -> subprocess.CompletedProcess[str]:
             workdir.mkdir(parents=True, exist_ok=True)
             (workdir / "small.txt").write_bytes(b"hi")
             return subprocess.CompletedProcess(args=[], returncode=0, stderr="")
@@ -172,7 +176,11 @@ class TestCloneArgv:
 
         # Find the call that invoked `git clone`.
         clone_call = next(
-            (c for c in mock_run.call_args_list if c.args and c.args[0][:2] == ["git", "clone"]),
+            (
+                c
+                for c in mock_run.call_args_list
+                if c.args and c.args[0][:2] == ["git", "clone"]
+            ),
             None,
         )
         assert clone_call is not None, "expected a git clone subprocess call"
@@ -180,9 +188,7 @@ class TestCloneArgv:
         # `--` must appear immediately before the URL.
         assert "--" in argv, f"argv missing terminator: {argv}"
         dash_idx = argv.index("--")
-        assert argv[dash_idx + 1] == url, (
-            f"`--` must precede URL; argv was {argv}"
-        )
+        assert argv[dash_idx + 1] == url, f"`--` must precede URL; argv was {argv}"
 
     @patch(
         "repo_mirror_kit.harvester.git_ops.shutil.which", return_value="/usr/bin/git"

@@ -128,9 +128,7 @@ class TestGenerateRequirementsMd:
         assert "0.95" in text
         assert "pyproject.toml" in text
 
-    def test_all_section_headings_present_even_when_empty(
-        self, tmp_path: Path
-    ) -> None:
+    def test_all_section_headings_present_even_when_empty(self, tmp_path: Path) -> None:
         # Empty surfaces — every section should still be there with a
         # "(none detected)"-style hint.
         path = generate_requirements_md(
@@ -218,9 +216,7 @@ class TestGenerateRequirementsMd:
         # Routes surface has app.py:13
         assert "`app.py:13`" in text
 
-    def test_section_heading_count_reflects_surface_count(
-        self, tmp_path: Path
-    ) -> None:
+    def test_section_heading_count_reflects_surface_count(self, tmp_path: Path) -> None:
         path = generate_requirements_md(
             project_name="X",
             surfaces=_make_surfaces(),
