@@ -3,13 +3,13 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-051 |
-| **Status** | Approved |
+| **Status** | In Progress |
 | **Priority** | High |
 | **Created** | 2026-05-01 |
-| **Started** | — |
+| **Started** | 2026-05-01 16:32 |
 | **Completed** | — |
 | **Duration** | — |
-| **Owner** | (unassigned) |
+| **Owner** | team-lead |
 | **Category** | App |
 
 ## Problem Statement
