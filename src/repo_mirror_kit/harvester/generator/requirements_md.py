@@ -205,6 +205,7 @@ def _render_reports_footer() -> str:
     return (
         "## Reports & Traceability\n"
         "\n"
+        "- [Data model & ER diagram](data-model.md)\n"
         "- [Coverage report](reports/coverage.md)\n"
         "- [Gap analysis](reports/gaps.md)\n"
         "- [File coverage](reports/file-coverage.md)\n"
