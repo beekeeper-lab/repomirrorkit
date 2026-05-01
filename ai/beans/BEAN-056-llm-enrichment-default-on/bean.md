@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-056 |
-| **Status** | Unapproved |
+| **Status** | Approved |
 | **Priority** | Medium |
 | **Created** | 2026-05-01 |
 | **Started** | — |
