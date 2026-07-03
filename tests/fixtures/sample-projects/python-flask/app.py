@@ -21,7 +21,7 @@ def list_users():
 def create_user():
     """Create a new user from the JSON request body."""
     data = request.get_json()
-    user = User(name=data["name"])
+    user = User(name=data["name"], email=data.get("email"))
     db.session.add(user)
     db.session.commit()
-    return jsonify({"id": user.id}), 201
+    return jsonify({"id": user.id, "name": user.name}), 201

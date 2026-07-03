@@ -299,6 +299,39 @@ UI component: {surface.name}.
     return fm + "\n" + body.lstrip("\n")
 
 
+def _render_contract_schema(schema: dict[str, Any]) -> str:
+    """Render a request/response contract schema block (BEAN-062).
+
+    Field-shaped schemas (``{"fields": [...], "confidence": ...}``) render
+    as a markdown table; explicit ``{"unknown": True}`` markers render as a
+    visible gap note; anything else falls back to a JSON block.
+    """
+    if not schema:
+        return "(none)"
+    if schema.get("unknown") is True:
+        return "_Unknown — could not be inferred from source (gap)._"
+    fields = schema.get("fields")
+    if isinstance(fields, list):
+        confidence = schema.get("confidence", "inferred")
+        if not fields:
+            return f"_No fields (empty contract, {confidence})._"
+        lines = [
+            "| Field | Type | Required | Source |",
+            "|-------|------|----------|--------|",
+        ]
+        for field in fields:
+            lines.append(
+                f"| `{field.get('name', '?')}` "
+                f"| {field.get('type', 'unknown')} "
+                f"| {'yes' if field.get('required') else 'no'} "
+                f"| {field.get('source', '')} |"
+            )
+        lines.append("")
+        lines.append(f"_Confidence: {confidence}._")
+        return "\n".join(lines)
+    return f"```json\n{json.dumps(schema, indent=2)}\n```"
+
+
 def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
     """Render an API bean (spec 8.5).
 
@@ -317,16 +350,8 @@ def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
         enrichment=surface.enrichment,
     )
 
-    req_schema = (
-        json.dumps(surface.request_schema, indent=2)
-        if surface.request_schema
-        else "(none)"
-    )
-    resp_schema = (
-        json.dumps(surface.response_schema, indent=2)
-        if surface.response_schema
-        else "(none)"
-    )
+    req_schema = _render_contract_schema(surface.request_schema)
+    resp_schema = _render_contract_schema(surface.response_schema)
 
     body = f"""
 # {surface.name}
@@ -342,15 +367,11 @@ def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
 
 ## Request schema
 
-```json
 {req_schema}
-```
 
 ## Response schema
 
-```json
 {resp_schema}
-```
 
 ## Errors
 

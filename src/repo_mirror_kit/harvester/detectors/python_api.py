@@ -83,6 +83,19 @@ _CONF_FLASK_STATIC: float = 0.10
 
 _CONF_CLI_PENALTY: float = 0.15
 
+# BEAN-062: a framework named in a dependency manifest is the strongest
+# available signal — stronger than any path-shape heuristic. Without it, a
+# minimal API app (app.py + requirements.txt) is undetectable.
+_CONF_DEPENDENCY_DECLARED: float = 0.60
+
+_DEPENDENCY_MANIFESTS: tuple[str, ...] = (
+    "requirements.txt",
+    "pyproject.toml",
+    "Pipfile",
+    "setup.cfg",
+    "setup.py",
+)
+
 
 class PythonApiDetector(Detector):
     """Detect Python backend API frameworks.
@@ -116,11 +129,18 @@ class PythonApiDetector(Detector):
 
         signals: list[Signal] = []
 
-        fastapi_signal = self._detect_fastapi(file_paths, project_marker, has_cli)
+        fastapi_dep = self._dependency_manifest(inventory, "fastapi")
+        flask_dep = self._dependency_manifest(inventory, "flask")
+
+        fastapi_signal = self._detect_fastapi(
+            file_paths, project_marker, has_cli, fastapi_dep
+        )
         if fastapi_signal is not None:
             signals.append(fastapi_signal)
 
-        flask_signal = self._detect_flask(file_paths, project_marker, has_cli)
+        flask_signal = self._detect_flask(
+            file_paths, project_marker, has_cli, flask_dep
+        )
         if flask_signal is not None:
             signals.append(flask_signal)
 
@@ -150,11 +170,35 @@ class PythonApiDetector(Detector):
                     return True
         return False
 
+    def _dependency_manifest(
+        self, inventory: InventoryResult, framework: str
+    ) -> str | None:
+        """Return the manifest file that declares *framework* as a dependency.
+
+        Reads dependency-manifest contents from the repository when the
+        inventory carries a ``workdir`` (BEAN-062); returns None for
+        synthetic inventories or when no manifest names the framework.
+        """
+        if inventory.workdir is None:
+            return None
+        for manifest in _DEPENDENCY_MANIFESTS:
+            path = inventory.workdir / manifest
+            if not path.is_file():
+                continue
+            try:
+                content = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            if framework in content.lower():
+                return manifest
+        return None
+
     def _detect_fastapi(
         self,
         paths: list[str],
         project_marker: str,
         has_cli: bool,
+        dep_manifest: str | None,
     ) -> Signal | None:
         """Detect FastAPI framework patterns.
 
@@ -162,12 +206,18 @@ class PythonApiDetector(Detector):
             paths: All file paths in the inventory.
             project_marker: The Python project marker file found.
             has_cli: Whether CLI indicators were found.
+            dep_manifest: Manifest file declaring fastapi as a dependency,
+                if any (strongest signal).
 
         Returns:
             A Signal for FastAPI if detected, or None.
         """
         confidence = 0.0
         evidence: list[str] = [project_marker]
+
+        if dep_manifest is not None:
+            confidence += _CONF_DEPENDENCY_DECLARED
+            evidence.append(f"{dep_manifest} (declares fastapi)")
 
         # Check for routers/ directory with .py files
         for path in paths:
@@ -222,6 +272,7 @@ class PythonApiDetector(Detector):
         paths: list[str],
         project_marker: str,
         has_cli: bool,
+        dep_manifest: str | None,
     ) -> Signal | None:
         """Detect Flask framework patterns.
 
@@ -229,12 +280,18 @@ class PythonApiDetector(Detector):
             paths: All file paths in the inventory.
             project_marker: The Python project marker file found.
             has_cli: Whether CLI indicators were found.
+            dep_manifest: Manifest file declaring flask as a dependency,
+                if any (strongest signal).
 
         Returns:
             A Signal for Flask if detected, or None.
         """
         confidence = 0.0
         evidence: list[str] = [project_marker]
+
+        if dep_manifest is not None:
+            confidence += _CONF_DEPENDENCY_DECLARED
+            evidence.append(f"{dep_manifest} (declares flask)")
 
         # Check for templates/ with .html files
         for path in paths:
