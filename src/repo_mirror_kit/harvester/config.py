@@ -65,6 +65,9 @@ class HarvestConfig:
     max_total_bytes: int = DEFAULT_MAX_TOTAL_BYTES
     resume: bool = False
     fail_on_gaps: bool = True
+    # BEAN-076: exit non-zero when fidelity (recreation-readiness) gates
+    # fail. Off by default while extraction depth is still growing.
+    fail_on_fidelity: bool = False
     log_level: str = "info"
     llm_enabled: bool = DEFAULT_LLM_ENABLED
     llm_api_key: str | None = None
