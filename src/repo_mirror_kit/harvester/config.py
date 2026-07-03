@@ -22,6 +22,10 @@ DEFAULT_MAX_FILE_BYTES: int = 1_000_000
 # to prevent runaway behavior from pathological or malicious inputs.
 DEFAULT_MAX_TOTAL_BYTES: int = 500 * 1024 * 1024
 
+# BEAN-059: single source of truth for the LLM-enrichment default, shared by
+# HarvestConfig and the CLI so programmatic and CLI runs behave identically.
+DEFAULT_LLM_ENABLED: bool = True
+
 VALID_LOG_LEVELS: frozenset[str] = frozenset({"debug", "info", "warn", "error"})
 
 
@@ -43,7 +47,9 @@ class HarvestConfig:
         resume: Whether to resume from a previous incomplete run.
         fail_on_gaps: Whether to fail with exit code 2 if coverage gaps are found.
         log_level: Logging level (debug, info, warn, error).
-        llm_enabled: Whether to enable LLM enrichment of surfaces.
+        llm_enabled: Whether to enable LLM enrichment of surfaces. Defaults
+            to on; when ``llm_api_key`` is missing the run downgrades to
+            structural-only output with a warning (BEAN-056).
         llm_api_key: Anthropic API key for LLM enrichment. Sourced from the
             ``ANTHROPIC_API_KEY`` environment variable only — there is no CLI
             flag for it, so the key cannot leak into shell history or argv.
@@ -60,7 +66,7 @@ class HarvestConfig:
     resume: bool = False
     fail_on_gaps: bool = True
     log_level: str = "info"
-    llm_enabled: bool = False
+    llm_enabled: bool = DEFAULT_LLM_ENABLED
     llm_api_key: str | None = None
     llm_model: str = "claude-sonnet-4-6"
 

@@ -28,7 +28,7 @@ uv run requirements-harvester harvest \
 uv run requirements-harvester harvest --help
 ```
 
-The harvester runs an 8-stage pipeline (clone → inventory + framework detection → 14 surface analyzers → optional LLM enrichment → traceability → bean generation → coverage gates → Claude Code project folder) and writes the results under `--out`. With `--llm-enabled` and an `ANTHROPIC_API_KEY`, beans are enriched with behavioral descriptions, acceptance criteria, and inferred intent.
+The harvester runs an 8-stage pipeline (clone → inventory + framework detection → 14 surface analyzers → optional LLM enrichment → traceability → bean generation → coverage gates → Claude Code project folder) and writes the results under `--out`. LLM enrichment is on by default (`--llm`): with an `ANTHROPIC_API_KEY` in the environment, beans are enriched with behavioral descriptions, acceptance criteria, and inferred intent. Without the key, the run falls back to structural-only output with a warning; pass `--no-llm` to skip enrichment silently.
 
 ### GUI (interactive launcher)
 

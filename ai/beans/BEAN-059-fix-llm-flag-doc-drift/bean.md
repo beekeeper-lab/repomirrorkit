@@ -3,9 +3,10 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-059 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | Low |
 | **Created** | 2026-07-03 |
+| **Completed** | 2026-07-03 |
 | **Owner** | team-lead |
 | **Category** | App |
 
@@ -29,9 +30,9 @@ Docs match the CLI exactly; `HarvestConfig` and CLI defaults agree (single sourc
 
 ## Acceptance Criteria
 
-- [ ] No reference to `--llm-enabled` remains anywhere in the repo (grep clean)
-- [ ] `HarvestConfig()` constructed with no args produces the same LLM behavior as a bare CLI invocation
-- [ ] Lint, type-check, and pytest all clean
+- [x] No reference to `--llm-enabled` remains anywhere in the repo (grep clean)
+- [x] `HarvestConfig()` constructed with no args produces the same LLM behavior as a bare CLI invocation
+- [x] Lint, type-check, and pytest all clean
 
 ## Notes
 

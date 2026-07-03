@@ -11,6 +11,7 @@ from typing import Any
 import click
 
 from repo_mirror_kit.harvester.config import (
+    DEFAULT_LLM_ENABLED,
     ConfigValidationError,
     HarvestConfig,
     merge_exclude_globs,
@@ -124,7 +125,7 @@ def main() -> None:
 @click.option(
     "--llm/--no-llm",
     "llm_enabled",
-    default=True,
+    default=DEFAULT_LLM_ENABLED,
     help="Enable LLM enrichment of surfaces using Claude (default ON). "
     "Reads the API key from ANTHROPIC_API_KEY (env var only). "
     "If --llm is on but the env var is missing, the harvester emits a "
@@ -153,9 +154,9 @@ def harvest(
 ) -> None:
     """Run the requirements harvester against a repository."""
     # API key is sourced from the environment only — never accepted on
-    # argv (would leak into shell history and ps output). The HarvestConfig
-    # validator below raises a helpful ConfigValidationError if --llm-enabled
-    # is set without ANTHROPIC_API_KEY.
+    # argv (would leak into shell history and ps output). If --llm is on
+    # without ANTHROPIC_API_KEY, HarvestConfig downgrades to structural-only
+    # output with a warning (BEAN-056).
     llm_api_key = os.environ.get("ANTHROPIC_API_KEY")
     try:
         config = HarvestConfig(
