@@ -515,6 +515,39 @@ class GeneralLogicSurface(Surface):
 
 
 @dataclass
+class SeedDataSurface(Surface):
+    """Seed/reference data required for the application to function (BEAN-066).
+
+    Captures enumerations and seed datasets — code-level enums, lookup-table
+    inserts, fixture files, migration data steps — **with their actual
+    values**. A rebuilt app with an empty lookup table doesn't run.
+    """
+
+    dataset_name: str = ""
+    kind: str = ""  # "enum" | "lookup_table" | "fixture" | "migration_seed"
+    values: list[dict[str, Any]] = field(default_factory=list)
+    target_model_ref: str = ""
+    truncated: bool = False  # True when values were capped (visible, not silent)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "seed_data"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "dataset_name": self.dataset_name,
+                "kind": self.kind,
+                "values": self.values,
+                "target_model_ref": self.target_model_ref,
+                "truncated": self.truncated,
+            }
+        )
+        return result
+
+
+@dataclass
 class SurfaceCollection:
     """Container for all extracted surfaces.
 
@@ -536,6 +569,7 @@ class SurfaceCollection:
     build_deploy: list[BuildDeploySurface] = field(default_factory=list)
     dependencies: list[DependencySurface] = field(default_factory=list)
     test_patterns: list[TestPatternSurface] = field(default_factory=list)
+    seed_data: list[SeedDataSurface] = field(default_factory=list)
     general_logic: list[GeneralLogicSurface] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[Surface]:
@@ -554,6 +588,7 @@ class SurfaceCollection:
         yield from self.build_deploy
         yield from self.dependencies
         yield from self.test_patterns
+        yield from self.seed_data
         yield from self.general_logic
 
     def __len__(self) -> int:
@@ -573,6 +608,7 @@ class SurfaceCollection:
             + len(self.build_deploy)
             + len(self.dependencies)
             + len(self.test_patterns)
+            + len(self.seed_data)
             + len(self.general_logic)
         )
 
@@ -593,6 +629,7 @@ class SurfaceCollection:
             "build_deploy": [s.to_dict() for s in self.build_deploy],
             "dependencies": [s.to_dict() for s in self.dependencies],
             "test_patterns": [s.to_dict() for s in self.test_patterns],
+            "seed_data": [s.to_dict() for s in self.seed_data],
             "general_logic": [s.to_dict() for s in self.general_logic],
         }
 

@@ -19,6 +19,7 @@ from repo_mirror_kit.harvester.analyzers.integrations import analyze_integration
 from repo_mirror_kit.harvester.analyzers.middleware import analyze_middleware
 from repo_mirror_kit.harvester.analyzers.models import analyze_models
 from repo_mirror_kit.harvester.analyzers.routes import analyze_routes
+from repo_mirror_kit.harvester.analyzers.seed_data import analyze_seed_data
 from repo_mirror_kit.harvester.analyzers.state_mgmt import analyze_state_management
 from repo_mirror_kit.harvester.analyzers.surfaces import (
     ApiSurface,
@@ -35,6 +36,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ModelRelationship,
     ModelSurface,
     RouteSurface,
+    SeedDataSurface,
     SourceRef,
     StateMgmtSurface,
     Surface,
@@ -60,6 +62,7 @@ __all__ = [
     "ModelRelationship",
     "ModelSurface",
     "RouteSurface",
+    "SeedDataSurface",
     "SourceRef",
     "StateMgmtSurface",
     "Surface",
@@ -78,6 +81,7 @@ __all__ = [
     "analyze_middleware",
     "analyze_models",
     "analyze_routes",
+    "analyze_seed_data",
     "analyze_state_management",
     "analyze_test_patterns",
     "analyze_ui_flows",

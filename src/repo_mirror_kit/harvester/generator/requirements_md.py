@@ -69,6 +69,12 @@ _SECTIONS: tuple[tuple[str, str, str, str], ...] = (
     ),
     ("Testing", "test_pattern", "test_patterns", "No tests detected."),
     (
+        "Seed & Reference Data",
+        "seed_data",
+        "seed_data",
+        "No seed/reference datasets detected.",
+    ),
+    (
         "Other Logic",
         "general_logic",
         "general_logic",

@@ -30,6 +30,7 @@ from repo_mirror_kit.harvester.analyzers import (
     analyze_middleware,
     analyze_models,
     analyze_routes,
+    analyze_seed_data,
     analyze_state_management,
     analyze_test_patterns,
     analyze_ui_flows,
@@ -622,6 +623,13 @@ class HarvestPipeline:
             f"Test patterns: {len(test_patterns)} found",
         )
 
+        seed_data = analyze_seed_data(workdir, inventory)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Seed datasets: {len(seed_data)} found",
+        )
+
         surfaces = SurfaceCollection(
             routes=routes,
             components=components,
@@ -637,6 +645,7 @@ class HarvestPipeline:
             build_deploy=build_deploy,
             dependencies=dependencies,
             test_patterns=test_patterns,
+            seed_data=seed_data,
         )
 
         # File coverage: find uncovered files and generate catch-all surfaces
