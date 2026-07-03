@@ -226,6 +226,7 @@ def _render_reports_footer() -> str:
         "## Reports & Traceability\n"
         "\n"
         "- [Data model & ER diagram](data-model.md)\n"
+        "- [OpenAPI 3.1 contract](api-contract.json)\n"
         "- [Coverage report](reports/coverage.md)\n"
         "- [Gap analysis](reports/gaps.md)\n"
         "- [File coverage](reports/file-coverage.md)\n"

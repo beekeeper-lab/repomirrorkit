@@ -92,7 +92,7 @@
 | BEAN-068 | Agentic Enrichment v2 — Repo-Aware Feature Tracing | App | Critical | Unapproved | team-lead |
 | BEAN-069 | Feature Clustering Stage (C3) + `build-manifest.json` | App | High | Unapproved | team-lead |
 | BEAN-070 | Framework-Neutral Bean Language + Confidence/Gaps Fields | App | Medium | Unapproved | team-lead |
-| BEAN-071 | OpenAPI 3.1 Contract Generator | App | High | Unapproved | team-lead |
+| BEAN-071 | OpenAPI 3.1 Contract Generator | App | High | Done | team-lead |
 | BEAN-072 | DB Design Bundle — SQL DDL + JSON Schema + Seed Data | App | Medium | Unapproved | team-lead |
 | BEAN-073 | Screen Spec YAML + Mermaid Navigation Map | App | High | Unapproved | team-lead |
 | BEAN-074 | Gherkin `.feature` Generation per Feature Cluster | App | High | Unapproved | team-lead |

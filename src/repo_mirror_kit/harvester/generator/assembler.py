@@ -19,6 +19,7 @@ from repo_mirror_kit.harvester.detectors.base import StackProfile
 from repo_mirror_kit.harvester.generator.agents import GeneratedAgent, generate_agents
 from repo_mirror_kit.harvester.generator.claude_md import generate_claude_md
 from repo_mirror_kit.harvester.generator.env_example import generate_env_example
+from repo_mirror_kit.harvester.generator.openapi import generate_openapi_contract
 from repo_mirror_kit.harvester.generator.requirements_md import generate_requirements_md
 from repo_mirror_kit.harvester.generator.runbook_md import generate_runbook_md
 from repo_mirror_kit.harvester.generator.stacks import generate_stacks
@@ -187,6 +188,15 @@ def assemble_project_folder(
         path=str(runbook_path),
         build_deploy_count=len(surfaces.build_deploy),
     )
+
+    # Step 7 (BEAN-071): OpenAPI 3.1 contract from API surfaces.
+    contract_path = generate_openapi_contract(
+        surfaces=surfaces,
+        output_dir=output_dir,
+        project_name=project_name,
+    )
+    if contract_path is not None:
+        generated_files.append(contract_path)
 
     result = GeneratorResult(
         output_dir=project_dir,

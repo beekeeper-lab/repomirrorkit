@@ -11,6 +11,7 @@ To skip during unit-only runs::
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from pathlib import Path
 
@@ -75,6 +76,17 @@ def test_pipeline_python_flask_fixture(
     assert "| `email` |" in post_bean, "Request field table missing 'email'"
     assert "_Confidence: inferred._" in post_bean
     assert "| `id` |" in post_bean, "Response field table missing 'id'"
+
+    # BEAN-071: OpenAPI 3.1 contract generated with populated operations.
+    contract_file = out / "api-contract.json"
+    assert contract_file.is_file(), "api-contract.json missing"
+    contract = json.loads(contract_file.read_text())
+    assert contract["openapi"] == "3.1.0"
+    post_op = contract["paths"]["/api/users"]["post"]
+    body = post_op["requestBody"]["content"]["application/json"]["schema"]
+    assert "name" in body["properties"]
+    assert "email" in body["properties"]
+    assert "name" in body.get("required", [])
 
 
 @pytest.mark.integration
