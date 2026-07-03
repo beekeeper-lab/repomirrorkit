@@ -25,6 +25,20 @@ class TestHarvestConfigLLMKey:
     preserved from BEAN-045.
     """
 
+    def test_default_llm_enabled_matches_cli_default(self) -> None:
+        """BEAN-059: HarvestConfig and the CLI share one default source.
+
+        A bare HarvestConfig (no key in play) must behave like a bare CLI
+        invocation: enrichment attempts to run and downgrades on missing key.
+        """
+        from repo_mirror_kit.harvester.config import DEFAULT_LLM_ENABLED
+
+        assert DEFAULT_LLM_ENABLED is True
+        assert (
+            HarvestConfig.__dataclass_fields__["llm_enabled"].default
+            is DEFAULT_LLM_ENABLED
+        )
+
     def test_missing_key_with_llm_enabled_warns_and_downgrades(
         self,
         capsys: pytest.CaptureFixture[str],

@@ -28,7 +28,7 @@ Output (under `--out`):
 | `reports/{coverage,gaps,file-coverage}.{md,json}` | F | Coverage gates |
 | `project-folder/` | G | Generated Claude Code project scaffold |
 
-Detectors live in `harvester/detectors/`, surface analyzers in `harvester/analyzers/`, generators in `harvester/generator/`, reports in `harvester/reports/`. Optional LLM enrichment (`harvester/llm/`) augments surfaces with behavioral descriptions when `--llm-enabled` is set and `ANTHROPIC_API_KEY` is in the environment.
+Detectors live in `harvester/detectors/`, surface analyzers in `harvester/analyzers/`, generators in `harvester/generator/`, reports in `harvester/reports/`. LLM enrichment (`harvester/llm/`) is on by default (`--llm/--no-llm`) and augments surfaces with behavioral descriptions when `ANTHROPIC_API_KEY` is in the environment; without the key the run downgrades to structural-only output with a warning.
 
 ---
 
