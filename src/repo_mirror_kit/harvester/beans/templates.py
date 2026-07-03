@@ -33,6 +33,40 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
 )
 
 
+def derive_confidence_and_gaps(surface: Surface) -> tuple[str, list[str]]:
+    """Derive extraction confidence and known unknowns for a surface (BEAN-070).
+
+    Confidence ladder: ``declared`` (typed/annotated source of truth) >
+    ``inferred`` (usage-pattern extraction) > ``llm`` (enrichment prose) >
+    ``structural`` (existence only). Gaps are explicit statements of what
+    the harvest could NOT determine — a rebuild agent must resolve them
+    rather than guess.
+    """
+    gaps: list[str] = []
+    enrichment = surface.enrichment or {}
+    confidence = "llm" if enrichment.get("behavioral_description") else "structural"
+
+    if isinstance(surface, ApiSurface):
+        request = surface.request_schema or {}
+        response = surface.response_schema or {}
+        levels = {
+            s.get("confidence") for s in (request, response) if isinstance(s, dict)
+        }
+        if "declared" in levels:
+            confidence = "declared"
+        elif "inferred" in levels:
+            confidence = "inferred"
+        if request.get("unknown") is True:
+            gaps.append("Request contract could not be inferred from source.")
+        if response.get("unknown") is True:
+            gaps.append("Response contract could not be inferred from source.")
+
+    extra = enrichment.get("gaps")
+    if isinstance(extra, list):
+        gaps.extend(str(g) for g in extra)
+    return confidence, gaps
+
+
 def _render_frontmatter(
     bean_id: str,
     bean_type: str,
@@ -40,6 +74,7 @@ def _render_frontmatter(
     source_refs: list[SourceRef],
     traceability: list[str] | None = None,
     enrichment: dict[str, Any] | None = None,
+    surface: Surface | None = None,
 ) -> str:
     """Render YAML frontmatter block for a bean.
 
@@ -50,6 +85,7 @@ def _render_frontmatter(
         source_refs: Source code references.
         traceability: Optional traceability links.
         enrichment: Optional enrichment data for priority/dependencies.
+        surface: Optional surface for confidence/gaps derivation (BEAN-070).
 
     Returns:
         A YAML frontmatter string delimited by ``---``.
@@ -70,6 +106,12 @@ def _render_frontmatter(
         priority = enrichment.get("priority", "unassessed")
         dependencies = enrichment.get("dependencies", [])
 
+    # BEAN-070: every bean states how trustworthy it is and what is unknown.
+    confidence = "structural"
+    gaps: list[str] = []
+    if surface is not None:
+        confidence, gaps = derive_confidence_and_gaps(surface)
+
     lines = [
         "---",
         f"id: {bean_id}",
@@ -79,6 +121,8 @@ def _render_frontmatter(
         f"traceability: {json.dumps(trace)}",
         f"priority: {priority}",
         f"dependencies: {json.dumps(dependencies)}",
+        f"confidence: {confidence}",
+        f"gaps: {json.dumps(gaps)}",
         "status: draft",
         "---",
     ]
@@ -186,6 +230,20 @@ def _render_enrichment_sections(surface: Surface) -> str:
         lines.append("TODO: Describe the data flow for this surface.")
     lines.append("")
 
+    # BEAN-070: known unknowns rendered visibly, not buried in frontmatter.
+    _, gaps = derive_confidence_and_gaps(surface)
+    if gaps:
+        lines.append("## Gaps & unknowns")
+        lines.append("")
+        lines.append(
+            "The harvest could not determine the following — resolve against "
+            "the original application rather than guessing:"
+        )
+        lines.append("")
+        for gap in gaps:
+            lines.append(f"- {gap}")
+        lines.append("")
+
     return "\n".join(lines)
 
 
@@ -205,6 +263,7 @@ def render_route_bean(surface: RouteSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     body = f"""
@@ -265,6 +324,7 @@ def render_component_bean(surface: ComponentSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     body = f"""
@@ -349,6 +409,7 @@ def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     req_schema = _render_contract_schema(surface.request_schema)
@@ -416,6 +477,7 @@ def render_model_bean(surface: ModelSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     field_lines: list[str] = []
@@ -472,6 +534,7 @@ def render_auth_bean(surface: AuthSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     body = f"""
@@ -525,6 +588,7 @@ def render_config_bean(surface: ConfigSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     default_display = (
@@ -578,6 +642,7 @@ def render_crosscutting_bean(surface: CrosscuttingSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     body = f"""
@@ -620,6 +685,7 @@ def render_state_mgmt_bean(surface: StateMgmtSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     body = f"""
@@ -664,6 +730,7 @@ def render_middleware_bean(surface: MiddlewareSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     order_str = (
@@ -714,6 +781,7 @@ def render_integration_bean(surface: IntegrationSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     body = f"""
@@ -756,6 +824,7 @@ def render_ui_flow_bean(surface: UIFlowSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     body = f"""
@@ -801,6 +870,7 @@ def render_build_deploy_bean(surface: BuildDeploySurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     body = f"""
@@ -845,6 +915,7 @@ def render_dependency_bean(surface: DependencySurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     direct_str = "Direct" if surface.is_direct else "Transitive"
@@ -892,6 +963,7 @@ def render_test_pattern_bean(surface: TestPatternSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     subject_display = (
@@ -939,6 +1011,7 @@ def render_general_logic_bean(surface: GeneralLogicSurface, bean_id: str) -> str
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     body = f"""
@@ -980,6 +1053,7 @@ def render_seed_data_bean(surface: SeedDataSurface, bean_id: str) -> str:
         title=surface.name,
         source_refs=surface.source_refs,
         enrichment=surface.enrichment,
+        surface=surface,
     )
 
     if surface.values:
