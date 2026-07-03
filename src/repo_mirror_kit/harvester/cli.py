@@ -22,6 +22,7 @@ from repo_mirror_kit.harvester.config import (
 EXIT_SUCCESS: int = 0
 EXIT_GAPS_FOUND: int = 2
 EXIT_INVALID_INPUT: int = 3
+EXIT_FIDELITY_FAILED: int = 4
 EXIT_UNEXPECTED: int = 5
 
 
@@ -117,6 +118,13 @@ def main() -> None:
     show_default=True,
 )
 @click.option(
+    "--fail-on-fidelity/--no-fail-on-fidelity",
+    default=False,
+    help="Fail with exit code 4 if fidelity (recreation-readiness) gates "
+    "fail. See reports/coverage.md for the per-metric breakdown.",
+    show_default=True,
+)
+@click.option(
     "--log-level",
     default="info",
     help="Logging level: debug, info, warn, error (case-insensitive).",
@@ -148,6 +156,7 @@ def harvest(
     max_total_bytes: int,
     resume: bool,
     fail_on_gaps: bool,
+    fail_on_fidelity: bool,
     log_level: str,
     llm_enabled: bool,
     llm_model: str,
@@ -169,6 +178,7 @@ def harvest(
             max_total_bytes=max_total_bytes,
             resume=resume,
             fail_on_gaps=fail_on_gaps,
+            fail_on_fidelity=fail_on_fidelity,
             log_level=log_level,
             llm_enabled=llm_enabled,
             llm_api_key=llm_api_key,
@@ -193,8 +203,12 @@ def harvest(
     click.echo(f"Beans generated: {result.bean_count}")
     click.echo(f"Gaps found: {result.gap_count}")
     click.echo(f"Coverage gates: {'PASSED' if result.coverage_passed else 'FAILED'}")
+    click.echo(f"Fidelity gates: {'PASSED' if result.fidelity_passed else 'FAILED'}")
 
     if not result.coverage_passed and fail_on_gaps:
         sys.exit(EXIT_GAPS_FOUND)
+
+    if not result.fidelity_passed and fail_on_fidelity:
+        sys.exit(EXIT_FIDELITY_FAILED)
 
     sys.exit(EXIT_SUCCESS)

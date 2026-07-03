@@ -60,6 +60,10 @@ from repo_mirror_kit.harvester.reports.coverage import (
     write_coverage_reports,
 )
 from repo_mirror_kit.harvester.reports.data_model import write_data_model_report
+from repo_mirror_kit.harvester.reports.fidelity import (
+    FidelityEvaluation,
+    compute_fidelity,
+)
 from repo_mirror_kit.harvester.reports.file_coverage import (
     compute_file_coverage,
     write_file_coverage_reports,
@@ -164,6 +168,8 @@ class HarvestResult:
     bean_count: int
     gap_count: int
     generated_file_count: int = 0
+    # BEAN-076: recreation-readiness gates (depth, not existence).
+    fidelity_passed: bool = True
     error_stage: str | None = None
     error_message: str | None = None
     output_dir: Path | None = None
@@ -380,7 +386,7 @@ class HarvestPipeline:
                 "Evaluating coverage gates",
             )
             try:
-                evaluation, gap_report = self._run_stage_f(
+                evaluation, gap_report, fidelity = self._run_stage_f(
                     surfaces, beans, inventory_result, workdir, output_dir
                 )
             except _FS_EXCEPTIONS as exc:
@@ -392,6 +398,7 @@ class HarvestPipeline:
                 "Coverage gates complete",
                 {
                     "all_passed": evaluation.all_passed,
+                    "fidelity_passed": fidelity.all_passed,
                     "gap_count": gap_report.total_gaps,
                 },
             )
@@ -456,6 +463,7 @@ class HarvestPipeline:
             bean_count=len(beans),
             gap_count=gap_report.total_gaps,
             generated_file_count=gen_file_count,
+            fidelity_passed=fidelity.all_passed,
             output_dir=output_dir,
         )
 
@@ -694,11 +702,19 @@ class HarvestPipeline:
         inventory: InventoryResult,
         workdir: Path,
         output_dir: Path,
-    ) -> tuple[CoverageEvaluation, GapReport]:
-        """Stage F: coverage gates, gap analysis, data-model report."""
+    ) -> tuple[CoverageEvaluation, GapReport, FidelityEvaluation]:
+        """Stage F: coverage gates, fidelity gates, gaps, data-model report."""
         metrics = compute_metrics(surfaces, beans, inventory)
         evaluation = evaluate_thresholds(metrics)
-        write_coverage_reports(output_dir, evaluation)
+        # BEAN-076: fidelity (recreation-readiness) metrics ride along in
+        # the same coverage reports.
+        fidelity = compute_fidelity(surfaces, beans_dir=output_dir / "beans")
+        write_coverage_reports(output_dir, evaluation, fidelity=fidelity)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "F",
+            f"Fidelity gates: {'PASS' if fidelity.all_passed else 'FAIL'}",
+        )
 
         # File coverage report
         file_cov = compute_file_coverage(inventory, surfaces)
@@ -712,7 +728,7 @@ class HarvestPipeline:
         # collection has no models.
         write_data_model_report(surfaces, output_dir, workdir=workdir)
 
-        return evaluation, gap_report
+        return evaluation, gap_report, fidelity
 
     def _run_stage_g(
         self,

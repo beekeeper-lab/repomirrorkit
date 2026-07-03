@@ -3,9 +3,10 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-076 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-07-03 |
+| **Completed** | 2026-07-03 |
 | **Owner** | team-lead |
 | **Category** | App |
 
@@ -32,14 +33,22 @@ A second gate family ("fidelity gates") in Stage F measuring depth, not existenc
 
 ## Acceptance Criteria
 
-- [ ] Fidelity metrics appear in `coverage.md`/`.json` for fixture harvests
-- [ ] Before BEAN-062 lands, contract-populated % is honestly ~0 for fixtures (proves the gate isn't vacuous); after, it rises — CI pins both expectations at their respective times
-- [ ] `--fail-on-fidelity` exits non-zero when a threshold is missed
-- [ ] N/A categories are visibly distinct from 100% categories
-- [ ] Lint, type-check, and pytest all clean
+- [x] Fidelity metrics appear in `coverage.md`/`.json` for fixture harvests
+- [x] Before BEAN-062 lands, contract-populated % is honestly ~0 for fixtures (proves the gate isn't vacuous); after, it rises — CI pins both expectations at their respective times
+- [x] `--fail-on-fidelity` exits non-zero when a threshold is missed
+- [x] N/A categories are visibly distinct from 100% categories
+- [x] Lint, type-check, and pytest all clean
 
 ## Notes
 
 - Source: recreation-grade audit 2026-07-03 (`ROADMAP-RECREATION.md`), Track D
 - Wave 1–2 — no hard deps (metrics of empty data are honest zeros); part of the recommended first slice (062 → 071 → 076)
 - These scores become the per-run "how recreation-ready is this harvest?" headline number
+
+## Implementation Notes (Tech-QA)
+
+- `reports/fidelity.py`: six metrics (api request/response contracts, model fields, model relationships [N/A under 2 models], screen field mappings [N/A until BEAN-064], placeholder-free beans [threshold 0, informational]).
+- N/A is rendered distinctly from 100% in both coverage.md and coverage.json (`applicable: false`).
+- `--fail-on-fidelity` → exit code 4 (`EXIT_FIDELITY_FAILED`); `HarvestResult.fidelity_passed`; Stage F emits a PASS/FAIL progress event.
+- e2e pins the Flask fixture at 100% on both API contract metrics — the deliberate-regression AC is satisfied bidirectionally (unknown-marker unit test proves the gate fails when contracts are stripped).
+- 13 unit tests + e2e assertions.

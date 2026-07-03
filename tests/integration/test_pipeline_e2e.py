@@ -88,6 +88,18 @@ def test_pipeline_python_flask_fixture(
     assert "email" in body["properties"]
     assert "name" in body.get("required", [])
 
+    # BEAN-076: fidelity metrics in coverage.json; the Flask fixture's
+    # contracts are fully determined, so the API metrics pin at 100%.
+    coverage = json.loads((out / "reports" / "coverage.json").read_text())
+    fidelity = coverage["fidelity"]
+    metrics = {m["name"]: m for m in fidelity["metrics"]}
+    assert metrics["api_request_contracts"]["percentage"] == 100.0
+    assert metrics["api_response_contracts"]["percentage"] == 100.0
+    assert metrics["screen_field_mappings"]["applicable"] is False
+    assert result.fidelity_passed is True
+    coverage_md = (out / "reports" / "coverage.md").read_text()
+    assert "## Fidelity (recreation-readiness)" in coverage_md
+
 
 @pytest.mark.integration
 def test_pipeline_ts_next_fixture(

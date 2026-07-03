@@ -18,6 +18,10 @@ import structlog
 from repo_mirror_kit.harvester.analyzers.surfaces import SurfaceCollection
 from repo_mirror_kit.harvester.beans.writer import WrittenBean
 from repo_mirror_kit.harvester.inventory import InventoryResult
+from repo_mirror_kit.harvester.reports.fidelity import (
+    FidelityEvaluation,
+    render_fidelity_markdown,
+)
 
 logger = structlog.get_logger()
 
@@ -434,12 +438,16 @@ def generate_coverage_markdown(evaluation: CoverageEvaluation) -> str:
 def write_coverage_reports(
     output_dir: Path,
     evaluation: CoverageEvaluation,
+    fidelity: FidelityEvaluation | None = None,
 ) -> tuple[Path, Path]:
     """Write coverage.json and coverage.md to the reports directory.
 
     Args:
         output_dir: Root output directory (reports/ subdirectory is created).
         evaluation: The coverage evaluation result.
+        fidelity: Optional fidelity evaluation (BEAN-076); appended to
+            coverage.md as its own section and to coverage.json under a
+            ``fidelity`` key.
 
     Returns:
         A tuple of (json_path, md_path) for the written files.
@@ -451,10 +459,16 @@ def write_coverage_reports(
     md_path = reports_dir / "coverage.md"
 
     json_content = generate_coverage_json(evaluation)
+    if fidelity is not None:
+        document = json.loads(json_content)
+        document["fidelity"] = fidelity.to_dict()
+        json_content = json.dumps(document, indent=2) + "\n"
     json_path.write_text(json_content, encoding="utf-8")
     logger.info("coverage_report_written", path=str(json_path), format="json")
 
     md_content = generate_coverage_markdown(evaluation)
+    if fidelity is not None:
+        md_content += render_fidelity_markdown(fidelity)
     md_path.write_text(md_content, encoding="utf-8")
     logger.info("coverage_report_written", path=str(md_path), format="markdown")
 
