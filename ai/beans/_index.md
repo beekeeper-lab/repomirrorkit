@@ -80,3 +80,26 @@
 | BEAN-056 | LLM Enrichment Default-On with Graceful Missing-Key UX | App | Medium | Done | team-lead |
 | BEAN-057 | Split `analyzers/models.py` by Framework (Tracer Bullet) | App | Low | Done | team-lead |
 | BEAN-058 | Fix `telemetry-stamp` Hook Path Resolution | Infra | High | Done | team-lead |
+| BEAN-059 | Fix `--llm` Flag Doc Drift + Config Default Mismatch | App | Low | Unapproved | team-lead |
+| BEAN-060 | Persist Stage Outputs → Real `--resume` | App | High | Unapproved | team-lead |
+| BEAN-061 | Tree-sitter Extraction Foundation | App | High | Unapproved | team-lead |
+| BEAN-062 | API Contract Extraction — Python (Tracer Bullet) | App | Critical | Unapproved | team-lead |
+| BEAN-063 | API Contract Extraction — JS/TS Stacks | App | High | Unapproved | team-lead |
+| BEAN-064 | `ScreenSurface` + Form/Field Extraction + Field→Model Mapping | App | Critical | Unapproved | team-lead |
+| BEAN-065 | `BusinessRuleSurface` — Validation & Constraint Mining | App | High | Unapproved | team-lead |
+| BEAN-066 | `SeedDataSurface` — Enums, Lookups, Fixtures, Migration Seeds | App | Medium | Unapproved | team-lead |
+| BEAN-067 | `WorkflowSurface` — Entity State Machines | App | Medium | Unapproved | team-lead |
+| BEAN-068 | Agentic Enrichment v2 — Repo-Aware Feature Tracing | App | Critical | Unapproved | team-lead |
+| BEAN-069 | Feature Clustering Stage (C3) + `build-manifest.json` | App | High | Unapproved | team-lead |
+| BEAN-070 | Framework-Neutral Bean Language + Confidence/Gaps Fields | App | Medium | Unapproved | team-lead |
+| BEAN-071 | OpenAPI 3.1 Contract Generator | App | High | Unapproved | team-lead |
+| BEAN-072 | DB Design Bundle — SQL DDL + JSON Schema + Seed Data | App | Medium | Unapproved | team-lead |
+| BEAN-073 | Screen Spec YAML + Mermaid Navigation Map | App | High | Unapproved | team-lead |
+| BEAN-074 | Gherkin `.feature` Generation per Feature Cluster | App | High | Unapproved | team-lead |
+| BEAN-075 | Sequence + State Mermaid Diagrams | App | Low | Unapproved | team-lead |
+| BEAN-076 | Fidelity Coverage Gates (Recreation-Readiness Metrics) | App | High | Unapproved | team-lead |
+| BEAN-077 | Golden Parity Fixtures (Request/Response Captures) | App | Medium | Unapproved | team-lead |
+| BEAN-078 | Rebuild Eval Harness — Parity Scoring | App | Critical | Unapproved | team-lead |
+| BEAN-079 | Stage G Orchestration-Policy Parameterization + Telemetry | App | Medium | Unapproved | team-lead |
+
+> BEAN-059–079 originate from the recreation-grade audit (2026-07-03). Sequencing, dependency graph, and parallelism analysis: see `ROADMAP-RECREATION.md` at the repo root.
