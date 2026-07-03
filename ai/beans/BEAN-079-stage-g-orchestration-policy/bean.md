@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-079 |
-| **Status** | Unapproved |
+| **Status** | In Progress |
 | **Priority** | Medium |
 | **Created** | 2026-07-03 |
 | **Owner** | team-lead |
@@ -44,3 +44,7 @@ Stage G accepts an orchestration policy (YAML/flag) controlling which personas a
 - Source: recreation-grade audit 2026-07-03 (`ROADMAP-RECREATION.md`), Track D
 - Wave 1 — no hard deps; manifest stamping integrates with BEAN-069 when both land
 - This bean is what turns "change the orchestrator's assignment strategy" from a fork into a config change
+
+## Progress
+
+- 2026-07-03: **Privacy fix landed** (first slice): `_find_claude_dir` walked past the repo root and matched the developer's personal `~/.claude`, copying 1,135 private files into generated project folders (also the cause of the long-failing `test_generated_files_are_valid_markdown`). Guarded: a candidate `.claude` must sit next to `pyproject.toml`. Full orchestration-policy parameterization + telemetry hooks remain.

@@ -31,15 +31,24 @@ def _find_claude_dir() -> Path | None:
     """Locate the .claude/ directory relative to the package source tree.
 
     Walks up from this file's location to find the project root that
-    contains a .claude/ directory with a settings.json file.
+    contains a .claude/ directory with a settings.json file. Only a
+    *project* .claude directory qualifies — the candidate must sit next
+    to a ``pyproject.toml``. Without that guard the walk escaped the repo
+    and matched the developer's personal ``~/.claude``, copying private
+    global configuration into every generated project folder
+    (BEAN-079 privacy fix).
 
     Returns:
-        Path to the .claude/ directory, or None if not found.
+        Path to the project's .claude/ directory, or None if not found.
     """
     current = Path(__file__).resolve()
     for parent in current.parents:
         candidate = parent / ".claude"
-        if candidate.is_dir() and (candidate / "settings.json").exists():
+        if (
+            candidate.is_dir()
+            and (candidate / "settings.json").exists()
+            and (parent / "pyproject.toml").exists()
+        ):
             return candidate
         if parent == parent.parent:
             break

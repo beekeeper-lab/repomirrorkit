@@ -100,6 +100,6 @@
 | BEAN-076 | Fidelity Coverage Gates (Recreation-Readiness Metrics) | App | High | Done | team-lead |
 | BEAN-077 | Golden Parity Fixtures (Request/Response Captures) | App | Medium | Unapproved | team-lead |
 | BEAN-078 | Rebuild Eval Harness — Parity Scoring | App | Critical | Unapproved | team-lead |
-| BEAN-079 | Stage G Orchestration-Policy Parameterization + Telemetry | App | Medium | Unapproved | team-lead |
+| BEAN-079 | Stage G Orchestration-Policy Parameterization + Telemetry | App | Medium | In Progress | team-lead |
 
 > BEAN-059–079 originate from the recreation-grade audit (2026-07-03). Sequencing, dependency graph, and parallelism analysis: see `ROADMAP-RECREATION.md` at the repo root.
