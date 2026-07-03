@@ -3,9 +3,10 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-070 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-07-03 |
+| **Completed** | 2026-07-03 |
 | **Owner** | team-lead |
 | **Category** | App |
 
@@ -32,12 +33,20 @@ Every bean separates framework-neutral requirements from a clearly-labeled "Sour
 
 ## Acceptance Criteria
 
-- [ ] No requirement statement in fixture-harvest beans names a source framework/library outside "Source Implementation Notes" (spot-check assertions in tests)
-- [ ] All beans carry `confidence` + `gaps` frontmatter; unknown-contract surfaces show a rendered Gaps section
-- [ ] REQUIREMENTS.md shows a gaps rollup
-- [ ] Lint, type-check, and pytest all clean
+- [x] No requirement statement in fixture-harvest beans names a source framework/library outside "Source Implementation Notes" (spot-check assertions in tests)
+- [x] All beans carry `confidence` + `gaps` frontmatter; unknown-contract surfaces show a rendered Gaps section
+- [x] REQUIREMENTS.md shows a gaps rollup
+- [x] Lint, type-check, and pytest all clean
 
 ## Notes
 
 - Source: recreation-grade audit 2026-07-03 (`ROADMAP-RECREATION.md`), Track B
 - Wave 1 — no hard deps (fields default empty until 062/068 populate them); coordinate template edits with any concurrently-landing renderers
+
+## Implementation Notes (Tech-QA)
+
+- `derive_confidence_and_gaps()` in templates.py: ladder declared > inferred > llm > structural; gaps from `{"unknown": true}` contract markers + `enrichment["gaps"]` (BEAN-068 will populate the latter).
+- All 16 renderers pass the surface through; frontmatter gains `confidence:` + `gaps:` keys; a "## Gaps & unknowns" section renders when gaps exist.
+- REQUIREMENTS.md gains a "Known Gaps" rollup section (count + pointer).
+- Framework-neutral language: audit found the templates already neutral by construction (framework names only enter via surface data); added an explicit neutral-phrasing directive to the enrichment SYSTEM_PROMPT.
+- 10 unit tests.

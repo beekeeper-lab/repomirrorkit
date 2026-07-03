@@ -18,6 +18,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     Surface,
     SurfaceCollection,
 )
+from repo_mirror_kit.harvester.beans.templates import derive_confidence_and_gaps
 from repo_mirror_kit.harvester.beans.writer import WrittenBean
 from repo_mirror_kit.harvester.detectors.base import StackProfile
 
@@ -128,6 +129,7 @@ def _render(
     """Render the full document to a string."""
     parts: list[str] = []
     parts.append(_render_header(project_name, profile, bean_count))
+    parts.append(_render_gaps_rollup(surfaces))
     parts.append(_render_tech_stack(profile))
     parts.append("## Functional Requirements\n")
 
@@ -159,6 +161,33 @@ def _render_header(project_name: str, profile: StackProfile, bean_count: int) ->
         "link to its per-surface bean file. With LLM enrichment enabled, "
         "individual beans contain behavioral descriptions, acceptance "
         "criteria, and inferred intent.\n"
+    )
+
+
+def _render_gaps_rollup(surfaces: SurfaceCollection) -> str:
+    """Roll up known unknowns across all surfaces (BEAN-070).
+
+    Rebuild agents read this first: it says where the harvest is weakest
+    so they explore instead of hallucinating.
+    """
+    gap_count = 0
+    affected = 0
+    for surface in surfaces:
+        _, gaps = derive_confidence_and_gaps(surface)
+        if gaps:
+            affected += 1
+            gap_count += len(gaps)
+    if gap_count == 0:
+        return (
+            "## Known Gaps\n\nNo unresolved extraction gaps recorded. "
+            "Individual beans still carry `confidence` frontmatter — prefer "
+            "`declared` over `inferred` data when contracts conflict.\n"
+        )
+    return (
+        "## Known Gaps\n\n"
+        f"{gap_count} unresolved unknown(s) across {affected} surface(s). "
+        "Each affected bean has a **Gaps & unknowns** section — resolve these "
+        "against the original application rather than guessing.\n"
     )
 
 
