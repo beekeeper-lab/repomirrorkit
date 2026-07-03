@@ -100,6 +100,13 @@ def test_pipeline_python_flask_fixture(
     coverage_md = (out / "reports" / "coverage.md").read_text()
     assert "## Fidelity (recreation-readiness)" in coverage_md
 
+    # BEAN-066: seed/reference datasets — the fixture's UserStatus enum and
+    # the roles lookup table both yield seed-data beans with actual values.
+    all_beans_text = "\n".join(p.read_text() for p in (out / "beans").glob("BEAN-*.md"))
+    assert "UserStatus" in all_beans_text, "UserStatus enum bean missing"
+    assert "suspended" in all_beans_text, "Enum values missing from beans"
+    assert "admin" in all_beans_text, "roles lookup values missing from beans"
+
 
 @pytest.mark.integration
 def test_pipeline_ts_next_fixture(

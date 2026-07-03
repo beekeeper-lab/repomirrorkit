@@ -24,6 +24,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     MiddlewareSurface,
     ModelSurface,
     RouteSurface,
+    SeedDataSurface,
     SourceRef,
     StateMgmtSurface,
     Surface,
@@ -963,6 +964,70 @@ def render_general_logic_bean(surface: GeneralLogicSurface, bean_id: str) -> str
     return fm + "\n" + body.lstrip("\n")
 
 
+def render_seed_data_bean(surface: SeedDataSurface, bean_id: str) -> str:
+    """Render a seed/reference-data bean (BEAN-066).
+
+    Args:
+        surface: A SeedDataSurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="seed_data",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+    )
+
+    if surface.values:
+        columns = list(surface.values[0].keys())
+        header = "| " + " | ".join(columns) + " |"
+        divider = "|" + "|".join("---" for _ in columns) + "|"
+        rows = [
+            "| " + " | ".join(str(row.get(c, "")) for c in columns) + " |"
+            for row in surface.values
+        ]
+        values_block = "\n".join([header, divider, *rows])
+    else:
+        values_block = "_No values captured._"
+
+    truncation_note = (
+        f"\n\n_Values truncated to the first {len(surface.values)} rows; "
+        "see the source file for the full dataset._"
+        if surface.truncated
+        else ""
+    )
+    target = (
+        f"- Feeds model/table: `{surface.target_model_ref}`"
+        if surface.target_model_ref
+        else "- Target model/table not resolved."
+    )
+
+    body = f"""
+# {surface.name}
+
+## Dataset
+
+- Name: `{surface.dataset_name}`
+- Kind: {surface.kind}
+{target}
+
+{_render_enrichment_sections(surface)}
+## Values
+
+{values_block}{truncation_note}
+
+## Structural acceptance criteria
+
+- [ ] The rebuilt application defines the `{surface.dataset_name}` dataset with exactly these values.
+- [ ] Code referencing these values behaves identically for each member.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
 _RENDERERS: dict[str, Any] = {
     "route": render_route_bean,
     "component": render_component_bean,
@@ -978,6 +1043,7 @@ _RENDERERS: dict[str, Any] = {
     "build_deploy": render_build_deploy_bean,
     "dependency": render_dependency_bean,
     "test_pattern": render_test_pattern_bean,
+    "seed_data": render_seed_data_bean,
     "general_logic": render_general_logic_bean,
 }
 

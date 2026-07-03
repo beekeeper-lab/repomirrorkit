@@ -3,9 +3,10 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-066 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | Medium |
 | **Created** | 2026-07-03 |
+| **Completed** | 2026-07-03 |
 | **Owner** | team-lead |
 | **Category** | App |
 
@@ -33,14 +34,21 @@ A `SeedDataSurface` capturing enumerations and seed/reference datasets: code-lev
 
 ## Acceptance Criteria
 
-- [ ] A Python `StrEnum` in the fixture yields a `SeedDataSurface` with all member values
-- [ ] A migration `INSERT` yields a `lookup_table` dataset with the inserted rows
-- [ ] Datasets link to their model surface when resolvable
-- [ ] Value lists are capped with explicit truncation notes (no silent loss)
-- [ ] Lint, type-check, and pytest all clean
+- [x] A Python `StrEnum` in the fixture yields a `SeedDataSurface` with all member values
+- [x] A migration `INSERT` yields a `lookup_table` dataset with the inserted rows
+- [x] Datasets link to their model surface when resolvable
+- [x] Value lists are capped with explicit truncation notes (no silent loss)
+- [x] Lint, type-check, and pytest all clean
 
 ## Notes
 
 - Source: recreation-grade audit 2026-07-03 (`ROADMAP-RECREATION.md`), Track A
 - Wave 1 — no hard dependencies
 - Feeds BEAN-072 (DB design bundle includes seed data)
+
+## Implementation Notes (Tech-QA)
+
+- `analyzers/seed_data.py`: Python enums (stdlib ast), TS/JS enums (regex v1, BEAN-061 upgrade path noted), SQL INSERT lookup tables (quote-aware row splitting, NULL/number/string literals), JSON fixtures under fixtures|seeds|seed_data/. Values capped at 50/dataset with explicit `truncated` flag.
+- New `SeedDataSurface` + `SurfaceCollection.seed_data`; renderer emits a values table + truncation note; REQUIREMENTS.md gains a "Seed & Reference Data" section.
+- Fixture: `UserStatus` StrEnum + `seeds/roles.sql`; e2e asserts values land in beans. 9 unit tests.
+- Alembic `op.bulk_insert` deferred (noted in module docstring); `as const` TS objects deferred to BEAN-061.
