@@ -3,9 +3,10 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-062 |
-| **Status** | Unapproved |
+| **Status** | Done |
 | **Priority** | Critical |
 | **Created** | 2026-07-03 |
+| **Completed** | 2026-07-03 |
 | **Owner** | team-lead |
 | **Category** | App |
 
@@ -34,14 +35,22 @@ For Flask and FastAPI endpoints, `request_schema` and `response_schema` are popu
 
 ## Acceptance Criteria
 
-- [ ] Harvesting the `python-flask` fixture yields ≥1 API surface with non-empty `request_schema` AND `response_schema`
-- [ ] FastAPI Pydantic-based endpoints produce field name/type/required triples matching the model definition
-- [ ] Un-inferable shapes produce an explicit `{"unknown": true}` marker, never a silently empty dict
-- [ ] API bean markdown shows request/response field tables
-- [ ] Lint, type-check, and pytest all clean
+- [x] Harvesting the `python-flask` fixture yields ≥1 API surface with non-empty `request_schema` AND `response_schema`
+- [x] FastAPI Pydantic-based endpoints produce field name/type/required triples matching the model definition
+- [x] Un-inferable shapes produce an explicit `{"unknown": true}` marker, never a silently empty dict
+- [x] API bean markdown shows request/response field tables
+- [x] Lint, type-check, and pytest all clean
 
 ## Notes
 
 - Source: recreation-grade audit 2026-07-03 (`ROADMAP-RECREATION.md`), Track A — **recommended first slice** together with BEAN-071 + BEAN-076
 - Wave 1 — no dependencies (stdlib `ast`, not tree-sitter)
 - Touches `surfaces.py` semantics only additively (populating existing fields + optional `confidence`)
+
+## Implementation Notes (Tech-QA)
+
+- New `analyzers/api_contracts.py`: `populate_python_api_contracts()` — stdlib-`ast` extraction, FastAPI (declared) + Flask (inferred), single-hop import resolution, per-file parse cache. 12 unit tests.
+- Bean template renders field tables via `_render_contract_schema()`; `{"unknown": true}` renders as a visible gap note.
+- **Bonus fix 1 (critical):** the detector registry was EMPTY in all production pipeline runs — nothing in `src/` imported the concrete detector modules, so stack detection always returned `{}` and stack-gated analyzers (APIs/components/models) never ran outside unit tests. Fixed by importing all detector modules in `detectors/__init__.py`.
+- **Bonus fix 2:** Python API detection was path-shape-only (undetectable minimal apps). Added dependency-manifest content signal (`requirements.txt`/`pyproject.toml` declaring flask/fastapi, +0.6 confidence); `InventoryResult` now carries `workdir` so detectors can read manifests.
+- Fixture upgraded (email field, richer response); e2e asserts populated field tables for `POST /api/users`.

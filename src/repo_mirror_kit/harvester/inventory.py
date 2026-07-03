@@ -220,6 +220,10 @@ class InventoryResult:
     total_files: int
     total_size: int
     total_skipped: int
+    # BEAN-062: repository root, so detectors can read manifest contents
+    # (e.g. requirements.txt) instead of relying on path shapes alone.
+    # None in synthetic test inventories.
+    workdir: Path | None = None
 
 
 def scan(workdir: Path, config: HarvestConfig) -> InventoryResult:
@@ -319,6 +323,7 @@ def scan(workdir: Path, config: HarvestConfig) -> InventoryResult:
         total_files=len(files),
         total_size=total_size,
         total_skipped=len(skipped),
+        workdir=workdir,
     )
 
     logger.info(

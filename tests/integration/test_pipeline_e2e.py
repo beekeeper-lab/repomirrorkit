@@ -62,6 +62,20 @@ def test_pipeline_python_flask_fixture(
     assert "## Tech Stack" in text
     assert "## Functional Requirements" in text
 
+    # BEAN-062: the POST /api/users endpoint gets populated request AND
+    # response contracts (rendered as field tables in its API bean).
+    api_beans = [
+        p.read_text()
+        for p in bean_files
+        if "post-api-users" in p.name.lower() or "POST /api/users" in p.read_text()
+    ]
+    assert api_beans, "Expected an API bean for POST /api/users"
+    post_bean = api_beans[0]
+    assert "| `name` |" in post_bean, "Request field table missing 'name'"
+    assert "| `email` |" in post_bean, "Request field table missing 'email'"
+    assert "_Confidence: inferred._" in post_bean
+    assert "| `id` |" in post_bean, "Response field table missing 'id'"
+
 
 @pytest.mark.integration
 def test_pipeline_ts_next_fixture(
