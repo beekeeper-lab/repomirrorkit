@@ -136,6 +136,32 @@ class TestEnrichSurfacesSkipConditions:
 
         assert result is surfaces
 
+    def test_proceeds_with_base_url_and_no_api_key(self, tmp_path: Path) -> None:
+        """A base_url (e.g. local Ollama) is sufficient even without a key."""
+        config = HarvestConfig(
+            repo="https://github.com/example/repo",
+            llm_enabled=True,
+            llm_api_key=None,
+            llm_base_url="http://localhost:11434",
+            llm_model="claude-test",
+        )
+        surfaces = _make_surfaces(count=1)
+        mock_cls = _mock_llm_client_class()
+
+        with (
+            patch("repo_mirror_kit.harvester.llm.enrichment.HAS_ANTHROPIC", True),
+            patch("repo_mirror_kit.harvester.llm.client.LLMClient", mock_cls),
+        ):
+            result = enrich_surfaces(surfaces, config, tmp_path)
+
+        for s in result:
+            assert s.enrichment != {}
+        mock_cls.assert_called_once_with(
+            api_key=None,
+            model="claude-test",
+            base_url="http://localhost:11434",
+        )
+
 
 # ---------------------------------------------------------------------------
 # Enrichment with mocked LLMClient

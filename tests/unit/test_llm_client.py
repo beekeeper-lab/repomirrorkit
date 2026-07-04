@@ -93,6 +93,68 @@ class TestLLMClientInit:
 
             assert client._model == "claude-sonnet-4-6"
 
+    def test_init_without_base_url_is_unchanged(self) -> None:
+        """When base_url is not passed, the SDK call must not gain kwargs."""
+        mock_mod = _mock_anthropic_module()
+        with patch.dict("sys.modules", {"anthropic": mock_mod}):
+            from importlib import reload
+
+            import repo_mirror_kit.harvester.llm.client as client_mod
+
+            reload(client_mod)
+
+            client_mod.LLMClient(api_key="sk-test")
+
+            mock_mod.Anthropic.assert_called_once_with(api_key="sk-test")
+
+    def test_init_with_base_url_passes_it_to_sdk(self) -> None:
+        mock_mod = _mock_anthropic_module()
+        with patch.dict("sys.modules", {"anthropic": mock_mod}):
+            from importlib import reload
+
+            import repo_mirror_kit.harvester.llm.client as client_mod
+
+            reload(client_mod)
+
+            client_mod.LLMClient(
+                api_key="sk-test",
+                base_url="http://localhost:11434",
+            )
+
+            mock_mod.Anthropic.assert_called_once_with(
+                api_key="sk-test", base_url="http://localhost:11434"
+            )
+
+    def test_init_with_base_url_defaults_dummy_key_when_missing(self) -> None:
+        """A dummy 'ollama' key is used only when base_url is set and no key is given."""
+        mock_mod = _mock_anthropic_module()
+        with patch.dict("sys.modules", {"anthropic": mock_mod}):
+            from importlib import reload
+
+            import repo_mirror_kit.harvester.llm.client as client_mod
+
+            reload(client_mod)
+
+            client_mod.LLMClient(base_url="http://localhost:11434")
+
+            mock_mod.Anthropic.assert_called_once_with(
+                api_key="ollama", base_url="http://localhost:11434"
+            )
+
+    def test_init_without_base_url_does_not_default_dummy_key(self) -> None:
+        """No base_url means no dummy key — api_key is passed through as-is."""
+        mock_mod = _mock_anthropic_module()
+        with patch.dict("sys.modules", {"anthropic": mock_mod}):
+            from importlib import reload
+
+            import repo_mirror_kit.harvester.llm.client as client_mod
+
+            reload(client_mod)
+
+            client_mod.LLMClient(api_key=None)
+
+            mock_mod.Anthropic.assert_called_once_with(api_key=None)
+
 
 # ---------------------------------------------------------------------------
 # complete() method

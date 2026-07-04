@@ -49,7 +49,7 @@ def enrich_surfaces(
         logger.warning("llm_enrichment_skipped", reason="anthropic_not_installed")
         return surfaces
 
-    if not config.llm_api_key:
+    if not config.llm_api_key and not config.llm_base_url:
         logger.warning("llm_enrichment_skipped", reason="no_api_key")
         return surfaces
 
@@ -58,6 +58,7 @@ def enrich_surfaces(
     client = LLMClient(
         api_key=config.llm_api_key,
         model=config.llm_model,
+        base_url=config.llm_base_url,
     )
 
     total = len(surfaces)
