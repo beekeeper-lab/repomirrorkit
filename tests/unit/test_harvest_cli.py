@@ -200,6 +200,60 @@ class TestHarvestCommand:
         config = call_args[0][0]
         assert config.resume is True
 
+    def test_harvest_llm_base_url_flag_passed_to_config(self) -> None:
+        runner = CliRunner()
+        mock_pipeline = MagicMock()
+        mock_pipeline.return_value.run.return_value = _make_success_result()
+
+        with patch(_PIPELINE_RUN, mock_pipeline):
+            result = runner.invoke(
+                main,
+                [
+                    "harvest",
+                    "--repo",
+                    "https://example.com/r.git",
+                    "--llm-base-url",
+                    "http://localhost:11434",
+                ],
+            )
+        assert result.exit_code == EXIT_SUCCESS
+
+        call_args = mock_pipeline.return_value.run.call_args
+        config = call_args[0][0]
+        assert config.llm_base_url == "http://localhost:11434"
+
+    def test_harvest_llm_base_url_env_fallback(self) -> None:
+        runner = CliRunner()
+        mock_pipeline = MagicMock()
+        mock_pipeline.return_value.run.return_value = _make_success_result()
+
+        with patch(_PIPELINE_RUN, mock_pipeline):
+            result = runner.invoke(
+                main,
+                ["harvest", "--repo", "https://example.com/r.git"],
+                env={"HARVESTER_LLM_BASE_URL": "http://localhost:11434"},
+            )
+        assert result.exit_code == EXIT_SUCCESS
+
+        call_args = mock_pipeline.return_value.run.call_args
+        config = call_args[0][0]
+        assert config.llm_base_url == "http://localhost:11434"
+
+    def test_harvest_no_llm_base_url_defaults_none(self) -> None:
+        runner = CliRunner()
+        mock_pipeline = MagicMock()
+        mock_pipeline.return_value.run.return_value = _make_success_result()
+
+        with patch(_PIPELINE_RUN, mock_pipeline):
+            result = runner.invoke(
+                main, ["harvest", "--repo", "https://example.com/r.git"]
+            )
+        assert result.exit_code == EXIT_SUCCESS
+
+        call_args = mock_pipeline.return_value.run.call_args
+        config = call_args[0][0]
+        assert config.llm_base_url is None
+
     def test_harvest_invalid_max_file_bytes_type(self) -> None:
         runner = CliRunner()
         result = runner.invoke(

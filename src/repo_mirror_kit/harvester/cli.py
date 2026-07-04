@@ -134,8 +134,20 @@ def main() -> None:
 @click.option(
     "--llm-model",
     default="claude-sonnet-4-6",
-    help="Claude model to use for LLM enrichment.",
+    help="Claude model to use for LLM enrichment. When --llm-base-url points "
+    "at a local endpoint (e.g. Ollama), a local model tag such as "
+    "'qwen2.5-coder:32b' can be used instead.",
     show_default=True,
+)
+@click.option(
+    "--llm-base-url",
+    "llm_base_url",
+    default=None,
+    envvar="HARVESTER_LLM_BASE_URL",
+    help="Optional base URL override for the Anthropic SDK, used to target "
+    "a local Anthropic-API-compatible endpoint such as Ollama "
+    "(http://localhost:11434). May also be set via HARVESTER_LLM_BASE_URL. "
+    "When set, ANTHROPIC_API_KEY is not required.",
 )
 def harvest(
     repo: str,
@@ -150,6 +162,7 @@ def harvest(
     log_level: str,
     llm_enabled: bool,
     llm_model: str,
+    llm_base_url: str | None,
 ) -> None:
     """Run the requirements harvester against a repository."""
     # API key is sourced from the environment only — never accepted on
@@ -172,6 +185,7 @@ def harvest(
             llm_enabled=llm_enabled,
             llm_api_key=llm_api_key,
             llm_model=llm_model,
+            llm_base_url=llm_base_url,
         )
     except ConfigValidationError as exc:
         click.echo(f"Error: {exc}", err=True)

@@ -48,6 +48,10 @@ class HarvestConfig:
             ``ANTHROPIC_API_KEY`` environment variable only — there is no CLI
             flag for it, so the key cannot leak into shell history or argv.
         llm_model: Claude model to use for LLM enrichment.
+        llm_base_url: Optional base URL override for the Anthropic SDK, used
+            to target a local Anthropic-API-compatible endpoint such as
+            Ollama. When set, a missing ``llm_api_key`` no longer triggers
+            the no-API-key warning/fallback below.
     """
 
     repo: str
@@ -63,6 +67,7 @@ class HarvestConfig:
     llm_enabled: bool = False
     llm_api_key: str | None = None
     llm_model: str = "claude-sonnet-4-6"
+    llm_base_url: str | None = None
 
     def __post_init__(self) -> None:
         """Validate configuration values after initialization."""
@@ -95,12 +100,14 @@ class HarvestConfig:
             raise ConfigValidationError(
                 f"--max-total-bytes must be positive, got {self.max_total_bytes}"
             )
-        if self.llm_enabled and not self.llm_api_key:
+        if self.llm_enabled and not self.llm_api_key and not self.llm_base_url:
             # BEAN-056: --llm is default-on, so a missing API key must NOT
             # raise — it would break every default invocation. Emit a clear,
             # actionable warning to stderr and silently downgrade
             # llm_enabled to False so the run continues in structural-only
             # mode. Users who don't want the warning can pass --no-llm.
+            # Exception: when llm_base_url points at a local endpoint (e.g.
+            # Ollama), no real API key is required, so skip this fallback.
             import sys
 
             sys.stderr.write(

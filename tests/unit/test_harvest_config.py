@@ -71,6 +71,21 @@ class TestHarvestConfigLLMKey:
         assert config.llm_enabled is False
         assert capsys.readouterr().err == ""
 
+    def test_missing_key_with_base_url_does_not_warn_or_downgrade(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        # A local endpoint (e.g. Ollama) doesn't require a real API key, so
+        # setting llm_base_url must suppress the no-API-key fallback.
+        config = HarvestConfig(
+            repo="https://example.com/repo.git",
+            llm_enabled=True,
+            llm_api_key=None,
+            llm_base_url="http://localhost:11434",
+        )
+        assert config.llm_enabled is True
+        assert capsys.readouterr().err == ""
+
 
 class TestHarvestConfigUrlValidation:
     """HarvestConfig must enforce the canonical clone-URL allow-list (BEAN-044)."""
