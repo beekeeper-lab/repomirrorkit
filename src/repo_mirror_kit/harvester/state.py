@@ -82,6 +82,12 @@ class PipelineState:
     bean_count: int = 0
     last_checkpoint: str | None = None
     started_at: str | None = None
+    # BEAN-060: per-stage artifact records — filename + SHA-256 of the
+    # persisted output, keyed by stage name. Rehydration requires a match.
+    artifacts: dict[str, dict[str, str]] = field(default_factory=dict)
+    # BEAN-060: fingerprint of the config inputs that shape stage outputs;
+    # a mismatch on resume invalidates all persisted artifacts.
+    fingerprint: str | None = None
 
     def to_dict(self) -> dict[str, object]:
         """Serialize to a plain dict for JSON output."""
@@ -90,6 +96,8 @@ class PipelineState:
             "bean_count": self.bean_count,
             "last_checkpoint": self.last_checkpoint,
             "started_at": self.started_at,
+            "artifacts": self.artifacts,
+            "fingerprint": self.fingerprint,
         }
 
     @classmethod
@@ -120,11 +128,26 @@ class PipelineState:
         last_cp = data.get("last_checkpoint")
         started = data.get("started_at")
 
+        raw_artifacts = data.get("artifacts", {})
+        artifacts: dict[str, dict[str, str]] = {}
+        if isinstance(raw_artifacts, dict):
+            for stage_name, record in raw_artifacts.items():
+                if isinstance(record, dict):
+                    artifacts[str(stage_name)] = {
+                        str(k): str(v) for k, v in record.items()
+                    }
+
+        raw_fingerprint = data.get("fingerprint")
+
         return cls(
             stages=stages,
             bean_count=bean_count,
             last_checkpoint=str(last_cp) if last_cp is not None else None,
             started_at=str(started) if started is not None else None,
+            artifacts=artifacts,
+            fingerprint=str(raw_fingerprint)
+            if raw_fingerprint is not None
+            else None,
         )
 
 
