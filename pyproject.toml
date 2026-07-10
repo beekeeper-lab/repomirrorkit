@@ -46,6 +46,7 @@ ignore = ["E501"]
 "tests/integration/conftest.py" = ["S101", "S108", "S603", "S607"]
 "src/repo_mirror_kit/services/clone_service.py" = ["S603", "S607"]
 "src/repo_mirror_kit/harvester/git_ops.py" = ["S603", "S607"]
+"src/repo_mirror_kit/harvester/rebuild/executor.py" = ["S603", "S607"]
 
 [tool.ruff.format]
 quote-style = "double"
