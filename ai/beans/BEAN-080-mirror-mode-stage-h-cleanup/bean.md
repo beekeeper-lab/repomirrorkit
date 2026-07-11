@@ -3,12 +3,12 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-080 |
-| **Status** | In Progress |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-07-11 |
 | **Started** | 2026-07-11 10:48 |
-| **Completed** | — |
-| **Duration** | — |
+| **Completed** | 2026-07-11 11:50 |
+| **Duration** | ~62m |
 | **Owner** | team-lead |
 | **Category** | App |
 
@@ -69,11 +69,14 @@ Full design: `SPEC-MIRROR-MODE.md` Phase 1 (M1.1–M1.5), decisions D3/D4.
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Config & CLI surface | team-lead | — | — | — |
+| 2 | Provenance + state records | team-lead | — | — | — |
+| 3 | Stage H module + pipeline + resume | team-lead | — | — | — |
+| 4 | Tests | team-lead | — | — | — |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
-| **Total Tokens In** | — |
-| **Total Tokens Out** | — |
+| **Total Tasks** | 4 |
+| **Total Duration** | ~62m (wall clock) |
+| **Total Tokens In** | (not tracked) |
+| **Total Tokens Out** | (not tracked) |

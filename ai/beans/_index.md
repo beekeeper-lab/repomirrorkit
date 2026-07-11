@@ -101,7 +101,7 @@
 | BEAN-077 | Golden Parity Fixtures (Request/Response Captures) | App | Medium | Unapproved | team-lead |
 | BEAN-078 | Rebuild Eval Harness — Parity Scoring | App | Critical | Unapproved | team-lead |
 | BEAN-079 | Stage G Orchestration-Policy Parameterization + Telemetry | App | Medium | In Progress | team-lead |
-| BEAN-080 | `--mirror` Mode + Stage H Cleanup (Delete Source & Git History) | App | High | In Progress | team-lead |
+| BEAN-080 | `--mirror` Mode + Stage H Cleanup (Delete Source & Git History) | App | High | Done | team-lead |
 | BEAN-081 | Verbatim-Rule Bean Templates + Zero-`TODO:` Placeholder Policy | App | High | Unapproved | team-lead |
 | BEAN-082 | Exact-Value Extraction — Analyzer Depth + LLM `exact_rules` Contract | App | High | Unapproved | team-lead |
 | BEAN-083 | Sensitive Findings — Redact Secrets/PII and Surface to Operator | App | High | Unapproved | team-lead |
