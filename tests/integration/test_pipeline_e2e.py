@@ -12,6 +12,7 @@ To skip during unit-only runs::
 from __future__ import annotations
 
 import json
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
@@ -303,3 +304,89 @@ def test_mirror_pipeline_end_to_end(
     assert not (out / "repo").exists()
     assert list(out.rglob(".git")) == []
     assert (out / "REQUIREMENTS.md").is_file()
+
+
+@pytest.mark.integration
+def test_sensitive_findings_redacted_end_to_end(tmp_path: Path) -> None:
+    """BEAN-083: planted secrets/PII are redacted everywhere and reported.
+
+    Builds a throwaway git repo (does NOT touch the shared fixtures) with a
+    Python enum carrying a fake AWS key and an email, runs the harvester with
+    ``--no-llm``, and asserts the raw values appear nowhere under the output
+    dir while the findings are surfaced.
+    """
+    # 1. Build a throwaway source repo with planted secret + PII in an enum
+    #    (captured structurally as seed data, no LLM required).
+    src = tmp_path / "leaky-src"
+    src.mkdir()
+    (src / "models.py").write_text(
+        "from enum import Enum\n"
+        "\n"
+        "\n"
+        "class Secrets(Enum):\n"
+        '    AWS = "AKIAIOSFODNN7EXAMPLE"\n'
+        '    CONTACT = "alice@example.com"\n',
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "init", "-q"], cwd=src, check=True)
+    subprocess.run(["git", "add", "."], cwd=src, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=fixture",
+            "-c",
+            "user.email=fixture@example.com",
+            "commit",
+            "-q",
+            "-m",
+            "planted secrets",
+        ],
+        cwd=src,
+        check=True,
+    )
+
+    out = tmp_path / "harvest-out"
+    config = HarvestConfig(
+        repo=str(src),
+        out=out,
+        log_level="warn",
+        llm_enabled=False,
+        fail_on_gaps=False,
+    )
+    result = HarvestPipeline().run(config)
+
+    # (d) harvest still succeeds
+    assert result.success, (
+        f"Pipeline failed at stage {result.error_stage}: {result.error_message}"
+    )
+
+    # (a) raw key/email appear NOWHERE under the output dir (repo/ excluded —
+    #     it is the untouched clone of the source, not harvester output).
+    for path in out.rglob("*"):
+        if not path.is_file():
+            continue
+        if "repo" in path.relative_to(out).parts:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        assert "AKIAIOSFODNN7EXAMPLE" not in text, f"AWS key leaked into {path}"
+        assert "alice@example.com" not in text, f"email leaked into {path}"
+
+    # (b) reports/sensitive-findings.json exists with >=2 findings
+    findings_json = out / "reports" / "sensitive-findings.json"
+    assert findings_json.is_file()
+    payload = json.loads(findings_json.read_text(encoding="utf-8"))
+    assert payload["count"] >= 2
+    kinds = {f["kind"] for f in payload["findings"]}
+    assert "aws-access-key" in kinds
+    assert "email" in kinds
+
+    # (c) REQUIREMENTS.md carries the rollup line
+    requirements = (out / "REQUIREMENTS.md").read_text(encoding="utf-8")
+    assert "sensitive value(s)" in requirements
+    assert "reports/sensitive-findings.md" in requirements
+
+    assert result.sensitive_findings_count >= 2

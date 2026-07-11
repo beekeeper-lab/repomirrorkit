@@ -81,6 +81,40 @@ class TestHarvestCommand:
         assert result.exit_code == EXIT_SUCCESS
         assert "Beans generated: 5" in result.output
 
+    def test_harvest_sensitive_findings_prints_warning(self) -> None:
+        # BEAN-083: loud warning when secrets/PII were redacted; exit unchanged.
+        runner = CliRunner()
+        mock_pipeline = MagicMock()
+        result_obj = HarvestResult(
+            success=True,
+            coverage_passed=True,
+            bean_count=5,
+            gap_count=0,
+            sensitive_findings_count=2,
+            output_dir=Path("/tmp/out"),
+        )
+        mock_pipeline.return_value.run.return_value = result_obj
+
+        with patch(_PIPELINE_RUN, mock_pipeline):
+            result = runner.invoke(
+                main, ["harvest", "--repo", "https://example.com/r.git"]
+            )
+        assert result.exit_code == EXIT_SUCCESS
+        assert "2 sensitive value(s)" in result.output
+        assert "sensitive-findings.md" in result.output
+
+    def test_harvest_no_sensitive_findings_no_warning(self) -> None:
+        runner = CliRunner()
+        mock_pipeline = MagicMock()
+        mock_pipeline.return_value.run.return_value = _make_success_result()
+
+        with patch(_PIPELINE_RUN, mock_pipeline):
+            result = runner.invoke(
+                main, ["harvest", "--repo", "https://example.com/r.git"]
+            )
+        assert result.exit_code == EXIT_SUCCESS
+        assert "sensitive value" not in result.output
+
     def test_harvest_pipeline_failure_exits_unexpected(self) -> None:
         runner = CliRunner()
         mock_pipeline = MagicMock()

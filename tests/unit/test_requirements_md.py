@@ -230,3 +230,37 @@ class TestGenerateRequirementsMd:
         assert "### APIs (1)" in text
         assert "### Data Models (1)" in text
         assert "### Configuration & Environment (1)" in text
+
+
+class TestSensitiveRollup:
+    """BEAN-083: one-line sensitive-findings rollup near the top."""
+
+    def test_rollup_absent_when_zero(self, tmp_path: Path) -> None:
+        path = generate_requirements_md(
+            project_name="X",
+            surfaces=_make_surfaces(),
+            profile=_make_profile(),
+            beans=[],
+            output_dir=tmp_path,
+            sensitive_findings_count=0,
+        )
+        text = path.read_text()
+        assert "sensitive value" not in text
+
+    def test_rollup_present_when_positive(self, tmp_path: Path) -> None:
+        path = generate_requirements_md(
+            project_name="X",
+            surfaces=_make_surfaces(),
+            profile=_make_profile(),
+            beans=[],
+            output_dir=tmp_path,
+            sensitive_findings_count=3,
+        )
+        text = path.read_text()
+        assert "3 sensitive value(s)" in text
+        assert "reports/sensitive-findings.md" in text
+        # The rollup line itself carries only the count + pointer, no location.
+        rollup_line = next(
+            line for line in text.splitlines() if "sensitive value(s)" in line
+        )
+        assert ".py:" not in rollup_line
