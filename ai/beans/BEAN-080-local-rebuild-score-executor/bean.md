@@ -36,25 +36,30 @@ the same routes, models, APIs, auth surfaces?"
 ### In Scope
 - `harvester/rebuild/executor.py`: assemble an isolated rebuild workspace
   (allowlist of requirement artifacts only — never the original `repo/` or the
-  `surfaces.json` answer key), drive the cloud lane (`claude -p`), record
-  telemetry (wall time, tokens, cost, turns), `git init` the result.
+  `surfaces.json` answer key); two lanes behind one injectable subprocess seam:
+  **cloud** (`claude -p`, telemetry = tokens/cost/turns) and **local**
+  (forge-loop over a synthesized `task.md`, telemetry = steps/retries; git-inits
+  the workspace first since forge-loop commits per step).
 - `harvester/rebuild/scoring.py`: parse two `surfaces.json` files, compute
   per-surface-type + micro-averaged precision/recall/F1, emit
   `rebuild-score.{json,md}`.
-- CLI verbs: `rebuild` (full loop) and `score` (diff two harvests).
+- CLI verbs: `rebuild` (full loop; `--lane cloud|local`, `--data-class`,
+  `--allow`) and `score` (diff two harvests).
 
 ### Out of Scope
-- Local lane (forge-loop) — seam is in place, raises pending WP-3.5.
 - Behavioral parity scoring (tiers 2–3) — that is BEAN-078.
-- Actually running a cloud rebuild end-to-end — that is Forge WP-3.5.
+- Actually running either lane end-to-end against a live model — that is the
+  frontier-vs-local comparison, Forge WP-3.5. Both lanes are unit-tested via an
+  injected runner here; neither has been run against a real agent yet.
 
 ## Acceptance Criteria
 
-- [x] Rebuild executor works for the cloud lane (subprocess boundary injectable).
+- [x] Rebuild executor works for both cloud and local lanes (injectable
+      subprocess boundary; forge-loop wired for local).
 - [x] Scoring tier 1 implemented; discriminates (identical harvest → 100%,
       dropped-route harvest → 87.5% recall / 100% precision on the flask fixture).
 - [x] Workspace isolation enforced by allowlist + post-condition check.
-- [x] Unit tests (19 new); full suite green (1858 passed).
+- [x] Unit tests (22 new); full suite green (1861 passed).
 - [x] Lint + type-check clean.
 
 ## Notes

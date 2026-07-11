@@ -238,10 +238,29 @@ def _pct(value: float | None) -> str:
     type=click.Choice(["cloud", "local"]),
     default="cloud",
     show_default=True,
-    help="Rebuild lane: 'cloud' (Claude Code headless) or 'local' "
-    "(forge-loop — not yet wired, pending WP-3.5).",
+    help="Rebuild lane: 'cloud' (Claude Code headless via claude -p) or "
+    "'local' (forge-loop over the requirements; --model required).",
 )
-@click.option("--model", default=None, help="Model id passed to the rebuild lane.")
+@click.option(
+    "--model",
+    default=None,
+    help="Model passed to the rebuild lane (required for 'local': an Ollama "
+    "tag registered in the forge model registry, e.g. gemma4:26b).",
+)
+@click.option(
+    "--data-class",
+    type=click.Choice(["public", "internal", "client-confidential"]),
+    default="internal",
+    show_default=True,
+    help="Local lane only: forge-loop data class for the security gate.",
+)
+@click.option(
+    "--allow",
+    "allowed_commands",
+    multiple=True,
+    help="Local lane only: a verify command forge-loop may run (repeatable). "
+    "Defaults to forge-loop's own whitelist when omitted.",
+)
 @click.option(
     "--timeout",
     default=3600,
@@ -269,6 +288,8 @@ def rebuild(
     workspace: Path,
     lane: str,
     model: str | None,
+    data_class: str,
+    allowed_commands: tuple[str, ...],
     timeout: int,
     out: Path | None,
     do_score: bool,
@@ -294,6 +315,8 @@ def rebuild(
             lane=RebuildLane(lane),
             model=model,
             timeout=timeout,
+            data_class=data_class,
+            allowed_commands=allowed_commands or None,
         )
     except RebuildError as exc:
         click.echo(f"Error: {exc}", err=True)

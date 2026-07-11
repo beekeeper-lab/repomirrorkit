@@ -7,8 +7,9 @@ fidelity signal available today:
     harvest  →  rebuild(lane)  →  score
 
 - :mod:`.executor` drives an agentic rebuild from a harvest output directory
-  (cloud lane: Claude Code headless) into a fresh workspace and records run
-  telemetry (wall time, intervention count, tokens where available).
+  into a fresh workspace and records run telemetry (wall time, tokens/cost or
+  retries). Cloud lane: Claude Code headless. Local lane: forge-loop over the
+  requirements. Actual runs are Forge WP-3.5.
 - :mod:`.scoring` re-harvests the rebuild and diffs the two surface
   collections — tier-1 "surface re-extraction diff": did the rebuild
   reproduce the same routes, models, APIs, auth surfaces?

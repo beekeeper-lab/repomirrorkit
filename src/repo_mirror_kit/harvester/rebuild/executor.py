@@ -11,8 +11,10 @@ against. The workspace is assembled by *allowlist* — only requirement
 artifacts are copied — and a post-condition check refuses to proceed if the
 original ``repo/`` or the ``surfaces.json`` answer key leaked in.
 
-Cloud lane: Claude Code headless (``claude -p``). Local lane (forge-loop,
-IMP-03) is stubbed pending WP-3.5; the seam is here so it can drop in.
+Cloud lane: Claude Code headless (``claude -p``). Local lane: forge-loop
+(IMP-03) over the requirement artifacts, via a synthesized ``task.md``. The
+subprocess boundary is injectable, so both lanes are unit-tested without
+spawning a real agent; the actual end-to-end runs are Forge WP-3.5.
 """
 
 from __future__ import annotations
@@ -21,7 +23,7 @@ import json
 import shutil
 import subprocess
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -69,7 +71,8 @@ class RebuildResult:
     duration_seconds: float
     exit_code: int | None = None
     intervention_count: int = 0  # human interventions; 0 for a clean headless run
-    turns: int | None = None  # agent's internal turns, when reported
+    turns: int | None = None  # agent's internal turns / forge-loop steps, when reported
+    retries: int | None = None  # local lane: forge-loop retries_total
     tokens_in: int | None = None
     tokens_out: int | None = None
     cost_usd: float | None = None
@@ -86,6 +89,7 @@ class RebuildResult:
             "exit_code": self.exit_code,
             "intervention_count": self.intervention_count,
             "turns": self.turns,
+            "retries": self.retries,
             "tokens_in": self.tokens_in,
             "tokens_out": self.tokens_out,
             "cost_usd": self.cost_usd,
@@ -223,11 +227,13 @@ def _parse_claude_json(stdout: str) -> dict[str, Any]:
     return telemetry
 
 
-def _git_init_commit(path: Path) -> None:
+def _git_init_commit(path: Path, message: str = "rebuild output") -> None:
     """Initialise ``path`` as a git repo and commit its contents.
 
     Re-harvesting a rebuild goes through the harvester's clone step, which
-    requires a git repository (a plain directory fails ``git clone``).
+    requires a git repository (a plain directory fails ``git clone``). The
+    local lane also needs this *before* it runs, because forge-loop commits
+    into ``--repo`` per green step.
     """
     env_args = [
         "-c",
@@ -238,10 +244,79 @@ def _git_init_commit(path: Path) -> None:
     subprocess.run(["git", "init", "-q"], cwd=str(path), check=True)
     subprocess.run(["git", *env_args, "add", "-A"], cwd=str(path), check=True)
     subprocess.run(
-        ["git", *env_args, "commit", "-q", "-m", "rebuild output"],
+        ["git", *env_args, "commit", "-q", "-m", message],
         cwd=str(path),
         check=True,
     )
+
+
+def build_rebuild_task_md(
+    copied_inputs: list[str],
+    data_class: str,
+    allowed_commands: Sequence[str] | None,
+    final_verify: str | None,
+) -> str:
+    """Compose a forge-loop ``task.md`` (frontmatter + brief) for a rebuild.
+
+    forge-loop's security gate reads ``data_class`` and restricts verify
+    commands to ``allowed_commands``; both are omitted-to-default when not
+    supplied (forge-loop applies its own defaults).
+    """
+    lines = ["---", f"data_class: {data_class}"]
+    if allowed_commands:
+        lines.append("allowed_commands:")
+        lines.extend(f"  - {cmd}" for cmd in allowed_commands)
+    if final_verify:
+        lines.append(f"final_verify: {final_verify}")
+    lines.append("---")
+
+    inputs = []
+    if "REQUIREMENTS.md" in copied_inputs:
+        inputs.append("`REQUIREMENTS.md`")
+    if "beans" in copied_inputs:
+        inputs.append("the `beans/` requirement files")
+    if any(i.startswith("openapi") for i in copied_inputs):
+        inputs.append("the `openapi.*` contract")
+    inputs_line = ", ".join(inputs) if inputs else "the requirement files in this repo"
+
+    lines.extend(
+        [
+            "# Rebuild the application from its extracted requirements",
+            "",
+            f"This repository contains ONLY requirement artifacts ({inputs_line}) "
+            "and a `project-folder/` scaffold — there is no original source to "
+            "copy from, by design.",
+            "",
+            "Build a working implementation that satisfies these requirements: "
+            "reproduce the routes, API endpoints, data models, auth surfaces, and "
+            "behaviour described. Write real, runnable code and tests.",
+            "",
+            "## Acceptance criteria",
+            "- Every route/endpoint and data model described in the requirements exists in code.",
+            "- The project builds and its test suite passes.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
+def _parse_forge_loop_state(task_dir: Path) -> dict[str, Any]:
+    """Read forge-loop's ``state.yaml`` for outcome + telemetry (best effort)."""
+    result: dict[str, Any] = {"phase": None, "retries": None, "steps": None}
+    state_path = task_dir / "state.yaml"
+    if not state_path.is_file():
+        return result
+    try:
+        import yaml  # type: ignore[import-untyped]  # forge-loop dep; guarded
+
+        data = yaml.safe_load(state_path.read_text(encoding="utf-8"))
+    except (ImportError, OSError, ValueError):
+        return result
+    if isinstance(data, dict):
+        result["phase"] = data.get("phase")
+        result["retries"] = data.get("retries_total")
+        steps = data.get("steps")
+        result["steps"] = len(steps) if isinstance(steps, list) else None
+    return result
 
 
 def run_rebuild(
@@ -251,6 +326,9 @@ def run_rebuild(
     model: str | None = None,
     timeout: int = DEFAULT_TIMEOUT_SECONDS,
     permission_mode: str = "acceptEdits",
+    data_class: str = "internal",
+    allowed_commands: Sequence[str] | None = None,
+    final_verify: str | None = None,
     git_init: bool = True,
     runner: Runner = _default_runner,
 ) -> RebuildResult:
@@ -260,11 +338,16 @@ def run_rebuild(
         harvest_dir: a completed harvest ``--out`` directory.
         workspace: a fresh directory to build in (created; must be outside
             ``harvest_dir``).
-        lane: CLOUD (``claude -p``) or LOCAL (forge-loop, not yet wired).
-        model: optional model id passed to the lane.
+        lane: CLOUD (``claude -p``) or LOCAL (forge-loop over the requirements).
+        model: model id/tag passed to the lane. Required for the local lane
+            (an Ollama tag that must be in the forge registry).
         timeout: seconds before the rebuild invocation is killed.
-        permission_mode: Claude Code permission mode for the headless run.
-        git_init: ``git init`` + commit the result so it can be re-harvested.
+        permission_mode: Claude Code permission mode (cloud lane only).
+        data_class / allowed_commands / final_verify: forge-loop task settings
+            (local lane only) — feed its security gate and verify whitelist.
+        git_init: cloud lane — ``git init`` + commit the result so it can be
+            re-harvested. (The local lane always git-inits before running, as
+            forge-loop commits per step.)
         runner: subprocess boundary (injectable for tests).
 
     Returns:
@@ -274,12 +357,27 @@ def run_rebuild(
     copied = prepare_rebuild_workspace(harvest_dir, workspace)
     workspace = workspace.resolve()
 
-    if lane is RebuildLane.LOCAL:
-        raise RebuildError(
-            "local lane (forge-loop) is not yet wired — pending WP-3.5. "
-            "Use lane=RebuildLane.CLOUD for now."
+    if lane is RebuildLane.CLOUD:
+        return _rebuild_cloud(
+            workspace, model, timeout, permission_mode, copied, git_init, runner
         )
+    if lane is RebuildLane.LOCAL:
+        return _rebuild_local(
+            workspace, model, timeout, copied, data_class,
+            allowed_commands, final_verify, runner,
+        )
+    raise RebuildError(f"unknown rebuild lane: {lane}")
 
+
+def _rebuild_cloud(
+    workspace: Path,
+    model: str | None,
+    timeout: int,
+    permission_mode: str,
+    copied: list[str],
+    git_init: bool,
+    runner: Runner,
+) -> RebuildResult:
     prompt = build_rebuild_prompt(workspace, copied)
     argv = ["claude", "-p", prompt, "--output-format", "json",
             "--permission-mode", permission_mode]
@@ -291,17 +389,15 @@ def run_rebuild(
         proc = runner(argv, workspace, timeout)
     except subprocess.TimeoutExpired:
         return RebuildResult(
-            lane=lane.value, model=model, workspace=workspace, success=False,
-            duration_seconds=time.monotonic() - start,
-            copied_inputs=tuple(copied),
-            error=f"rebuild timed out after {timeout}s",
+            lane=RebuildLane.CLOUD.value, model=model, workspace=workspace,
+            success=False, duration_seconds=time.monotonic() - start,
+            copied_inputs=tuple(copied), error=f"rebuild timed out after {timeout}s",
         )
     except (OSError, FileNotFoundError) as exc:
         return RebuildResult(
-            lane=lane.value, model=model, workspace=workspace, success=False,
-            duration_seconds=time.monotonic() - start,
-            copied_inputs=tuple(copied),
-            error=f"could not launch rebuild agent: {exc}",
+            lane=RebuildLane.CLOUD.value, model=model, workspace=workspace,
+            success=False, duration_seconds=time.monotonic() - start,
+            copied_inputs=tuple(copied), error=f"could not launch rebuild agent: {exc}",
         )
     duration = time.monotonic() - start
 
@@ -317,7 +413,7 @@ def run_rebuild(
             error = f"rebuild succeeded but git init failed: {exc}"
 
     return RebuildResult(
-        lane=lane.value,
+        lane=RebuildLane.CLOUD.value,
         model=model,
         workspace=workspace,
         success=success,
@@ -328,6 +424,83 @@ def run_rebuild(
         tokens_in=telemetry["tokens_in"],
         tokens_out=telemetry["tokens_out"],
         cost_usd=telemetry["cost_usd"],
+        copied_inputs=tuple(copied),
+        error=error,
+    )
+
+
+def _rebuild_local(
+    workspace: Path,
+    model: str | None,
+    timeout: int,
+    copied: list[str],
+    data_class: str,
+    allowed_commands: Sequence[str] | None,
+    final_verify: str | None,
+    runner: Runner,
+) -> RebuildResult:
+    if not model:
+        raise RebuildError(
+            "local lane requires model= (an Ollama tag registered in the "
+            "forge model registry, e.g. 'gemma4:26b')"
+        )
+
+    # forge-loop commits into --repo per step, so the workspace must be a git
+    # repo before it runs; commit the requirement artifacts as the baseline.
+    try:
+        _git_init_commit(workspace, message="requirement artifacts (rebuild baseline)")
+    except (subprocess.CalledProcessError, OSError) as exc:
+        raise RebuildError(f"could not git-init rebuild workspace: {exc}") from exc
+
+    task_dir = workspace.parent / f"{workspace.name}-task"
+    task_dir.mkdir(parents=True, exist_ok=True)
+    (task_dir / "task.md").write_text(
+        build_rebuild_task_md(copied, data_class, allowed_commands, final_verify),
+        encoding="utf-8",
+    )
+
+    argv = ["forge-loop", "run", str(task_dir), "--model", model,
+            "--repo", str(workspace)]
+
+    start = time.monotonic()
+    try:
+        proc = runner(argv, workspace, timeout)
+    except subprocess.TimeoutExpired:
+        return RebuildResult(
+            lane=RebuildLane.LOCAL.value, model=model, workspace=workspace,
+            success=False, duration_seconds=time.monotonic() - start,
+            copied_inputs=tuple(copied), error=f"rebuild timed out after {timeout}s",
+        )
+    except (OSError, FileNotFoundError) as exc:
+        return RebuildResult(
+            lane=RebuildLane.LOCAL.value, model=model, workspace=workspace,
+            success=False, duration_seconds=time.monotonic() - start,
+            copied_inputs=tuple(copied),
+            error=f"could not launch forge-loop: {exc}",
+        )
+    duration = time.monotonic() - start
+
+    state = _parse_forge_loop_state(task_dir)
+    # forge-loop exits 0 on done/plan/execute, 1 on escalated, 2 on error. A
+    # completed rebuild means phase == "done"; anything else is a partial.
+    success = proc.returncode == 0 and state["phase"] == "done"
+    if success:
+        error = None
+    elif state["phase"] == "escalated":
+        error = f"forge-loop escalated (see {task_dir}/ESCALATION.md)"
+    else:
+        error = proc.stderr.strip() or f"forge-loop phase={state['phase']}, exit={proc.returncode}"
+
+    return RebuildResult(
+        lane=RebuildLane.LOCAL.value,
+        model=model,
+        workspace=workspace,
+        success=success,
+        duration_seconds=duration,
+        exit_code=proc.returncode,
+        intervention_count=0,
+        turns=state["steps"],
+        retries=state["retries"],
         copied_inputs=tuple(copied),
         error=error,
     )

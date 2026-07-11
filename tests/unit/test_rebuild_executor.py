@@ -70,10 +70,84 @@ def test_build_prompt_mentions_available_inputs(tmp_path: Path) -> None:
     assert "no original source" in prompt.lower()
 
 
-def test_local_lane_not_yet_wired(tmp_path: Path) -> None:
+def test_local_lane_requires_model(tmp_path: Path) -> None:
     harvest = _make_harvest_dir(tmp_path)
-    with pytest.raises(RebuildError, match="local lane"):
+    with pytest.raises(RebuildError, match="local lane requires model"):
         run_rebuild(harvest, tmp_path / "ws", lane=RebuildLane.LOCAL)
+
+
+def test_build_task_md_has_frontmatter_and_brief() -> None:
+    from repo_mirror_kit.harvester.rebuild.executor import build_rebuild_task_md
+
+    md = build_rebuild_task_md(
+        ["REQUIREMENTS.md", "beans", "openapi.yaml"],
+        data_class="public",
+        allowed_commands=["python3 -m pytest", "python3"],
+        final_verify="python3 -m pytest",
+    )
+    assert md.startswith("---\n")
+    assert "data_class: public" in md
+    assert "  - python3 -m pytest" in md
+    assert "final_verify: python3 -m pytest" in md
+    assert "REQUIREMENTS.md" in md
+    assert "Acceptance criteria" in md
+
+
+def test_local_lane_success_parses_state(tmp_path: Path) -> None:
+    harvest = _make_harvest_dir(tmp_path)
+    workspace = tmp_path / "ws"
+
+    def fake_forge_loop(argv, cwd, timeout):
+        # argv == ["forge-loop", "run", <task_dir>, "--model", m, "--repo", ws]
+        task_dir = Path(argv[2])
+        (Path(argv[6]) / "app.py").write_text("built", encoding="utf-8")
+        (task_dir / "state.yaml").write_text(
+            "model: gemma4:26b\n"
+            "repo: ws\n"
+            "data_class: public\n"
+            "phase: done\n"
+            "retries_total: 2\n"
+            "steps:\n"
+            "- {id: 1, title: scaffold, detail: '', status: done, attempts: 1}\n"
+            "- {id: 2, title: routes, detail: '', status: done, attempts: 2}\n",
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+    result = run_rebuild(
+        harvest, workspace, lane=RebuildLane.LOCAL, model="gemma4:26b",
+        data_class="public", runner=fake_forge_loop,
+    )
+    assert result.success is True
+    assert result.lane == "local"
+    assert result.retries == 2
+    assert result.turns == 2
+    assert result.cost_usd is None  # local — no cost
+    # workspace was git-inited before forge-loop ran (baseline commit).
+    assert (workspace / ".git").is_dir()
+    # task.md was written outside the workspace.
+    assert (tmp_path / "ws-task" / "task.md").is_file()
+
+
+def test_local_lane_escalation_is_failure(tmp_path: Path) -> None:
+    harvest = _make_harvest_dir(tmp_path)
+    workspace = tmp_path / "ws"
+
+    def fake_forge_loop(argv, cwd, timeout):
+        task_dir = Path(argv[2])
+        (task_dir / "state.yaml").write_text(
+            "model: gemma4:26b\nrepo: ws\ndata_class: public\n"
+            "phase: escalated\nretries_total: 3\nsteps: []\n",
+            encoding="utf-8",
+        )
+        return subprocess.CompletedProcess(argv, 1, stdout="", stderr="")
+
+    result = run_rebuild(
+        harvest, workspace, lane=RebuildLane.LOCAL, model="gemma4:26b",
+        runner=fake_forge_loop,
+    )
+    assert result.success is False
+    assert "escalated" in result.error
 
 
 def test_run_rebuild_success_parses_telemetry(tmp_path: Path) -> None:
