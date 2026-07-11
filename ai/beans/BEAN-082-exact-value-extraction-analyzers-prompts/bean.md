@@ -3,10 +3,10 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-082 |
-| **Status** | Approved |
+| **Status** | In Progress |
 | **Priority** | High |
 | **Created** | 2026-07-11 |
-| **Started** | — |
+| **Started** | 2026-07-11 12:15 |
 | **Completed** | — |
 | **Duration** | — |
 | **Owner** | (unassigned) |

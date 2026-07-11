@@ -775,3 +775,92 @@ class TestEdgeCases:
         # Should create a surface even with no columns
         assert len(surfaces) == 1
         assert surfaces[0].fields == []
+
+
+# ---------------------------------------------------------------------------
+# BEAN-082: exact validation rules (defaults, enums, checks) into exact_rules
+# ---------------------------------------------------------------------------
+
+
+class TestSQLAlchemyExactRules:
+    """SQLAlchemy columns emit exact validation rules on enrichment."""
+
+    _CODE = """\
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
+
+
+class Account(db.Model):
+    __tablename__ = 'accounts'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(255), nullable=False, unique=True)
+    role = db.Column(db.Enum("admin", "member", "guest", name="role_enum"), default="member")
+    status = db.Column(db.String(20), server_default="active", nullable=False)
+    __table_args__ = (db.CheckConstraint("balance >= 0", name="non_negative"),)
+"""
+
+    def _rules(self, tmp_path: Path) -> list[dict[str, object]]:
+        _write_file(tmp_path, "models.py", self._CODE)
+        surfaces = _extract_sqlalchemy(tmp_path, ["models.py"])
+        assert len(surfaces) == 1
+        rules = surfaces[0].enrichment["exact_rules"]
+        assert isinstance(rules, list)
+        return rules
+
+    def test_not_null_and_unique(self, tmp_path: Path) -> None:
+        rules = self._rules(tmp_path)
+        pairs = {(r["field"], r["rule"]) for r in rules}
+        assert ("email", "NOT NULL") in pairs
+        assert ("email", "unique") in pairs
+        assert ("status", "NOT NULL") in pairs
+
+    def test_enum_members_joined(self, tmp_path: Path) -> None:
+        rules = self._rules(tmp_path)
+        enum = next(r for r in rules if r["rule"] == "allowed values")
+        assert enum["field"] == "role"
+        assert enum["value"] == "admin|member|guest"
+
+    def test_default_and_server_default(self, tmp_path: Path) -> None:
+        rules = self._rules(tmp_path)
+        default = next(
+            r for r in rules if r["field"] == "role" and r["rule"] == "default"
+        )
+        assert default["value"] == '"member"'
+        server = next(r for r in rules if r["rule"] == "server default")
+        assert server["field"] == "status"
+        assert server["value"] == '"active"'
+
+    def test_check_constraint_expr_verbatim(self, tmp_path: Path) -> None:
+        rules = self._rules(tmp_path)
+        check = next(r for r in rules if r["rule"] == "check constraint")
+        assert check["field"] == "non_negative"
+        assert check["value"] == "balance >= 0"
+
+    def test_all_rules_declared_confidence(self, tmp_path: Path) -> None:
+        rules = self._rules(tmp_path)
+        assert all(r["confidence"] == "declared" for r in rules)
+
+    def test_model_without_rules_has_no_exact_rules(self, tmp_path: Path) -> None:
+        code = (
+            "from flask_sqlalchemy import SQLAlchemy\n"
+            "db = SQLAlchemy()\n\n"
+            "class Plain(db.Model):\n"
+            "    __tablename__ = 'plain'\n"
+            "    id = db.Column(db.Integer, primary_key=True)\n"
+        )
+        _write_file(tmp_path, "models.py", code)
+        surfaces = _extract_sqlalchemy(tmp_path, ["models.py"])
+        assert "exact_rules" not in surfaces[0].enrichment
+
+    def test_captured_literals_routed_through_chokepoint(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Defaults/enums/checks must flow through the BEAN-083 chokepoint."""
+        import repo_mirror_kit.harvester.analyzers.models.sqlalchemy as mod
+
+        monkeypatch.setattr(mod, "sanitize_captured_literal", lambda v: v.upper())
+        rules = self._rules(tmp_path)
+        values = {r["value"] for r in rules if r["value"]}
+        assert "ADMIN|MEMBER|GUEST" in values
+        assert "BALANCE >= 0" in values

@@ -276,3 +276,80 @@ class TestEnrichmentErrorHandling:
         unenriched = [s for s in result if not s.enrichment]
         assert len(enriched) == 2
         assert len(unenriched) == 1
+
+
+# ---------------------------------------------------------------------------
+# BEAN-082: exact_rules / error_contract parsing + code-fence stripping
+# ---------------------------------------------------------------------------
+
+
+class TestExactValueParsing:
+    def test_exact_rules_and_error_contract_parsed(self) -> None:
+        raw = json.dumps(
+            {
+                "behavioral_description": "desc",
+                "exact_rules": [
+                    {
+                        "field": "email",
+                        "rule": "format",
+                        "value": "^.+@.+$",
+                        "error_message": "bad email",
+                        "confidence": "llm",
+                    }
+                ],
+                "error_contract": [
+                    {
+                        "condition": "missing name",
+                        "status": 400,
+                        "response": "name required",
+                        "confidence": "llm",
+                    }
+                ],
+            }
+        )
+        result = _parse_enrichment_response(raw)
+        assert result["exact_rules"][0]["value"] == "^.+@.+$"
+        assert result["error_contract"][0]["status"] == 400
+
+    def test_absent_exact_fields_are_omitted(self) -> None:
+        result = _parse_enrichment_response(json.dumps({"behavioral_description": "x"}))
+        assert "exact_rules" not in result
+        assert "error_contract" not in result
+
+    def test_code_fence_stripped_from_string_fields(self) -> None:
+        raw = json.dumps(
+            {
+                "behavioral_description": "Runs:\n```python\nprint(1)\n```\ndone",
+                "exact_rules": [
+                    {"field": "x", "rule": "r", "value": "```js\nv = 1\n```"}
+                ],
+            }
+        )
+        result = _parse_enrichment_response(raw)
+        assert "```" not in result["behavioral_description"]
+        assert "print(1)" in result["behavioral_description"]
+        assert result["exact_rules"][0]["value"] == "v = 1"
+
+    def test_llm_entries_appended_not_overwriting_structural(self) -> None:
+        from repo_mirror_kit.harvester.llm.enrichment import _merge_enrichment
+
+        existing = {
+            "exact_rules": [
+                {"field": "name", "rule": "NOT NULL", "confidence": "declared"}
+            ]
+        }
+        parsed = {
+            "behavioral_description": "d",
+            "exact_rules": [{"field": "age", "rule": "min", "confidence": "llm"}],
+        }
+        merged = _merge_enrichment(existing, parsed)
+        rules = merged["exact_rules"]
+        assert [r["field"] for r in rules] == ["name", "age"]
+        assert merged["behavioral_description"] == "d"
+
+    def test_structural_survives_when_llm_omits_field(self) -> None:
+        from repo_mirror_kit.harvester.llm.enrichment import _merge_enrichment
+
+        existing = {"error_contract": [{"condition": "c", "status": 404}]}
+        merged = _merge_enrichment(existing, {"behavioral_description": "d"})
+        assert merged["error_contract"] == [{"condition": "c", "status": 404}]

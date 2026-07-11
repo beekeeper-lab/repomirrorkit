@@ -16,7 +16,9 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=False)
-    email = db.Column(db.String(255), nullable=True)
+    email = db.Column(db.String(255), nullable=True, unique=True)
+    role = db.Column(db.Enum("admin", "member", "guest", name="user_role"), nullable=False, default="member")
+    __table_args__ = (db.CheckConstraint("length(name) > 0", name="name_not_empty"),)
 
 
 class UserStatus(StrEnum):

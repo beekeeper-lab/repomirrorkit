@@ -114,6 +114,20 @@ def test_pipeline_python_flask_fixture(
     assert "suspended" in all_beans_text, "Enum values missing from beans"
     assert "admin" in all_beans_text, "roles lookup values missing from beans"
 
+    # BEAN-082: exact-value extraction populates BEAN-081's rule tables with
+    # real data (no LLM). The User model's constraints render a validation
+    # table AND the GET /api/users/<id> endpoint's abort(404) renders an
+    # error table — both exercised by the fixture.
+    assert "| Field | Rule |" in all_beans_text, (
+        "Model validation-rule table did not render exact rules"
+    )
+    assert "| Condition | Status |" in all_beans_text, (
+        "API error-contract table did not render exact error states"
+    )
+    # The exact literals are copied verbatim, not paraphrased.
+    assert "admin\\|member\\|guest" in all_beans_text, "enum members not verbatim"
+    assert "User not found" in all_beans_text, "error message not verbatim"
+
 
 @pytest.mark.integration
 def test_pipeline_ts_next_fixture(
