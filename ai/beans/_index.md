@@ -105,6 +105,7 @@
 | BEAN-081 | Verbatim-Rule Bean Templates + Zero-`TODO:` Placeholder Policy | App | High | Done | team-lead |
 | BEAN-082 | Exact-Value Extraction — Analyzer Depth + LLM `exact_rules` Contract | App | High | Done | team-lead |
 | BEAN-083 | Sensitive Findings — Redact Secrets/PII and Surface to Operator | App | High | Done | team-lead |
+| BEAN-084 | Redaction Detector Follow-ups (SSN + base64 False Positive) | App | Low | Unapproved | team-lead |
 
 > BEAN-059–079 originate from the recreation-grade audit (2026-07-03). Sequencing, dependency graph, and parallelism analysis: see `ROADMAP-RECREATION.md` at the repo root.
 > BEAN-080–083 originate from the mirror-mode spec (2026-07-11). Phasing, decisions, and mirror acceptance criteria for existing beans: see `SPEC-MIRROR-MODE.md` at the repo root.
