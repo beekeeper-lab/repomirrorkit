@@ -397,42 +397,50 @@ class TestTodoPlaceholders:
         _surfaces_without_enrichment(),
         ids=[t[0] for t in _surfaces_without_enrichment()],
     )
-    def test_behavioral_description_has_todo(
+    def test_behavioral_description_marks_gap(
         self,
         label: str,
         surface: Surface,
         bean_id: str,
     ) -> None:
+        # BEAN-081: absent behavior renders a neutral gap marker (never TODO)
+        # and is declared in the Gaps & unknowns section.
         result = render_bean(surface, bean_id)
-        assert "TODO: Describe the expected behavior" in result
+        assert "TODO:" not in result
+        assert "Not determined by the harvest" in result
+        assert "Behavioral description was not extracted" in result
 
     @pytest.mark.parametrize(
         ("label", "surface", "bean_id"),
         _surfaces_without_enrichment(),
         ids=[t[0] for t in _surfaces_without_enrichment()],
     )
-    def test_acceptance_criteria_has_todo(
+    def test_acceptance_criteria_marks_gap(
         self,
         label: str,
         surface: Surface,
         bean_id: str,
     ) -> None:
+        # BEAN-081: absent GWT is a declared gap, not a TODO placeholder.
         result = render_bean(surface, bean_id)
-        assert "TODO: Define Given/When/Then acceptance criteria." in result
+        assert "TODO:" not in result
+        assert "Given/When/Then acceptance criteria were not generated" in result
 
     @pytest.mark.parametrize(
         ("label", "surface", "bean_id"),
         _surfaces_without_enrichment(),
         ids=[t[0] for t in _surfaces_without_enrichment()],
     )
-    def test_data_flow_has_todo(
+    def test_data_flow_marks_gap(
         self,
         label: str,
         surface: Surface,
         bean_id: str,
     ) -> None:
+        # BEAN-081: absent data flow is a declared gap, not a TODO placeholder.
         result = render_bean(surface, bean_id)
-        assert "TODO: Describe the data flow for this surface." in result
+        assert "TODO:" not in result
+        assert "Data flow was not described" in result
 
 
 # ---------------------------------------------------------------------------

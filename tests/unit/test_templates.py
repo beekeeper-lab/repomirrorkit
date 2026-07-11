@@ -165,7 +165,10 @@ class TestRouteBeanTemplate:
         assert "## Functional requirements" in result
         assert "## UI elements" in result
         assert "## Data & API interactions" in result
-        assert "## Validation & error states" in result
+        # BEAN-081: split "Validation & error states" into two sections that
+        # render exact-value tables when data exists.
+        assert "## Validation rules" in result
+        assert "## Error states" in result
         assert "## Structural acceptance criteria" in result
         assert "## Open questions" in result
 

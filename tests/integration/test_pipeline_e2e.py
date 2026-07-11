@@ -100,6 +100,13 @@ def test_pipeline_python_flask_fixture(
     coverage_md = (out / "reports" / "coverage.md").read_text()
     assert "## Fidelity (recreation-readiness)" in coverage_md
 
+    # BEAN-081: no bean carries a literal TODO placeholder (even on this
+    # structural-only run); unknowns are declared as gaps instead, so
+    # placeholder_free pins at 100%.
+    for bean_path in (out / "beans").glob("BEAN-*.md"):
+        assert "TODO:" not in bean_path.read_text(), f"TODO in {bean_path.name}"
+    assert metrics["placeholder_free_beans"]["percentage"] == 100.0
+
     # BEAN-066: seed/reference datasets — the fixture's UserStatus enum and
     # the roles lookup table both yield seed-data beans with actual values.
     all_beans_text = "\n".join(p.read_text() for p in (out / "beans").glob("BEAN-*.md"))
