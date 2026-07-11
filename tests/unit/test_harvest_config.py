@@ -25,6 +25,20 @@ class TestHarvestConfigLLMKey:
     preserved from BEAN-045.
     """
 
+    def test_default_llm_enabled_matches_cli_default(self) -> None:
+        """BEAN-059: HarvestConfig and the CLI share one default source.
+
+        A bare HarvestConfig (no key in play) must behave like a bare CLI
+        invocation: enrichment attempts to run and downgrades on missing key.
+        """
+        from repo_mirror_kit.harvester.config import DEFAULT_LLM_ENABLED
+
+        assert DEFAULT_LLM_ENABLED is True
+        assert (
+            HarvestConfig.__dataclass_fields__["llm_enabled"].default
+            is DEFAULT_LLM_ENABLED
+        )
+
     def test_missing_key_with_llm_enabled_warns_and_downgrades(
         self,
         capsys: pytest.CaptureFixture[str],
@@ -253,3 +267,78 @@ class TestMergeExcludeGlobs:
         result = merge_exclude_globs("custom")
         for default in DEFAULT_EXCLUDE_GLOBS:
             assert default in result
+
+
+class TestHarvestConfigMirror:
+    """Mirror mode + cleanup resolution (BEAN-080).
+
+    Mirror is strict: structural-only output cannot reach mirror grade, so
+    a missing key/package fails validation instead of warn-and-degrade.
+    """
+
+    _URL = "https://example.com/r.git"
+
+    def test_mirror_without_key_raises(self) -> None:
+        with pytest.raises(ConfigValidationError, match="ANTHROPIC_API_KEY"):
+            HarvestConfig(repo=self._URL, mirror=True, llm_api_key=None)
+
+    def test_mirror_with_no_llm_raises(self) -> None:
+        with pytest.raises(ConfigValidationError, match="--no-llm"):
+            HarvestConfig(
+                repo=self._URL,
+                mirror=True,
+                llm_enabled=False,
+                llm_api_key="sk-ant-test",
+            )
+
+    def test_mirror_without_anthropic_package_raises(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import repo_mirror_kit.harvester.llm.client as llm_client
+
+        monkeypatch.setattr(llm_client, "HAS_ANTHROPIC", False)
+        with pytest.raises(ConfigValidationError, match="anthropic"):
+            HarvestConfig(repo=self._URL, mirror=True, llm_api_key="sk-ant-test")
+
+    def test_mirror_enables_cleanup_and_fidelity_gate(self) -> None:
+        config = HarvestConfig(repo=self._URL, mirror=True, llm_api_key="sk-ant-test")
+        assert config.cleanup is True
+        assert config.fail_on_fidelity is True
+        assert config.llm_enabled is True
+
+    def test_default_run_has_no_cleanup_and_soft_fidelity(self) -> None:
+        config = HarvestConfig(repo=self._URL, llm_enabled=False)
+        assert config.mirror is False
+        assert config.cleanup is False
+        assert config.fail_on_fidelity is False
+
+    def test_keep_source_wins_over_mirror(self) -> None:
+        config = HarvestConfig(
+            repo=self._URL,
+            mirror=True,
+            keep_source=True,
+            llm_api_key="sk-ant-test",
+        )
+        assert config.cleanup is False
+
+    def test_keep_source_wins_over_explicit_cleanup(self) -> None:
+        config = HarvestConfig(
+            repo=self._URL, cleanup=True, keep_source=True, llm_enabled=False
+        )
+        assert config.cleanup is False
+
+    def test_cleanup_flag_without_mirror(self) -> None:
+        config = HarvestConfig(repo=self._URL, cleanup=True, llm_enabled=False)
+        assert config.cleanup is True
+        assert config.mirror is False
+        # Cleanup alone does not turn the fidelity gate on.
+        assert config.fail_on_fidelity is False
+
+    def test_explicit_no_fail_on_fidelity_respected_in_mirror(self) -> None:
+        config = HarvestConfig(
+            repo=self._URL,
+            mirror=True,
+            fail_on_fidelity=False,
+            llm_api_key="sk-ant-test",
+        )
+        assert config.fail_on_fidelity is False

@@ -76,12 +76,19 @@ class PipelineState:
         bean_count: Number of beans generated so far.
         last_checkpoint: ISO-format timestamp of the last checkpoint.
         started_at: ISO-format timestamp when the pipeline run started.
+        provenance: Source-repo provenance (BEAN-080): repo_url, ref,
+            head_sha, harvested_at. Keeps ``source_refs`` meaningful after
+            Stage H removes the working copy.
+        cleanup: Stage H cleanup record (BEAN-080): removed, files_removed,
+            bytes_freed, completed_at.
     """
 
     stages: list[StageState] = field(default_factory=list)
     bean_count: int = 0
     last_checkpoint: str | None = None
     started_at: str | None = None
+    provenance: dict[str, object] | None = None
+    cleanup: dict[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         """Serialize to a plain dict for JSON output."""
@@ -90,6 +97,8 @@ class PipelineState:
             "bean_count": self.bean_count,
             "last_checkpoint": self.last_checkpoint,
             "started_at": self.started_at,
+            "provenance": self.provenance,
+            "cleanup": self.cleanup,
         }
 
     @classmethod
@@ -120,11 +129,20 @@ class PipelineState:
         last_cp = data.get("last_checkpoint")
         started = data.get("started_at")
 
+        # BEAN-080: tolerant reads — state files written before these keys
+        # existed load cleanly, and non-dict values are discarded.
+        raw_provenance = data.get("provenance")
+        provenance = raw_provenance if isinstance(raw_provenance, dict) else None
+        raw_cleanup = data.get("cleanup")
+        cleanup = raw_cleanup if isinstance(raw_cleanup, dict) else None
+
         return cls(
             stages=stages,
             bean_count=bean_count,
             last_checkpoint=str(last_cp) if last_cp is not None else None,
             started_at=str(started) if started is not None else None,
+            provenance=provenance,
+            cleanup=cleanup,
         )
 
 
@@ -285,6 +303,37 @@ class StateManager:
             True if this bean was already completed.
         """
         return bean_number <= self._state.bean_count
+
+    def record_provenance(self, provenance: dict[str, object]) -> None:
+        """Persist source-repo provenance (BEAN-080).
+
+        Stamps ``harvested_at`` if the caller did not provide it, then
+        saves immediately — provenance must survive even if the run dies
+        before the next checkpoint.
+
+        Args:
+            provenance: Provenance fields (repo_url, ref, head_sha, ...).
+        """
+        stamped = dict(provenance)
+        stamped.setdefault("harvested_at", _now_iso())
+        self._state.provenance = stamped
+        self.save()
+
+    def get_provenance(self) -> dict[str, object] | None:
+        """Return the recorded source-repo provenance, if any."""
+        return self._state.provenance
+
+    def record_cleanup(self, cleanup: dict[str, object]) -> None:
+        """Persist the Stage H cleanup record (BEAN-080) and save.
+
+        Args:
+            cleanup: Cleanup outcome fields (removed, files_removed,
+                bytes_freed, completed_at).
+        """
+        stamped = dict(cleanup)
+        stamped.setdefault("completed_at", _now_iso())
+        self._state.cleanup = stamped
+        self.save()
 
     def finalize(self) -> None:
         """Save final state after the pipeline completes."""

@@ -19,6 +19,7 @@ from repo_mirror_kit.harvester.detectors.base import StackProfile
 from repo_mirror_kit.harvester.generator.agents import GeneratedAgent, generate_agents
 from repo_mirror_kit.harvester.generator.claude_md import generate_claude_md
 from repo_mirror_kit.harvester.generator.env_example import generate_env_example
+from repo_mirror_kit.harvester.generator.openapi import generate_openapi_contract
 from repo_mirror_kit.harvester.generator.requirements_md import generate_requirements_md
 from repo_mirror_kit.harvester.generator.runbook_md import generate_runbook_md
 from repo_mirror_kit.harvester.generator.stacks import generate_stacks
@@ -30,15 +31,24 @@ def _find_claude_dir() -> Path | None:
     """Locate the .claude/ directory relative to the package source tree.
 
     Walks up from this file's location to find the project root that
-    contains a .claude/ directory with a settings.json file.
+    contains a .claude/ directory with a settings.json file. Only a
+    *project* .claude directory qualifies — the candidate must sit next
+    to a ``pyproject.toml``. Without that guard the walk escaped the repo
+    and matched the developer's personal ``~/.claude``, copying private
+    global configuration into every generated project folder
+    (BEAN-079 privacy fix).
 
     Returns:
-        Path to the .claude/ directory, or None if not found.
+        Path to the project's .claude/ directory, or None if not found.
     """
     current = Path(__file__).resolve()
     for parent in current.parents:
         candidate = parent / ".claude"
-        if candidate.is_dir() and (candidate / "settings.json").exists():
+        if (
+            candidate.is_dir()
+            and (candidate / "settings.json").exists()
+            and (parent / "pyproject.toml").exists()
+        ):
             return candidate
         if parent == parent.parent:
             break
@@ -68,6 +78,7 @@ def assemble_project_folder(
     surfaces: SurfaceCollection,
     profile: StackProfile,
     beans: list[WrittenBean] | None = None,
+    provenance: dict[str, object] | None = None,
 ) -> GeneratorResult:
     """Assemble a complete Claude Code project folder.
 
@@ -79,6 +90,9 @@ def assemble_project_folder(
         project_name: Name of the analyzed project.
         surfaces: All extracted surfaces.
         profile: Detected technology stack profile.
+        beans: WrittenBean records for the REQUIREMENTS.md aggregator.
+        provenance: Source-repo provenance (BEAN-080) rendered into the
+            REQUIREMENTS.md header; None omits the provenance block.
 
     Returns:
         A GeneratorResult summarizing what was generated.
@@ -155,6 +169,7 @@ def assemble_project_folder(
             profile=profile,
             beans=beans,
             output_dir=output_dir,
+            provenance=provenance,
         )
         generated_files.append(requirements_path)
         logger.info(
@@ -187,6 +202,15 @@ def assemble_project_folder(
         path=str(runbook_path),
         build_deploy_count=len(surfaces.build_deploy),
     )
+
+    # Step 7 (BEAN-071): OpenAPI 3.1 contract from API surfaces.
+    contract_path = generate_openapi_contract(
+        surfaces=surfaces,
+        output_dir=output_dir,
+        project_name=project_name,
+    )
+    if contract_path is not None:
+        generated_files.append(contract_path)
 
     result = GeneratorResult(
         output_dir=project_dir,

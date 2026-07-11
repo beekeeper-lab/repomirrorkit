@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
 
 from repo_mirror_kit.harvester.cli import (
+    EXIT_FIDELITY_FAILED,
     EXIT_GAPS_FOUND,
     EXIT_INVALID_INPUT,
     EXIT_SUCCESS,
@@ -213,3 +215,110 @@ class TestHarvestCommand:
             ],
         )
         assert result.exit_code == EXIT_INVALID_INPUT
+
+
+class TestMirrorCli:
+    """Mirror-mode CLI behavior (BEAN-080)."""
+
+    _ARGS: ClassVar[list[str]] = [
+        "harvest",
+        "--repo",
+        "https://example.com/r.git",
+        "--mirror",
+    ]
+
+    def test_mirror_without_key_exits_invalid(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(main, self._ARGS, env={"ANTHROPIC_API_KEY": None})
+        assert result.exit_code == EXIT_INVALID_INPUT
+        assert "ANTHROPIC_API_KEY" in result.output
+
+    def test_mirror_with_key_runs_pipeline(self) -> None:
+        runner = CliRunner()
+        mock_pipeline = MagicMock()
+        mock_pipeline.return_value.run.return_value = _make_success_result()
+
+        with patch(_PIPELINE_RUN, mock_pipeline):
+            result = runner.invoke(
+                main, self._ARGS, env={"ANTHROPIC_API_KEY": "sk-ant-test"}
+            )
+        assert result.exit_code == EXIT_SUCCESS
+        config = mock_pipeline.return_value.run.call_args[0][0]
+        assert config.mirror is True
+        assert config.cleanup is True
+
+    def test_cleanup_echo_when_source_removed(self) -> None:
+        runner = CliRunner()
+        mock_pipeline = MagicMock()
+        result_obj = HarvestResult(
+            success=True,
+            coverage_passed=True,
+            bean_count=5,
+            gap_count=0,
+            cleanup_performed=True,
+            output_dir=Path("/tmp/out"),
+        )
+        mock_pipeline.return_value.run.return_value = result_obj
+
+        with patch(_PIPELINE_RUN, mock_pipeline):
+            result = runner.invoke(
+                main, self._ARGS, env={"ANTHROPIC_API_KEY": "sk-ant-test"}
+            )
+        assert result.exit_code == EXIT_SUCCESS
+        assert "Source removed" in result.output
+
+    def test_mirror_fidelity_failure_exits_4(self) -> None:
+        # --mirror flips fail-on-fidelity on by default.
+        runner = CliRunner()
+        mock_pipeline = MagicMock()
+        result_obj = HarvestResult(
+            success=True,
+            coverage_passed=True,
+            bean_count=5,
+            gap_count=0,
+            fidelity_passed=False,
+            output_dir=Path("/tmp/out"),
+        )
+        mock_pipeline.return_value.run.return_value = result_obj
+
+        with patch(_PIPELINE_RUN, mock_pipeline):
+            result = runner.invoke(
+                main, self._ARGS, env={"ANTHROPIC_API_KEY": "sk-ant-test"}
+            )
+        assert result.exit_code == EXIT_FIDELITY_FAILED
+
+    def test_keep_source_flag_passes_through(self) -> None:
+        runner = CliRunner()
+        mock_pipeline = MagicMock()
+        mock_pipeline.return_value.run.return_value = _make_success_result()
+
+        with patch(_PIPELINE_RUN, mock_pipeline):
+            result = runner.invoke(
+                main,
+                [*self._ARGS, "--keep-source"],
+                env={"ANTHROPIC_API_KEY": "sk-ant-test"},
+            )
+        assert result.exit_code == EXIT_SUCCESS
+        config = mock_pipeline.return_value.run.call_args[0][0]
+        assert config.cleanup is False
+
+    def test_cleanup_flag_without_mirror(self) -> None:
+        runner = CliRunner()
+        mock_pipeline = MagicMock()
+        mock_pipeline.return_value.run.return_value = _make_success_result()
+
+        with patch(_PIPELINE_RUN, mock_pipeline):
+            result = runner.invoke(
+                main,
+                [
+                    "harvest",
+                    "--repo",
+                    "https://example.com/r.git",
+                    "--cleanup",
+                    "--no-llm",
+                ],
+            )
+        assert result.exit_code == EXIT_SUCCESS
+        config = mock_pipeline.return_value.run.call_args[0][0]
+        assert config.cleanup is True
+        assert config.mirror is False

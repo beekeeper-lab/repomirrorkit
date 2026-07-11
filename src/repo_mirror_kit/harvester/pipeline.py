@@ -30,13 +30,20 @@ from repo_mirror_kit.harvester.analyzers import (
     analyze_middleware,
     analyze_models,
     analyze_routes,
+    analyze_seed_data,
     analyze_state_management,
     analyze_test_patterns,
     analyze_ui_flows,
     analyze_uncovered_files,
     find_uncovered_files,
+    populate_python_api_contracts,
 )
 from repo_mirror_kit.harvester.beans.writer import WrittenBean, write_beans
+from repo_mirror_kit.harvester.cleanup import (
+    CleanupError,
+    CleanupResult,
+    remove_source,
+)
 from repo_mirror_kit.harvester.config import HarvestConfig
 from repo_mirror_kit.harvester.detectors.base import StackProfile, run_detection
 from repo_mirror_kit.harvester.generator.assembler import (
@@ -49,6 +56,7 @@ from repo_mirror_kit.harvester.git_ops import (
     GitNotFoundError,
     GitRefError,
     clone_repository,
+    get_head_sha,
 )
 from repo_mirror_kit.harvester.harvest_logging import configure_logging
 from repo_mirror_kit.harvester.inventory import InventoryResult, scan, write_report
@@ -59,6 +67,11 @@ from repo_mirror_kit.harvester.reports.coverage import (
     write_coverage_reports,
 )
 from repo_mirror_kit.harvester.reports.data_model import write_data_model_report
+from repo_mirror_kit.harvester.reports.fidelity import (
+    MIRROR_FIDELITY_THRESHOLDS,
+    FidelityEvaluation,
+    compute_fidelity,
+)
 from repo_mirror_kit.harvester.reports.file_coverage import (
     compute_file_coverage,
     write_file_coverage_reports,
@@ -74,7 +87,8 @@ from repo_mirror_kit.harvester.state import StateManager
 
 logger = structlog.get_logger()
 
-# Ordered stage names matching the spec
+# Ordered stage names matching the spec. Stage H (cleanup, BEAN-080) is
+# appended at runtime only when ``config.cleanup`` is enabled.
 STAGE_NAMES: list[str] = ["A", "B", "C", "C2", "D", "E", "F", "G"]
 
 # Per-stage domain exception tuples (BEAN-048).
@@ -100,6 +114,10 @@ _STAGE_A_EXCEPTIONS: tuple[type[Exception], ...] = (
 # additionally catches its own internal errors inside :func:`enrich_surfaces`,
 # so by the time control returns here the only escapes are filesystem-shaped.
 _FS_EXCEPTIONS: tuple[type[Exception], ...] = (OSError,)
+
+# Stage H (cleanup, BEAN-080) can fail on a violated safety invariant
+# (CleanupError) or ordinary filesystem trouble while deleting.
+_STAGE_H_EXCEPTIONS: tuple[type[Exception], ...] = (CleanupError, OSError)
 
 
 class PipelineEventType(StrEnum):
@@ -163,6 +181,10 @@ class HarvestResult:
     bean_count: int
     gap_count: int
     generated_file_count: int = 0
+    # BEAN-076: recreation-readiness gates (depth, not existence).
+    fidelity_passed: bool = True
+    # BEAN-080: whether Stage H removed the cloned source (repo/ + .git).
+    cleanup_performed: bool = False
     error_stage: str | None = None
     error_message: str | None = None
     output_dir: Path | None = None
@@ -205,6 +227,9 @@ class HarvestPipeline:
 
         state = StateManager(output_dir)
 
+        # BEAN-080: Stage H (cleanup) participates only when enabled.
+        stage_names = [*STAGE_NAMES, "H"] if config.cleanup else list(STAGE_NAMES)
+
         if config.resume:
             loaded = state.load()
             if loaded:
@@ -215,9 +240,9 @@ class HarvestPipeline:
                 )
             else:
                 logger.info("pipeline_no_prior_state_starting_fresh")
-                state.initialize(STAGE_NAMES)
+                state.initialize(stage_names)
         else:
-            state.initialize(STAGE_NAMES)
+            state.initialize(stage_names)
 
         logger.info("pipeline_starting", output_dir=str(output_dir))
 
@@ -230,15 +255,35 @@ class HarvestPipeline:
         evaluation: CoverageEvaluation | None = None
         gap_report: GapReport | None = None
         generator_result: GeneratorResult | None = None
+        cleanup_result: CleanupResult | None = None
 
         try:
             # --- Stage A: Clone & Normalize ---
-            if not state.is_stage_done("A"):
+            repo_dir = output_dir / "repo"
+            if not state.is_stage_done("A") or not repo_dir.is_dir():
+                # Fresh run, or a resume whose working copy is gone (e.g.
+                # removed by Stage H cleanup, BEAN-080) — re-clone instead
+                # of failing in Stage B on the missing workdir.
+                if state.is_stage_done("A"):
+                    logger.info(
+                        "resume_workdir_missing_recloning",
+                        workdir=str(repo_dir),
+                    )
                 self._emit(PipelineEventType.STAGE_START, "A", "Cloning repository")
                 try:
                     clone_result = self._run_stage_a(config, output_dir)
                 except _STAGE_A_EXCEPTIONS as exc:
                     return self._handle_stage_error("A", exc, state, output_dir)
+                self._warn_on_head_drift(config, state, clone_result)
+                # BEAN-080: provenance keeps source_refs meaningful after
+                # the working copy is removed.
+                state.record_provenance(
+                    {
+                        "repo_url": config.repo,
+                        "ref": config.ref,
+                        "head_sha": clone_result.head_sha,
+                    }
+                )
                 state.complete_stage("A")
                 self._emit(
                     PipelineEventType.STAGE_COMPLETE,
@@ -249,10 +294,21 @@ class HarvestPipeline:
                 logger.info("stage_skipped_resume", stage="A")
                 # Reconstruct workdir for resumed runs
                 clone_result = CloneResult(
-                    repo_dir=output_dir / "repo",
+                    repo_dir=repo_dir,
                     skipped_symlinks=[],
                     normalized_files=0,
+                    head_sha=get_head_sha(repo_dir),
                 )
+                # Backfill provenance for state files written before
+                # BEAN-080 recorded it.
+                if state.get_provenance() is None:
+                    state.record_provenance(
+                        {
+                            "repo_url": config.repo,
+                            "ref": config.ref,
+                            "head_sha": clone_result.head_sha,
+                        }
+                    )
 
             workdir = clone_result.repo_dir
 
@@ -379,8 +435,8 @@ class HarvestPipeline:
                 "Evaluating coverage gates",
             )
             try:
-                evaluation, gap_report = self._run_stage_f(
-                    surfaces, beans, inventory_result, workdir, output_dir
+                evaluation, gap_report, fidelity = self._run_stage_f(
+                    config, surfaces, beans, inventory_result, workdir, output_dir
                 )
             except _FS_EXCEPTIONS as exc:
                 return self._handle_stage_error("F", exc, state, output_dir)
@@ -391,6 +447,7 @@ class HarvestPipeline:
                 "Coverage gates complete",
                 {
                     "all_passed": evaluation.all_passed,
+                    "fidelity_passed": fidelity.all_passed,
                     "gap_count": gap_report.total_gaps,
                 },
             )
@@ -404,7 +461,7 @@ class HarvestPipeline:
             )
             try:
                 generator_result = self._run_stage_g(
-                    config, surfaces, profile, beans, output_dir
+                    config, surfaces, profile, beans, output_dir, state
                 )
             except _FS_EXCEPTIONS as exc:
                 return self._handle_stage_error("G", exc, state, output_dir)
@@ -415,6 +472,39 @@ class HarvestPipeline:
                 "Project folder generation complete",
                 {"generated_files": len(generator_result.generated_files)},
             )
+
+            # --- Stage H: Source Cleanup (BEAN-080, optional) ---
+            # Reached only when Stages A-G all succeeded — any earlier
+            # failure returns before this point, so a failed run always
+            # keeps its working copy for debugging.
+            if config.cleanup:
+                self._emit(
+                    PipelineEventType.STAGE_START,
+                    "H",
+                    "Removing cloned source (mirror cleanup)",
+                )
+                try:
+                    cleanup_result = self._run_stage_h(output_dir, state)
+                except _STAGE_H_EXCEPTIONS as exc:
+                    return self._handle_stage_error("H", exc, state, output_dir)
+                state.record_cleanup(
+                    {
+                        "removed": cleanup_result.removed,
+                        "files_removed": cleanup_result.files_removed,
+                        "bytes_freed": cleanup_result.bytes_freed,
+                        "stray_git_removed": cleanup_result.stray_git_removed,
+                    }
+                )
+                state.complete_stage("H")
+                self._emit(
+                    PipelineEventType.STAGE_COMPLETE,
+                    "H",
+                    "Cloned source removed",
+                    {
+                        "files_removed": cleanup_result.files_removed,
+                        "bytes_freed": cleanup_result.bytes_freed,
+                    },
+                )
 
         except (OSError, MemoryError) as exc:
             # Last-resort catch for catastrophic-but-not-bug failures that
@@ -455,6 +545,8 @@ class HarvestPipeline:
             bean_count=len(beans),
             gap_count=gap_report.total_gaps,
             generated_file_count=gen_file_count,
+            fidelity_passed=fidelity.all_passed,
+            cleanup_performed=cleanup_result is not None and cleanup_result.removed,
             output_dir=output_dir,
         )
 
@@ -529,10 +621,11 @@ class HarvestPipeline:
         )
 
         apis = analyze_api_endpoints(workdir, inventory, profile)
+        contracts_populated = populate_python_api_contracts(apis, workdir)
         self._emit(
             PipelineEventType.PROGRESS_UPDATE,
             "C",
-            f"APIs: {len(apis)} found",
+            f"APIs: {len(apis)} found ({contracts_populated} with contracts)",
         )
 
         models = analyze_models(workdir, inventory, profile)
@@ -612,6 +705,13 @@ class HarvestPipeline:
             f"Test patterns: {len(test_patterns)} found",
         )
 
+        seed_data = analyze_seed_data(workdir, inventory)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Seed datasets: {len(seed_data)} found",
+        )
+
         surfaces = SurfaceCollection(
             routes=routes,
             components=components,
@@ -627,6 +727,7 @@ class HarvestPipeline:
             build_deploy=build_deploy,
             dependencies=dependencies,
             test_patterns=test_patterns,
+            seed_data=seed_data,
         )
 
         # File coverage: find uncovered files and generate catch-all surfaces
@@ -687,16 +788,30 @@ class HarvestPipeline:
 
     def _run_stage_f(
         self,
+        config: HarvestConfig,
         surfaces: SurfaceCollection,
         beans: list[WrittenBean],
         inventory: InventoryResult,
         workdir: Path,
         output_dir: Path,
-    ) -> tuple[CoverageEvaluation, GapReport]:
-        """Stage F: coverage gates, gap analysis, data-model report."""
+    ) -> tuple[CoverageEvaluation, GapReport, FidelityEvaluation]:
+        """Stage F: coverage gates, fidelity gates, gaps, data-model report."""
         metrics = compute_metrics(surfaces, beans, inventory)
         evaluation = evaluate_thresholds(metrics)
-        write_coverage_reports(output_dir, evaluation)
+        # BEAN-076: fidelity (recreation-readiness) metrics ride along in
+        # the same coverage reports. BEAN-080: mirror mode selects the
+        # mirror threshold profile.
+        fidelity = compute_fidelity(
+            surfaces,
+            beans_dir=output_dir / "beans",
+            thresholds=MIRROR_FIDELITY_THRESHOLDS if config.mirror else None,
+        )
+        write_coverage_reports(output_dir, evaluation, fidelity=fidelity)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "F",
+            f"Fidelity gates: {'PASS' if fidelity.all_passed else 'FAIL'}",
+        )
 
         # File coverage report
         file_cov = compute_file_coverage(inventory, surfaces)
@@ -710,7 +825,7 @@ class HarvestPipeline:
         # collection has no models.
         write_data_model_report(surfaces, output_dir, workdir=workdir)
 
-        return evaluation, gap_report
+        return evaluation, gap_report, fidelity
 
     def _run_stage_g(
         self,
@@ -719,17 +834,65 @@ class HarvestPipeline:
         profile: StackProfile,
         beans: list[WrittenBean],
         output_dir: Path,
+        state: StateManager,
     ) -> GeneratorResult:
         """Stage G: generate Claude Code project folder + REQUIREMENTS.md."""
         # Derive project name from the repo URL
         project_name = _derive_project_name(config.repo)
+        # BEAN-080: pass provenance so REQUIREMENTS.md can state which
+        # repo/commit the source_refs point at, and whether the source
+        # tree ships in the package (it does not when cleanup is on).
+        provenance = state.get_provenance()
+        if provenance is not None:
+            provenance = {**provenance, "source_included": not config.cleanup}
         return assemble_project_folder(
-            output_dir, project_name, surfaces, profile, beans=beans
+            output_dir,
+            project_name,
+            surfaces,
+            profile,
+            beans=beans,
+            provenance=provenance,
         )
+
+    def _run_stage_h(
+        self,
+        output_dir: Path,
+        state: StateManager,
+    ) -> CleanupResult:
+        """Stage H: remove the cloned source (BEAN-080)."""
+        return remove_source(output_dir, state)
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _warn_on_head_drift(
+        self,
+        config: HarvestConfig,
+        state: StateManager,
+        clone_result: CloneResult,
+    ) -> None:
+        """Warn when a re-clone resolved a different HEAD than recorded.
+
+        Only meaningful when no ``--ref`` pins the checkout: recorded
+        source_refs (line numbers) may no longer match the new HEAD.
+        """
+        provenance = state.get_provenance()
+        recorded = provenance.get("head_sha") if provenance else None
+        if (
+            config.ref is None
+            and isinstance(recorded, str)
+            and clone_result.head_sha
+            and recorded != clone_result.head_sha
+        ):
+            logger.warning(
+                "resume_head_drift",
+                recorded_sha=recorded,
+                current_sha=clone_result.head_sha,
+                msg="Re-cloned HEAD differs from the recorded harvest "
+                "commit; previously recorded source line numbers may "
+                "have drifted.",
+            )
 
     def _emit(
         self,
