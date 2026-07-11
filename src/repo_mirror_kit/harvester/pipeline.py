@@ -60,6 +60,7 @@ from repo_mirror_kit.harvester.git_ops import (
 )
 from repo_mirror_kit.harvester.harvest_logging import configure_logging
 from repo_mirror_kit.harvester.inventory import InventoryResult, scan, write_report
+from repo_mirror_kit.harvester.redaction import SensitiveFinding, redact_surfaces
 from repo_mirror_kit.harvester.reports.coverage import (
     CoverageEvaluation,
     compute_metrics,
@@ -80,6 +81,9 @@ from repo_mirror_kit.harvester.reports.gaps import (
     GapReport,
     run_all_gap_queries,
     write_gaps_report,
+)
+from repo_mirror_kit.harvester.reports.sensitive_findings import (
+    write_sensitive_findings_report,
 )
 from repo_mirror_kit.harvester.reports.surface_map import write_surface_map
 from repo_mirror_kit.harvester.reports.traceability import build_traceability_maps
@@ -185,6 +189,8 @@ class HarvestResult:
     fidelity_passed: bool = True
     # BEAN-080: whether Stage H removed the cloned source (repo/ + .git).
     cleanup_performed: bool = False
+    # BEAN-083: count of redacted secret/PII findings (0 when none found).
+    sensitive_findings_count: int = 0
     error_stage: str | None = None
     error_message: str | None = None
     output_dir: Path | None = None
@@ -251,6 +257,7 @@ class HarvestPipeline:
         inventory_result: InventoryResult | None = None
         profile: StackProfile | None = None
         surfaces: SurfaceCollection | None = None
+        sensitive_findings: list[SensitiveFinding] = []
         beans: list[WrittenBean] = []
         evaluation: CoverageEvaluation | None = None
         gap_report: GapReport | None = None
@@ -390,6 +397,17 @@ class HarvestPipeline:
                 "LLM enrichment complete",
             )
 
+            # --- BEAN-083: Redaction post-pass ---
+            # Single authoritative chokepoint: redact secret/PII literals on
+            # the SurfaceCollection in place, AFTER enrichment and BEFORE beans
+            # (Stage E) or any other artifact is written, so everything
+            # downstream is already-redacted. Findings carry metadata only.
+            sensitive_findings = redact_surfaces(surfaces)
+            # Stage C wrote surface-map.{md,json} from the pre-redaction
+            # surfaces; re-emit it so the on-disk map is redacted too.
+            if sensitive_findings:
+                write_surface_map(output_dir, surfaces, profile)
+
             # --- Stage D: Traceability ---
             # Always runs (BEAN-049).
             self._emit(
@@ -436,7 +454,13 @@ class HarvestPipeline:
             )
             try:
                 evaluation, gap_report, fidelity = self._run_stage_f(
-                    config, surfaces, beans, inventory_result, workdir, output_dir
+                    config,
+                    surfaces,
+                    beans,
+                    inventory_result,
+                    workdir,
+                    output_dir,
+                    sensitive_findings,
                 )
             except _FS_EXCEPTIONS as exc:
                 return self._handle_stage_error("F", exc, state, output_dir)
@@ -461,7 +485,13 @@ class HarvestPipeline:
             )
             try:
                 generator_result = self._run_stage_g(
-                    config, surfaces, profile, beans, output_dir, state
+                    config,
+                    surfaces,
+                    profile,
+                    beans,
+                    output_dir,
+                    state,
+                    len(sensitive_findings),
                 )
             except _FS_EXCEPTIONS as exc:
                 return self._handle_stage_error("G", exc, state, output_dir)
@@ -547,6 +577,7 @@ class HarvestPipeline:
             generated_file_count=gen_file_count,
             fidelity_passed=fidelity.all_passed,
             cleanup_performed=cleanup_result is not None and cleanup_result.removed,
+            sensitive_findings_count=len(sensitive_findings),
             output_dir=output_dir,
         )
 
@@ -794,6 +825,7 @@ class HarvestPipeline:
         inventory: InventoryResult,
         workdir: Path,
         output_dir: Path,
+        sensitive_findings: list[SensitiveFinding],
     ) -> tuple[CoverageEvaluation, GapReport, FidelityEvaluation]:
         """Stage F: coverage gates, fidelity gates, gaps, data-model report."""
         metrics = compute_metrics(surfaces, beans, inventory)
@@ -825,6 +857,11 @@ class HarvestPipeline:
         # collection has no models.
         write_data_model_report(surfaces, output_dir, workdir=workdir)
 
+        # BEAN-083: surface redaction findings to the operator. Skip writing
+        # the report entirely when nothing was found (nothing to act on).
+        if sensitive_findings:
+            write_sensitive_findings_report(output_dir, sensitive_findings)
+
         return evaluation, gap_report, fidelity
 
     def _run_stage_g(
@@ -835,6 +872,7 @@ class HarvestPipeline:
         beans: list[WrittenBean],
         output_dir: Path,
         state: StateManager,
+        sensitive_findings_count: int,
     ) -> GeneratorResult:
         """Stage G: generate Claude Code project folder + REQUIREMENTS.md."""
         # Derive project name from the repo URL
@@ -852,6 +890,7 @@ class HarvestPipeline:
             profile,
             beans=beans,
             provenance=provenance,
+            sensitive_findings_count=sensitive_findings_count,
         )
 
     def _run_stage_h(

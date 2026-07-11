@@ -238,6 +238,19 @@ def harvest(
     if result.cleanup_performed:
         click.echo("Source removed: repo/ (including .git) — see state.json")
 
+    # BEAN-083: loud operator warning when secrets/PII were redacted from the
+    # captured literals. Exit code is intentionally unchanged (the harvest
+    # still succeeded).
+    if result.sensitive_findings_count > 0:
+        n = result.sensitive_findings_count
+        click.echo(
+            f"⚠ {n} sensitive value(s) were found in the source repo and "
+            "redacted — see reports/sensitive-findings.md. Secrets in source "
+            "are a bad practice; rotate any real credentials.",
+            err=True,
+        )
+    # BEAN-083: seam for a future --fail-on-secrets gate
+
     if not result.coverage_passed and config.fail_on_gaps:
         sys.exit(EXIT_GAPS_FOUND)
 

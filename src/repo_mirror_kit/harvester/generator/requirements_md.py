@@ -91,6 +91,7 @@ def generate_requirements_md(
     beans: list[WrittenBean],
     output_dir: Path,
     provenance: dict[str, object] | None = None,
+    sensitive_findings_count: int = 0,
 ) -> Path:
     """Render ``<output_dir>/REQUIREMENTS.md`` and return its path.
 
@@ -111,7 +112,15 @@ def generate_requirements_md(
         The absolute path of the written ``REQUIREMENTS.md``.
     """
     bean_index = _index_beans_by_surface(beans)
-    text = _render(project_name, surfaces, profile, bean_index, len(beans), provenance)
+    text = _render(
+        project_name,
+        surfaces,
+        profile,
+        bean_index,
+        len(beans),
+        provenance,
+        sensitive_findings_count,
+    )
     path = output_dir / "REQUIREMENTS.md"
     path.write_text(text, encoding="utf-8")
     return path
@@ -131,10 +140,13 @@ def _render(
     bean_index: dict[tuple[str, str], WrittenBean],
     bean_count: int,
     provenance: dict[str, object] | None = None,
+    sensitive_findings_count: int = 0,
 ) -> str:
     """Render the full document to a string."""
     parts: list[str] = []
     parts.append(_render_header(project_name, profile, bean_count, provenance))
+    if sensitive_findings_count > 0:
+        parts.append(_render_sensitive_rollup(sensitive_findings_count))
     parts.append(_render_gaps_rollup(surfaces))
     parts.append(_render_tech_stack(profile))
     parts.append("## Functional Requirements\n")
@@ -196,6 +208,15 @@ def _render_header(
         "link to its per-surface bean file. With LLM enrichment enabled, "
         "individual beans contain behavioral descriptions, acceptance "
         "criteria, and inferred intent.\n"
+    )
+
+
+def _render_sensitive_rollup(count: int) -> str:
+    """One-line BEAN-083 rollup: count + pointer, no locations, no values."""
+    return (
+        f"> ⚠ **{count} sensitive value(s)** were found in the source and "
+        "redacted — see `reports/sensitive-findings.md`. Rotate any real "
+        "credentials.\n"
     )
 
 
