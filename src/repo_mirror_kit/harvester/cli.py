@@ -119,10 +119,10 @@ def main() -> None:
 )
 @click.option(
     "--fail-on-fidelity/--no-fail-on-fidelity",
-    default=False,
+    default=None,
     help="Fail with exit code 4 if fidelity (recreation-readiness) gates "
-    "fail. See reports/coverage.md for the per-metric breakdown.",
-    show_default=True,
+    "fail. See reports/coverage.md for the per-metric breakdown. "
+    "[default: off; on in --mirror mode]",
 )
 @click.option(
     "--log-level",
@@ -146,6 +146,30 @@ def main() -> None:
     help="Claude model to use for LLM enrichment.",
     show_default=True,
 )
+@click.option(
+    "--mirror",
+    is_flag=True,
+    default=False,
+    help="Mirror mode (BEAN-080): emit a self-contained requirements "
+    "package. Requires ANTHROPIC_API_KEY (fails fast without it), turns "
+    "--fail-on-fidelity on by default, and removes the cloned source "
+    "(repo/, including .git) after a fully successful run.",
+)
+@click.option(
+    "--keep-source",
+    is_flag=True,
+    default=False,
+    help="Keep the cloned working copy (repo/) after the run. Overrides "
+    "the cleanup implied by --mirror or --cleanup.",
+)
+@click.option(
+    "--cleanup",
+    "cleanup_flag",
+    is_flag=True,
+    default=False,
+    help="Remove the cloned source (repo/, including .git) after a fully "
+    "successful run, without enabling full --mirror mode.",
+)
 def harvest(
     repo: str,
     ref: str | None,
@@ -156,10 +180,13 @@ def harvest(
     max_total_bytes: int,
     resume: bool,
     fail_on_gaps: bool,
-    fail_on_fidelity: bool,
+    fail_on_fidelity: bool | None,
     log_level: str,
     llm_enabled: bool,
     llm_model: str,
+    mirror: bool,
+    keep_source: bool,
+    cleanup_flag: bool,
 ) -> None:
     """Run the requirements harvester against a repository."""
     # API key is sourced from the environment only — never accepted on
@@ -183,6 +210,10 @@ def harvest(
             llm_enabled=llm_enabled,
             llm_api_key=llm_api_key,
             llm_model=llm_model,
+            mirror=mirror,
+            keep_source=keep_source,
+            # None lets HarvestConfig resolve the mirror-mode default.
+            cleanup=True if cleanup_flag else None,
         )
     except ConfigValidationError as exc:
         click.echo(f"Error: {exc}", err=True)
@@ -204,11 +235,14 @@ def harvest(
     click.echo(f"Gaps found: {result.gap_count}")
     click.echo(f"Coverage gates: {'PASSED' if result.coverage_passed else 'FAILED'}")
     click.echo(f"Fidelity gates: {'PASSED' if result.fidelity_passed else 'FAILED'}")
+    if result.cleanup_performed:
+        click.echo("Source removed: repo/ (including .git) — see state.json")
 
-    if not result.coverage_passed and fail_on_gaps:
+    if not result.coverage_passed and config.fail_on_gaps:
         sys.exit(EXIT_GAPS_FOUND)
 
-    if not result.fidelity_passed and fail_on_fidelity:
+    # config.fail_on_fidelity is resolved (None → mirror) by HarvestConfig.
+    if not result.fidelity_passed and config.fail_on_fidelity:
         sys.exit(EXIT_FIDELITY_FAILED)
 
     sys.exit(EXIT_SUCCESS)

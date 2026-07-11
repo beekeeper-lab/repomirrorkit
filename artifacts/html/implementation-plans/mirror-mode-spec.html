@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="html-artifact-output / implementation-plan">
+<title>RepoMirrorKit — Mirror Mode Specification</title>
+<style>
+  *{box-sizing:border-box}
+  :root{--bg:#f7f8fa;--panel:#fff;--ink:#1f2937;--muted:#6b7280;--border:#d1d5db;--border-strong:#9ca3af;--accent:#2563eb;--accent-soft:#dbeafe;--accent-ink:#1e3a8a;--success:#166534;--success-soft:#dcfce7;--warning:#92400e;--warning-soft:#fef3c7;--danger:#991b1b;--danger-soft:#fee2e2;--code-bg:#111827;--code-ink:#e5e7eb;--radius:8px;--radius-sm:4px;--shadow:0 1px 2px rgba(0,0,0,.04),0 1px 3px rgba(0,0,0,.06)}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+  .page{max-width:64rem;margin:0 auto;padding:2rem 1.25rem 4rem}
+  @media (min-width:56rem){.page{padding:3rem 2rem 5rem}}
+  .hero{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:1.75rem;margin-bottom:1.5rem;box-shadow:var(--shadow)}
+  .hero .eyebrow{margin:0 0 .25rem;color:var(--accent);font-size:.8125rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+  .hero h1{margin:0 0 .5rem;font-size:1.875rem;line-height:1.2;font-weight:700}
+  .hero .subtitle{margin:0 0 1rem;color:var(--muted);font-size:1.0625rem;max-width:48rem}
+  .hero .meta{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;font-size:.875rem;color:var(--muted);border-top:1px dashed var(--border);padding-top:.75rem}
+  .hero .meta strong{color:var(--ink);font-weight:600}
+  .toc{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1.5rem;font-size:.9375rem}
+  .toc h2{margin:0 0 .5rem;font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:0;padding:0}
+  .toc ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr));gap:.25rem 1.25rem;counter-reset:toc}
+  .toc li{counter-increment:toc}
+  .toc a{display:block;padding:.25rem 0;text-decoration:none;color:var(--ink)}
+  .toc a::before{content:counter(toc) ". ";color:var(--muted)}
+  .toc a:hover{color:var(--accent)}
+  main{display:grid;gap:1.25rem}
+  section.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;box-shadow:var(--shadow)}
+  section.card>h2:first-child{margin-top:0}
+  h2{margin:1.5rem 0 .75rem;font-size:1.375rem;line-height:1.3;font-weight:700;border-bottom:1px solid var(--border);padding-bottom:.4rem}
+  h3{margin:1.5rem 0 .5rem;font-size:1.125rem;font-weight:600}
+  h4{margin:1.25rem 0 .25rem;font-size:1rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  p,ul,ol{margin:.5rem 0 .75rem}
+  ul,ol{padding-left:1.25rem}
+  li+li{margin-top:.15rem}
+  .badge{display:inline-block;padding:.125rem .5rem;border-radius:999px;font-size:.75rem;font-weight:600;background:var(--accent-soft);color:var(--accent-ink);border:1px solid transparent;vertical-align:middle}
+  .badge--success{background:var(--success-soft);color:var(--success)}
+  .badge--warning{background:var(--warning-soft);color:var(--warning)}
+  .badge--danger{background:var(--danger-soft);color:var(--danger)}
+  .badge--muted{background:#f1f5f9;color:var(--muted);border-color:var(--border)}
+  .callout{border-left:4px solid var(--accent);background:var(--accent-soft);color:var(--accent-ink);padding:.75rem 1rem;border-radius:0 var(--radius-sm) var(--radius-sm) 0;margin:.75rem 0}
+  .callout p:last-child{margin-bottom:0}
+  .callout--success{border-color:var(--success);background:var(--success-soft);color:var(--success)}
+  .callout--warning{border-color:var(--warning);background:var(--warning-soft);color:var(--warning)}
+  table{width:100%;border-collapse:collapse;margin:.75rem 0 1rem;font-size:.9375rem}
+  th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid var(--border);vertical-align:top}
+  th{background:#f1f5f9;font-weight:600;border-bottom:2px solid var(--border-strong)}
+  .table-wrap{overflow-x:auto}
+  code,kbd,samp,pre{font:.875rem/1.55 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+  p code,li code,td code{background:#f1f5f9;padding:.05rem .35rem;border-radius:var(--radius-sm);font-size:.85em;color:#0f172a;border:1px solid #e5e7eb}
+  .code-block{background:var(--code-bg);color:var(--code-ink);border-radius:var(--radius);overflow:hidden;margin:.75rem 0;border:1px solid #0b1220}
+  .code-block-header{display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.35rem .75rem;background:#0b1220;color:#9ca3af;font:.75rem/1 ui-monospace,monospace;letter-spacing:.04em;text-transform:uppercase}
+  .code-block pre{margin:0;padding:.875rem 1rem;overflow-x:auto}
+  .code-block .comment{color:#9ca3af}
+  ul.checklist{list-style:none;padding-left:0}
+  ul.checklist li{position:relative;padding-left:1.5rem}
+  ul.checklist li::before{content:"";position:absolute;left:0;top:.4em;width:1rem;height:1rem;border:1px solid var(--border-strong);border-radius:3px;background:#fff}
+  footer.page-footer{margin-top:2rem;padding:1rem 1.25rem;border-top:1px solid var(--border);color:var(--muted);font-size:.875rem;text-align:center}
+  .status-banner{display:inline-flex;align-items:center;gap:.5rem;font-size:.8125rem;font-weight:600;padding:.3rem .75rem;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink)}
+  .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))}
+  .milestone{background:#fafbfc;border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem}
+  .milestone h4{margin-top:0;color:var(--accent);font-size:.75rem}
+  .milestone .when{font-size:.8125rem;color:var(--muted)}
+  .diagram{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:1rem;margin:.75rem 0;overflow-x:auto}
+  .diagram svg{display:block;max-width:100%;height:auto}
+  .diagram-caption{text-align:center;font-size:.8125rem;color:var(--muted);margin-top:.5rem}
+  @media print{
+    body{background:#fff;color:#000;font-size:11pt}
+    .page{max-width:100%;padding:0}
+    .btn,.copy-btn,.toc,.no-print,button{display:none!important}
+    .hero,section.card,.callout,.code-block,.milestone,.diagram{box-shadow:none;border:1px solid #999;page-break-inside:avoid}
+    section.card{border-radius:0;border-width:0;padding:0;margin:0 0 .5rem}
+    h1,h2,h3{page-break-after:avoid}
+    h2{border-bottom:1px solid #000}
+    a[href]::after{content:" (" attr(href) ")";font-size:.85em;color:#333;word-break:break-all}
+    a[href^="#"]::after{content:""}
+    .code-block{background:#fff;color:#000;border:1px solid #999}
+    .code-block-header{background:#f0f0f0;color:#000}
+    .badge{border:1px solid #000;background:#fff!important;color:#000!important}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="hero">
+  <p class="eyebrow">Implementation Plan · Specification</p>
+  <h1>RepoMirrorKit — Mirror Mode</h1>
+  <p class="subtitle">Turn the harvester's output into a self-contained, rebuild-grade requirements package: delete the cloned source and Git history at the end, capture rules verbatim, and measure "functionally identical" with a generated Gherkin parity suite.</p>
+  <div class="meta">
+    <span><strong>Status:</strong> <span class="status-banner">Proposed</span></span>
+    <span><strong>Source of truth:</strong> <code>SPEC-MIRROR-MODE.md</code></span>
+    <span><strong>Builds on:</strong> <code>ROADMAP-RECREATION.md</code></span>
+    <span><strong>Updated:</strong> 2026-07-11</span>
+    <span><strong>Owner:</strong> Gregg Reed</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Table of contents">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#goal">Goal &amp; decisions</a></li>
+    <li><a href="#current">Current state</a></li>
+    <li><a href="#target">Target state</a></li>
+    <li><a href="#strategy">Strategy &amp; phases</a></li>
+    <li><a href="#phase1">Phase 1 — Mirror mode + cleanup</a></li>
+    <li><a href="#phase2">Phase 2 — Verbatim rules</a></li>
+    <li><a href="#phase35">Phases 3–5 — Completeness, parity, gates</a></li>
+    <li><a href="#files">Affected files (Phase 1)</a></li>
+    <li><a href="#tests">Test plan</a></li>
+    <li><a href="#risks">Risks</a></li>
+    <li><a href="#done">Definition of done</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="goal" class="card">
+  <h2>Goal &amp; decisions</h2>
+  <p>Point RepoMirrorKit at any readable Git repo and get back an output directory that is a <strong>self-contained requirements package</strong>: no original source, no <code>.git</code> history, and beans complete enough that an agent — in Vue, React, Flutter, anything — can rebuild a <em>functionally identical</em> application from the output directory alone. Visual design is out of scope; behavior, contracts, data, screens-as-functions, business rules, navigation, and seed data are in scope. This doubles as the rig for comparing models and instruction variants on long-running builds: same beans, different agent, measurable output.</p>
+  <h3>Decisions locked 2026-07-11</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>#</th><th>Decision</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>D1</td><td><strong>Rules verbatim, no code.</strong> Beans capture exact regexes, formulas (neutral expressions), enums, thresholds, defaults, error messages, status codes — never source-code blocks.</td><td>Exactness without stack bias; agents reimplement instead of transliterating.</td></tr>
+      <tr><td>D2</td><td><strong>Gherkin acceptance suite</strong> as the parity artifact (elevates BEAN-074).</td><td>Makes "functionally identical" testable across stacks.</td></tr>
+      <tr><td>D3</td><td><strong><code>--mirror</code> requires <code>ANTHROPIC_API_KEY</code></strong>, fails fast (exit 3). Default harvest keeps warn-and-degrade.</td><td>Structural-only output can't reach mirror grade; quick scans stay cheap.</td></tr>
+      <tr><td>D4</td><td><strong>Stage H cleanup</strong> deletes <code>&lt;out&gt;/repo/</code> (incl. <code>.git</code>); default-on in mirror, <code>--keep-source</code> opt-out, <code>--cleanup</code> opt-in elsewhere.</td><td>The core ask; makes BEAN-078's "rebuild from output alone" enforced by construction.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="current" class="card">
+  <h2>Current state <span class="badge badge--muted">verified against code 2026-07-11</span></h2>
+  <ul>
+    <li>Pipeline stages are <code>A B C C2 D E F G</code> (<code>pipeline.py:84</code>). Nothing re-reads <code>&lt;out&gt;/repo/</code> after Stage G — a post-run delete breaks no generation step.</li>
+    <li>All <code>source_refs</code> are repo-root-relative paths; after deletion they become <strong>provenance pointers</strong>. No provenance (URL + commit SHA) is recorded today.</li>
+    <li><strong><code>--resume</code> breaks after cleanup:</strong> Stage A is marked done, so the pipeline points at the missing <code>repo/</code> (<code>pipeline.py:256-265</code>) and Stage B fails.</li>
+    <li>Missing API key silently downgrades to structural-only (<code>config.py:107-126</code>).</li>
+    <li>Beans embed <strong>no code excerpts</strong>; templates hardcode many <code>TODO:</code> placeholders, so the <code>placeholder_free_beans</code> fidelity metric can essentially never reach 100%.</li>
+    <li>Extraction depth: API contracts Python-only, field name/type/required — <strong>no validation rules, error schemas, or examples</strong>. Models: fields + types + PK/not-null/unique + FK edges — no defaults, enums, or check constraints.</li>
+    <li>There is <strong>no cleanup stage and no bean for one</strong> — cleanup, provenance, and <code>--mirror</code> are net-new. Roadmap beans: 062/066/070/071/076 done, 079 in progress; 060/061/063/064/065/067/068/069/072/073/074/075/077/078 unapproved.</li>
+  </ul>
+</section>
+
+<section id="target" class="card">
+  <h2>Target state</h2>
+  <div class="code-block">
+    <div class="code-block-header"><span>output directory after `harvest --repo &lt;url&gt; --mirror`</span></div>
+    <pre>out/
+├── REQUIREMENTS.md          <span class="comment"># front door + provenance (URL, SHA, date)</span>
+├── beans/BEAN-*.md          <span class="comment"># self-contained, framework-neutral, zero TODO:</span>
+├── features/FEAT-*.md       <span class="comment"># feature clusters            (BEAN-069)</span>
+├── build-manifest.json      <span class="comment"># dependency-ordered bean DAG (BEAN-069)</span>
+├── parity/features/*.feature<span class="comment"># stack-agnostic Gherkin      (BEAN-074+)</span>
+├── api-contract.json        <span class="comment"># OpenAPI 3.1</span>
+├── db/                      <span class="comment"># SQL DDL + JSON Schema + seed (BEAN-072)</span>
+├── screens/                 <span class="comment"># screen YAML + nav map        (BEAN-073)</span>
+├── surface-map.{md,json}, data-model.md, .env.example, RUNBOOK.md
+├── project-folder/          <span class="comment"># Claude Code scaffold</span>
+├── reports/                 <span class="comment"># inventory, coverage, gaps, traceability</span>
+└── state/state.json         <span class="comment"># provenance + cleanup record</span>
+                             <span class="comment"># NO repo/ · NO .git anywhere</span></pre>
+  </div>
+  <p>An implementing agent works through <code>build-manifest.json</code> bean by bean; the rebuilt app is judged by the <code>parity/</code> Gherkin suite. Different stacks, same behavior.</p>
+</section>
+
+<section id="strategy" class="card">
+  <h2>Strategy &amp; phases</h2>
+  <p>Five phases, each independently shippable. Phase 1 alone delivers the cleanup ask end-to-end; Phases 3–5 mostly approve and sequence <em>existing</em> recreation-roadmap beans rather than invent new work.</p>
+  <figure class="diagram" aria-label="Phase sequence">
+    <svg viewBox="0 0 760 130" role="img" aria-labelledby="phases-title">
+      <title id="phases-title">Phase sequence: mirror mode and cleanup, verbatim rules, completeness, parity suite, gates and eval</title>
+      <rect x="10"  y="35" width="136" height="52" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+      <rect x="162" y="35" width="136" height="52" rx="6" fill="#dbeafe" stroke="#2563eb"/>
+      <rect x="314" y="35" width="136" height="52" rx="6" fill="#eef2ff" stroke="#6b7280"/>
+      <rect x="466" y="35" width="136" height="52" rx="6" fill="#eef2ff" stroke="#6b7280"/>
+      <rect x="618" y="35" width="132" height="52" rx="6" fill="#dcfce7" stroke="#166534"/>
+      <text x="78"  y="57" text-anchor="middle" font-size="12" font-weight="600" fill="#1e3a8a">P1 · net-new</text>
+      <text x="78"  y="74" text-anchor="middle" font-size="11" fill="#1e3a8a">--mirror + Stage H</text>
+      <text x="230" y="57" text-anchor="middle" font-size="12" font-weight="600" fill="#1e3a8a">P2 · net-new</text>
+      <text x="230" y="74" text-anchor="middle" font-size="11" fill="#1e3a8a">verbatim rules</text>
+      <text x="382" y="57" text-anchor="middle" font-size="12" font-weight="600" fill="#374151">P3 · beans 061–069</text>
+      <text x="382" y="74" text-anchor="middle" font-size="11" fill="#374151">contracts + screens</text>
+      <text x="534" y="57" text-anchor="middle" font-size="12" font-weight="600" fill="#374151">P4 · bean 074+</text>
+      <text x="534" y="74" text-anchor="middle" font-size="11" fill="#374151">Gherkin parity suite</text>
+      <text x="684" y="57" text-anchor="middle" font-size="12" font-weight="600" fill="#166534">P5 · gates + eval</text>
+      <text x="684" y="74" text-anchor="middle" font-size="11" fill="#166534">rebuild harness, CI</text>
+      <path d="M 146 61 L 162 61" stroke="#6b7280" fill="none"/>
+      <path d="M 298 61 L 314 61" stroke="#6b7280" fill="none"/>
+      <path d="M 450 61 L 466 61" stroke="#6b7280" fill="none"/>
+      <path d="M 602 61 L 618 61" stroke="#6b7280" fill="none"/>
+      <text x="380" y="115" text-anchor="middle" font-size="11" fill="#6b7280">Blue = net-new from this spec · Gray = existing roadmap beans, mirror criteria appended · Green = closes the loop</text>
+    </svg>
+  </figure>
+</section>
+
+<section id="phase1" class="card">
+  <h2>Phase 1 — <code>--mirror</code> mode + Stage H cleanup <span class="badge">net-new · ship first</span></h2>
+
+  <h3>M1.1 Config &amp; CLI</h3>
+  <ul>
+    <li><code>HarvestConfig.mirror</code>, <code>keep_source</code>, <code>cleanup</code> (resolved: mirror → on, else off; <code>--cleanup</code> forces on; <code>--keep-source</code> forces off and wins).</li>
+    <li><code>--mirror</code>: missing <code>ANTHROPIC_API_KEY</code> or <code>anthropic</code> package → <strong>hard error, exit 3</strong> with actionable message. Forces <code>llm_enabled=True</code>; flips <code>--fail-on-fidelity</code> default to true; selects the mirror fidelity threshold profile (minimal version ships here).</li>
+  </ul>
+
+  <h3>M1.2 Provenance capture (Stage A)</h3>
+  <ul>
+    <li><code>CloneResult</code> gains <code>head_sha</code> (<code>git rev-parse HEAD</code> post-checkout).</li>
+    <li>Persist <code>{repo_url, ref, head_sha, harvested_at}</code> to <code>state.json</code>; render a provenance block atop <code>REQUIREMENTS.md</code>: <em>"Source references refer to &lt;url&gt; @ &lt;sha&gt;; the source tree is not included."</em> This keeps every <code>source_refs</code> entry meaningful after deletion.</li>
+  </ul>
+
+  <h3>M1.3 Stage H — cleanup (<code>harvester/cleanup.py</code>, new)</h3>
+  <p>Runs <strong>only after Stages A–G all succeed</strong> (any failure skips cleanup so the working copy survives for debugging). Safety invariants, all mandatory:</p>
+  <ol>
+    <li>Target is exactly <code>output_dir / "repo"</code>, resolved, inside <code>output_dir</code>, not a symlink.</li>
+    <li><code>state.json</code> must record that Stage A cloned into this directory. <strong>Never delete a <code>repo/</code> the harvester didn't create.</strong></li>
+    <li>Sanity check the target contains <code>.git/</code>; if state confirms the clone but <code>.git</code> is absent, proceed with a warning.</li>
+    <li>After <code>rmtree</code>, walk <code>output_dir</code> and <strong>assert no <code>.git</code> remains anywhere</strong>; fail loudly otherwise.</li>
+  </ol>
+  <p>Record <code>{removed, files_removed, bytes_freed, completed_at}</code> in state; append <code>"H"</code> to the stage list; structlog summary.</p>
+
+  <h3>M1.4 Resume semantics</h3>
+  <ul>
+    <li><code>--resume</code> with <code>repo/</code> missing → <strong>force re-clone</strong> (fix at <code>pipeline.py:256-265</code>) instead of failing in Stage B.</li>
+    <li>If recorded <code>head_sha</code> differs from the re-cloned HEAD (and no <code>--ref</code> pin), warn that recorded line numbers may have drifted.</li>
+  </ul>
+</section>
+
+<section id="phase2" class="card">
+  <h2>Phase 2 — Verbatim rule capture <span class="badge">net-new · exactness</span></h2>
+  <p><strong>Policy (D1):</strong> verbatim = exact literals copied into structured fields — regex patterns, thresholds, enum members, defaults, error-message strings, status codes, formulas re-expressed neutrally (<code>total = subtotal × (1 + tax_rate)</code>) — never pasted source statements. Secret- and PII-shaped literals are redacted per cross-cutting safety rules, and <strong>every redaction is surfaced to the operator</strong> — silent redaction hides a finding the repo owner needs to act on.</p>
+  <ul>
+    <li><strong>M2.2 Templates:</strong> <code>## Validation rules</code> and <code>## Errors</code> become populated tables. Every would-be <code>TODO:</code> is either filled or converted to an explicit <code>gaps:</code> entry — in mirror output the literal <code>TODO:</code> must not appear, making <code>placeholder_free_beans = 100%</code> achievable and honest (absence is <em>declared</em>, not silent).</li>
+    <li><strong>M2.3 Analyzers:</strong> API error responses + status codes (Flask <code>abort</code>, FastAPI <code>HTTPException</code>); model defaults, enums, check constraints, indexes; BEAN-065 (<code>BusinessRuleSurface</code>) adopts the verbatim policy as its output contract.</li>
+    <li><strong>M2.4 LLM prompts:</strong> quote exact values, never emit code blocks, and return a new <code>exact_rules: [{subject, rule, value, error_message, source_ref}]</code> field rendered into the M2.2 tables.</li>
+    <li><strong>M2.5 Sensitive-findings surfacing:</strong> every captured literal passes secret/PII detectors before landing in a bean. Redaction writes a typed placeholder (<code>[REDACTED:aws-access-key]</code>, <code>[REDACTED:email]</code>); <strong>the raw value is never persisted anywhere</strong> — not in beans, logs, or the report. Each finding records category, detector kind, <code>file:line</code> in the original repo (meaningful via provenance), affected bean, and placeholder. Surfaced three ways: <code>reports/sensitive-findings.{md,json}</code>, a prominent end-of-run CLI warning ("N sensitive values found and redacted — rotate any real credentials"), and a one-line count rollup in <code>REQUIREMENTS.md</code>. Exit code unchanged; a <code>--fail-on-secrets</code> gate can come later.</li>
+  </ul>
+</section>
+
+<section id="phase35" class="card">
+  <h2>Phases 3–5 — Completeness, parity, gates <span class="badge badge--muted">mostly existing beans</span></h2>
+
+  <h3>Phase 3 — Contract &amp; screen completeness</h3>
+  <p>Approve and run in roadmap wave order: <strong>BEAN-061</strong> (tree-sitter), <strong>063</strong> (JS/TS API contracts), <strong>064</strong> (ScreenSurface — unblocks the N/A <code>screen_field_mappings</code> metric), <strong>067</strong> (workflows), <strong>068</strong> (agentic enrichment v2), <strong>069</strong> (feature clustering → <code>features/</code> + <code>build-manifest.json</code>). Mirror addition: the manifest is the <strong>executable plan</strong> — a dependency-ordered DAG of bean IDs with per-bean Gherkin verification pointers.</p>
+
+  <h3>Phase 4 — Parity suite (D2)</h3>
+  <p><strong>BEAN-074</strong> with mirror additions: output under <code>parity/features/*.feature</code> + <code>parity/README.md</code>; scenarios are UI/API-observable behavior with no framework nouns or CSS selectors; scenario tags trace to beans (<code>@BEAN-012</code>) and features (<code>@FEAT-03</code>). Supporting artifacts: <strong>BEAN-072</strong> (DB bundle), <strong>073</strong> (screen YAML), <strong>075</strong> (diagrams, optional). <strong>BEAN-077</strong> (golden fixtures) starts here.</p>
+
+  <h3>Phase 5 — Mirror gates + rebuild eval</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Fidelity metric</th><th>Default</th><th>Mirror</th></tr></thead>
+    <tbody>
+      <tr><td>api_request_contracts</td><td>60</td><td>90</td></tr>
+      <tr><td>api_response_contracts</td><td>60</td><td>90</td></tr>
+      <tr><td>model_fields</td><td>80</td><td>100</td></tr>
+      <tr><td>model_relationships</td><td>50</td><td>80</td></tr>
+      <tr><td>screen_field_mappings</td><td>60 (N/A today)</td><td>80 (applicable after BEAN-064)</td></tr>
+      <tr><td>placeholder_free_beans</td><td>informational</td><td><strong>100 — hard gate</strong></td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>BEAN-078</strong> rebuild eval harness: agent rebuilds the fixture <em>from the output directory alone</em> — Stage H makes "alone" literal. Parity score = Gherkin pass-rate + golden replay + schema diff, with telemetry keyed by (model, stack, instructions) — this <em>is</em> the model-comparison rig. CI runs mirror harvests of both fixtures and fails on gate regression.</p>
+</section>
+
+<section id="files" class="card">
+  <h2>Affected files (Phase 1)</h2>
+  <div class="code-block">
+    <div class="code-block-header"><span>src/repo_mirror_kit/harvester/</span></div>
+    <pre>harvester/
+├── cli.py               <span class="comment"># modify: --mirror, --keep-source, --cleanup flags</span>
+├── config.py            <span class="comment"># modify: mirror fields; key required in mirror (exit 3)</span>
+├── pipeline.py          <span class="comment"># modify: Stage H in stage list; resume re-clone fix</span>
+├── state.py             <span class="comment"># modify: provenance + cleanup records; stage "H"</span>
+├── git_ops.py           <span class="comment"># modify: CloneResult.head_sha</span>
+├── cleanup.py           <span class="comment"># NEW: Stage H with safety invariants</span>
+├── generator/
+│   └── requirements_md.py <span class="comment"># modify: provenance header block</span>
+└── reports/
+    └── fidelity.py      <span class="comment"># modify (P1 minimal / P5 full): mirror threshold profile</span></pre>
+  </div>
+</section>
+
+<section id="tests" class="card">
+  <h2>Test plan</h2>
+  <ul>
+    <li><strong>Unit:</strong> every M1.3 safety invariant — wrong dir, symlink target, no state record, missing <code>.git</code>, failure-path skip; config validation for the mirror/key matrix.</li>
+    <li><strong>Integration (fixtures):</strong> mirror run on <code>python-flask</code> → <code>repo/</code> absent, zero <code>.git</code> under <code>out/</code>, beans present, provenance in <code>state.json</code> + <code>REQUIREMENTS.md</code>; <code>--keep-source</code> preserves <code>repo/</code>; <code>--resume</code> on a cleaned dir re-clones and completes.</li>
+    <li><strong>Exit codes:</strong> mirror without key → 3; gaps → 2; fidelity fail → 4.</li>
+    <li><strong>Phase 2+:</strong> assert zero literal <code>TODO:</code> in mirror-run beans; exact-rule tables populated on both fixtures; no code blocks in bean bodies.</li>
+  </ul>
+</section>
+
+<section id="risks" class="card">
+  <h2>Risks &amp; tradeoffs</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>Cleanup deletes a directory the user cared about (<code>--out</code> misuse)</td><td><span class="badge badge--success">Low</span></td><td><span class="badge badge--danger">High</span></td><td>M1.3 invariants: only <code>&lt;out&gt;/repo</code>, only if state records our clone, <code>.git</code> sanity check, never on failed runs</td></tr>
+      <tr><td>Verbatim literals leak secrets/PII from source into beans</td><td><span class="badge badge--warning">Med</span></td><td><span class="badge badge--danger">High</span></td><td>M2.5 detect → redact → surface: typed placeholders, findings report + CLI warning for the operator, raw values never persisted; Security Engineer review</td></tr>
+      <tr><td>LLM cost/latency on large repos in mirror mode</td><td><span class="badge badge--warning">Med</span></td><td><span class="badge badge--warning">Med</span></td><td>BEAN-068 Batch API; per-surface caching; existing <code>--max-*</code> caps</td></tr>
+      <tr><td>Regex extraction ceiling until BEAN-061 lands</td><td><span class="badge badge--danger">High</span></td><td><span class="badge badge--warning">Med</span></td><td>Mirror gates surface the shortfall as declared gaps, not silence</td></tr>
+      <tr><td><code>placeholder_free = 100%</code> gamed by converting everything to gaps</td><td><span class="badge badge--warning">Med</span></td><td><span class="badge badge--warning">Med</span></td><td>Paired contract-coverage gates (90/100) so gaps can't hide missing contracts</td></tr>
+      <tr><td>Stage-list change breaks <code>state.json</code> back-compat</td><td><span class="badge badge--success">Low</span></td><td><span class="badge badge--success">Low</span></td><td>StateManager tolerates extra stages; migration test</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout callout--warning"><p><strong>Rollback:</strong> Phase 1 is flag-gated — default (non-mirror) behavior is unchanged, so rollback = don't pass <code>--mirror</code>/<code>--cleanup</code>. Stage H itself is irreversible per run by design (that's the point); the guard is that it never runs on failed pipelines and <code>--keep-source</code> always wins.</p></div>
+</section>
+
+<section id="done" class="card">
+  <h2>Definition of done</h2>
+  <ul class="checklist">
+    <li><code>harvest --repo &lt;fixture&gt; --mirror</code> exits 0/2 with <code>repo/</code> gone and zero <code>.git</code> anywhere under the output directory</li>
+    <li>Provenance (URL, SHA, date) recorded in <code>state.json</code> and <code>REQUIREMENTS.md</code>; <code>--resume</code> on a cleaned dir re-clones instead of failing</li>
+    <li>Mirror-run beans contain zero <code>TODO:</code>; unknowns appear as declared gaps</li>
+    <li>Exact-rule tables (validation, errors, defaults, enums) populated for both fixtures; no source-code blocks in beans</li>
+    <li>Secrets/PII redacted to typed placeholders <em>and</em> reported to the operator (<code>reports/sensitive-findings.md</code> + CLI warning); raw values appear nowhere in output or logs</li>
+    <li><code>build-manifest.json</code> orders all beans as an executable DAG with per-bean Gherkin verification pointers</li>
+    <li>BEAN-078 harness: agent rebuild from output alone scores ≥90% Gherkin scenarios on both fixtures</li>
+    <li>Mirror fidelity gates run in CI and fail on regression</li>
+  </ul>
+</section>
+
+</main>
+
+<footer class="page-footer">
+  Review surface only — the source of truth is <code>SPEC-MIRROR-MODE.md</code> at the repo root.
+</footer>
+
+</div>
+</body>
+</html>

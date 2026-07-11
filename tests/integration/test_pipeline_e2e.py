@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from repo_mirror_kit.harvester.config import HarvestConfig
-from repo_mirror_kit.harvester.pipeline import HarvestPipeline
+from repo_mirror_kit.harvester.pipeline import HarvestPipeline, HarvestResult
 
 
 def _run_pipeline(fixture_path: Path, output_dir: Path) -> object:
@@ -131,3 +131,154 @@ def test_pipeline_ts_next_fixture(
 
     # BEAN-051: top-level REQUIREMENTS.md exists.
     assert (out / "REQUIREMENTS.md").is_file(), "REQUIREMENTS.md missing"
+
+
+# ---------------------------------------------------------------------------
+# BEAN-080: Stage H cleanup + provenance + resume-after-cleanup
+# ---------------------------------------------------------------------------
+
+
+def _run_cleanup_pipeline(fixture_path: Path, output_dir: Path) -> HarvestResult:
+    """Run the pipeline with Stage H cleanup enabled (no LLM)."""
+    config = HarvestConfig(
+        repo=str(fixture_path),
+        out=output_dir,
+        log_level="warn",
+        llm_enabled=False,
+        fail_on_gaps=False,
+        cleanup=True,
+    )
+    return HarvestPipeline().run(config)
+
+
+@pytest.mark.integration
+def test_cleanup_removes_source_and_all_git(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    """After a --cleanup run: repo/ gone, zero .git anywhere, beans intact."""
+    repo = local_git_repo("python-flask")
+    out = tmp_path / "harvest-out"
+
+    result = _run_cleanup_pipeline(repo, out)
+
+    assert result.success, (
+        f"Pipeline failed at stage {result.error_stage}: {result.error_message}"
+    )
+    assert result.cleanup_performed is True
+    assert not (out / "repo").exists(), "repo/ must be removed by Stage H"
+    assert list(out.rglob(".git")) == [], "no .git may remain anywhere"
+    # The requirements package itself is intact.
+    assert (out / "beans").is_dir()
+    assert len(list((out / "beans").glob("BEAN-*.md"))) >= 2
+    assert (out / "REQUIREMENTS.md").is_file()
+
+
+@pytest.mark.integration
+def test_cleanup_records_provenance(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    """Provenance (URL + HEAD SHA) survives in state.json and REQUIREMENTS.md."""
+    repo = local_git_repo("python-flask")
+    out = tmp_path / "harvest-out"
+
+    result = _run_cleanup_pipeline(repo, out)
+    assert result.success
+
+    state = json.loads((out / "state" / "state.json").read_text())
+    prov = state["provenance"]
+    assert prov["repo_url"] == str(repo)
+    assert isinstance(prov["head_sha"], str) and len(prov["head_sha"]) == 40
+    assert state["cleanup"]["removed"] is True
+    assert state["cleanup"]["files_removed"] > 0
+
+    requirements = (out / "REQUIREMENTS.md").read_text()
+    assert prov["head_sha"] in requirements
+    assert "not** included" in requirements  # source-removed provenance note
+
+
+@pytest.mark.integration
+def test_keep_source_preserves_repo(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    repo = local_git_repo("python-flask")
+    out = tmp_path / "harvest-out"
+
+    config = HarvestConfig(
+        repo=str(repo),
+        out=out,
+        log_level="warn",
+        llm_enabled=False,
+        fail_on_gaps=False,
+        cleanup=True,
+        keep_source=True,
+    )
+    result = HarvestPipeline().run(config)
+
+    assert result.success
+    assert result.cleanup_performed is False
+    assert (out / "repo").is_dir(), "--keep-source must preserve the clone"
+
+
+@pytest.mark.integration
+def test_resume_after_cleanup_reclones(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    """--resume on a cleaned output dir re-clones instead of failing (BEAN-080)."""
+    repo = local_git_repo("python-flask")
+    out = tmp_path / "harvest-out"
+
+    first = _run_cleanup_pipeline(repo, out)
+    assert first.success and first.cleanup_performed
+    assert not (out / "repo").exists()
+
+    config = HarvestConfig(
+        repo=str(repo),
+        out=out,
+        log_level="warn",
+        llm_enabled=False,
+        fail_on_gaps=False,
+        cleanup=True,
+        resume=True,
+    )
+    second = HarvestPipeline().run(config)
+
+    assert second.success, (
+        f"Resume failed at stage {second.error_stage}: {second.error_message}"
+    )
+    assert second.bean_count > 0
+    assert second.cleanup_performed is True
+    assert not (out / "repo").exists()
+
+
+@pytest.mark.integration
+def test_mirror_pipeline_end_to_end(
+    local_git_repo: Callable[[str], Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Full mirror-mode run with enrichment stubbed out (no network)."""
+    import repo_mirror_kit.harvester.llm as llm_pkg
+
+    # Stage C2 imports enrich_surfaces from the llm package at call time.
+    monkeypatch.setattr(llm_pkg, "enrich_surfaces", lambda surfaces, *a, **k: surfaces)
+
+    repo = local_git_repo("python-flask")
+    out = tmp_path / "harvest-out"
+    config = HarvestConfig(
+        repo=str(repo),
+        out=out,
+        log_level="warn",
+        llm_api_key="sk-ant-test",  # mirror requires a key; client never called
+        fail_on_gaps=False,
+        fail_on_fidelity=False,  # fixture depth gates are BEAN-081/082 turf
+        mirror=True,
+    )
+    result = HarvestPipeline().run(config)
+
+    assert result.success, (
+        f"Mirror run failed at stage {result.error_stage}: {result.error_message}"
+    )
+    assert result.cleanup_performed is True
+    assert not (out / "repo").exists()
+    assert list(out.rglob(".git")) == []
+    assert (out / "REQUIREMENTS.md").is_file()
