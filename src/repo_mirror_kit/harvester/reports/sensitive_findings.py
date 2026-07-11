@@ -16,6 +16,18 @@ from repo_mirror_kit.harvester.redaction import (
     _iter_findings_sorted,
 )
 
+
+def _md_cell(value: str) -> str:
+    """Escape a value for a markdown table cell.
+
+    A malicious source repo can craft a surface name / file path containing
+    ``|`` or newlines that would otherwise break the report table or inject
+    markdown. No raw *value* material flows here (that is never stored), so
+    this is table-integrity hardening, not a leak fix.
+    """
+    return value.replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ").strip()
+
+
 _INTRO = (
     "Sensitive-shaped values were detected in the source and **redacted** "
     "before any bean, report, or generated artifact was written. This report "
@@ -39,10 +51,10 @@ def render_sensitive_findings_md(findings: list[SensitiveFinding]) -> str:
     lines.append("| Category | Kind | Location | Surface | Placeholder | Hash prefix |")
     lines.append("|----------|------|----------|---------|-------------|-------------|")
     for f in _iter_findings_sorted(findings):
-        location = f.file or "(unknown)"
+        location = _md_cell(f.file or "(unknown)")
         if f.line is not None:
             location = f"{location}:{f.line}"
-        surface = f"{f.surface_name} ({f.surface_type})"
+        surface = _md_cell(f"{f.surface_name} ({f.surface_type})")
         lines.append(
             f"| {f.category} | {f.kind} | {location} | {surface} "
             f"| `{f.placeholder}` | `{f.hash_prefix}` |"

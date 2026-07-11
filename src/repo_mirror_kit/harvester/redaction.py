@@ -23,6 +23,7 @@ from __future__ import annotations
 import hashlib
 import math
 import re
+import secrets
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any
@@ -52,8 +53,11 @@ class SensitiveFinding:
         surface_name: Name of the surface the value came from.
         surface_type: Type discriminator of that surface.
         placeholder: The typed placeholder written in the value's place.
-        hash_prefix: First 12 hex chars of ``sha256(raw_value)`` — for dedup
-            only. Not reversible; the raw value is never stored.
+        hash_prefix: First 12 hex chars of ``sha256(per_run_salt + raw)`` —
+            a within-run dedup key only. The salt is random per run and never
+            persisted, so the prefix cannot be used as a cross-run
+            guess-confirmation oracle for enumerable PII (e.g. hashing a
+            candidate email to match the prefix). The raw value is never stored.
     """
 
     category: str
@@ -128,12 +132,20 @@ def _high_entropy_predicate(match: str) -> bool:
 
 
 # (category, kind, regex, predicate|None)
+#
+# Order matters: specific secret patterns run BEFORE the broad PII email
+# sweep. A credentialed URL (``postgres://admin:pw@db.example.com``) contains
+# a ``pw@db.example.com`` substring the email regex would otherwise consume
+# first, mislabeling a live DB credential as an "email" and under-prioritizing
+# it for rotation (Tech-QA finding). Redacting the connection string first
+# removes the ``@`` so email never matches the host. The high-entropy sweep
+# runs last so it only sees spans no specific detector already claimed.
 _Predicate = Callable[[str], bool]
 _DETECTORS: list[tuple[str, str, re.Pattern[str], _Predicate | None]] = [
-    (CATEGORY_PII, "email", _EMAIL_RE, None),
     (CATEGORY_SECRET, "aws-access-key", _AWS_ACCESS_KEY_RE, None),
     (CATEGORY_SECRET, "private-key", _PRIVATE_KEY_RE, None),
     (CATEGORY_SECRET, "connection-string", _CONNECTION_STRING_RE, None),
+    (CATEGORY_PII, "email", _EMAIL_RE, None),
     (CATEGORY_PII, "phone", _PHONE_RE, None),
     (CATEGORY_SECRET, "high-entropy-secret", _HIGH_ENTROPY_RE, _high_entropy_predicate),
 ]
@@ -192,9 +204,15 @@ def redact_value(value: str) -> tuple[str, list[_Detection]]:
     return redacted, detections
 
 
-def _hash_prefix(raw: str) -> str:
-    """Return the first 12 hex chars of ``sha256(raw)`` (dedup key only)."""
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
+def _hash_prefix(raw: str, salt: bytes) -> str:
+    """Return the first 12 hex chars of ``sha256(salt + raw)`` (dedup key only).
+
+    The salt is a per-run random value (never persisted), so identical values
+    dedup within a run while the prefix reveals nothing about the raw value to
+    anyone without the salt — closing the guess-confirmation oracle a bare
+    ``sha256(raw)`` would give for low-entropy PII.
+    """
+    return hashlib.sha256(salt + raw.encode("utf-8")).hexdigest()[:12]
 
 
 # ---------------------------------------------------------------------------
@@ -205,11 +223,19 @@ def _hash_prefix(raw: str) -> str:
 class _SurfaceRedactor:
     """Accumulates findings while redacting one surface's fields in place."""
 
-    def __init__(self, file: str | None, line: int | None, name: str, stype: str):
+    def __init__(
+        self,
+        file: str | None,
+        line: int | None,
+        name: str,
+        stype: str,
+        salt: bytes,
+    ):
         self.file = file
         self.line = line
         self.name = name
         self.stype = stype
+        self.salt = salt
         self.findings: list[SensitiveFinding] = []
 
     def scalar(self, value: Any) -> Any:
@@ -227,7 +253,7 @@ class _SurfaceRedactor:
                     surface_name=self.name,
                     surface_type=self.stype,
                     placeholder=_placeholder_for(det.kind),
-                    hash_prefix=_hash_prefix(det.matched),
+                    hash_prefix=_hash_prefix(det.matched, self.salt),
                 )
             )
         return redacted
@@ -272,10 +298,12 @@ def redact_surfaces(surfaces: SurfaceCollection) -> list[SensitiveFinding]:
         A deduplicated list of findings (metadata only, no raw values).
     """
     all_findings: list[SensitiveFinding] = []
+    # Per-run random salt for dedup hashing — never persisted (see _hash_prefix).
+    salt = secrets.token_bytes(16)
 
     for surface in surfaces:
         file, line = _first_ref(surface)
-        r = _SurfaceRedactor(file, line, surface.name, surface.surface_type)
+        r = _SurfaceRedactor(file, line, surface.name, surface.surface_type, salt)
         enrichment = getattr(surface, "enrichment", None)
 
         if isinstance(enrichment, dict):
@@ -311,38 +339,27 @@ def redact_surfaces(surfaces: SurfaceCollection) -> list[SensitiveFinding]:
 
 
 def _redact_enrichment(enrichment: dict[str, Any], r: _SurfaceRedactor) -> None:
-    """Redact the string-bearing enrichment fields in place."""
-    # BEAN-082 exact_rules: value + error_message.
-    rules = enrichment.get("exact_rules")
-    if isinstance(rules, list):
-        for rule in rules:
-            if isinstance(rule, dict):
-                if "value" in rule:
-                    rule["value"] = r.scalar(rule["value"])
-                if "error_message" in rule:
-                    rule["error_message"] = r.scalar(rule["error_message"])
+    """Recursively redact EVERY string in the enrichment dict, in place.
 
-    # BEAN-082 error_contract: response + condition. The condition descriptor
-    # comes from ``ast.unparse`` and would otherwise leak a literal inside an
-    # ``if token == "abc123":`` guard (Tech-QA finding L1).
-    errors = enrichment.get("error_contract")
-    if isinstance(errors, list):
-        for entry in errors:
-            if isinstance(entry, dict):
-                if "response" in entry:
-                    entry["response"] = r.scalar(entry["response"])
-                if "condition" in entry:
-                    entry["condition"] = r.scalar(entry["condition"])
+    A field allowlist is unsafe: the entire surface (and thus every value in
+    ``enrichment``) is serialized into ``surfaces.json`` and rendered into
+    beans, so any string key that is not scanned is a latent leak. That bit
+    us with ``behavioral_signals`` docstrings (BEAN-054, structural) and
+    ``given_when_then`` text (LLM), which carried raw secrets straight to disk
+    (Security Engineer finding). Scanning the whole nested structure closes
+    the class: every current and future enrichment string is covered by
+    default. This intentionally includes the BEAN-082 ``exact_rules`` /
+    ``error_contract`` entries (incl. the ``condition`` descriptor from
+    ``ast.unparse``, Tech-QA L1) and every free-text field.
 
-    # Free-text LLM-produced fields (may quote captured literals).
-    for key in (
-        "token_session",
-        "behavioral_description",
-        "data_flow",
-        "inferred_intent",
-    ):
-        if key in enrichment:
-            enrichment[key] = r.scalar(enrichment[key])
+    Dict keys are preserved (they are field/column names, not data); only
+    values and list elements are scanned (see ``_SurfaceRedactor.structure``).
+    The redacted structure is written back onto the same dict object so
+    surfaces holding a reference observe the change.
+    """
+    redacted = r.structure(enrichment)
+    enrichment.clear()
+    enrichment.update(redacted)
 
 
 def _dedup(findings: list[SensitiveFinding]) -> list[SensitiveFinding]:

@@ -301,3 +301,97 @@ def test_log_output_never_contains_raw_secret() -> None:
     assert "p4ss" not in serialized
     # It DID log something (metadata rollup).
     assert any(e.get("event") == "sensitive_findings_redacted" for e in logs)
+
+
+# ---------------------------------------------------------------------------
+# Security-regression: whole-enrichment coverage (Security Engineer finding)
+# ---------------------------------------------------------------------------
+
+
+def _api_with_enrichment(enrichment: dict) -> ApiSurface:
+    api = ApiSurface(
+        name="ep", method="GET", path="/ep", source_refs=[SourceRef("app.py", 3)]
+    )
+    api.enrichment.update(enrichment)
+    return api
+
+
+def test_behavioral_signals_docstring_is_redacted() -> None:
+    # HIGH regression: a secret in a BEAN-054 structural docstring must not
+    # leak. It lives under enrichment["behavioral_signals"]["docstring"].
+    api = _api_with_enrichment(
+        {"behavioral_signals": {"docstring": f"root key {FAKE_AWS_KEY} do not ship"}}
+    )
+    findings = redact_surfaces(SurfaceCollection(apis=[api]))
+    doc = api.enrichment["behavioral_signals"]["docstring"]
+    assert FAKE_AWS_KEY not in doc
+    assert "[REDACTED:aws-access-key]" in doc
+    assert any(f.kind == "aws-access-key" for f in findings)
+
+
+def test_given_when_then_text_is_redacted() -> None:
+    api = _api_with_enrichment(
+        {
+            "given_when_then": [
+                {"given": "user alice@example.com", "when": "x", "then": "y"}
+            ]
+        }
+    )
+    findings = redact_surfaces(SurfaceCollection(apis=[api]))
+    gwt = api.enrichment["given_when_then"][0]
+    assert "alice@example.com" not in gwt["given"]
+    assert "[REDACTED:email]" in gwt["given"]
+    assert any(f.kind == "email" for f in findings)
+
+
+def test_deeply_nested_enrichment_string_redacted() -> None:
+    # Any future/unknown enrichment key is covered by the recursive scan.
+    api = _api_with_enrichment(
+        {"some_future_key": {"nested": ["ok", {"deep": FAKE_AWS_KEY}]}}
+    )
+    redact_surfaces(SurfaceCollection(apis=[api]))
+    assert api.enrichment["some_future_key"]["nested"][1]["deep"] == (
+        "[REDACTED:aws-access-key]"
+    )
+
+
+def test_enrichment_dict_keys_are_not_redacted() -> None:
+    # Keys are field names, not data — they must survive verbatim even if
+    # they look secret-shaped.
+    api = _api_with_enrichment({"exact_rules": [{"field": "email", "value": "18"}]})
+    redact_surfaces(SurfaceCollection(apis=[api]))
+    assert "field" in api.enrichment["exact_rules"][0]
+    assert api.enrichment["exact_rules"][0]["field"] == "email"
+
+
+def test_connection_string_labeled_not_email() -> None:
+    # A credentialed URL with a dotted-TLD host must be reported as a
+    # connection-string secret, not mislabeled PII email (Tech-QA finding).
+    api = _api_with_enrichment(
+        {
+            "error_contract": [
+                {
+                    "condition": "c",
+                    "response": "postgres://admin:hunter2pw@db.example.com:5432/prod",
+                }
+            ]
+        }
+    )
+    findings = redact_surfaces(SurfaceCollection(apis=[api]))
+    kinds = {f.kind for f in findings}
+    assert "connection-string" in kinds
+    assert "email" not in kinds
+    resp = api.enrichment["error_contract"][0]["response"]
+    assert "hunter2pw" not in resp
+    assert "[REDACTED:connection-string]" in resp
+
+
+def test_hash_prefix_is_salted_per_run() -> None:
+    # The same raw value in two separate runs yields different hash prefixes,
+    # so the prefix is not a cross-run guess-confirmation oracle for PII.
+    def _run() -> str:
+        api = _api_with_enrichment({"data_flow": "alice@example.com"})
+        findings = redact_surfaces(SurfaceCollection(apis=[api]))
+        return findings[0].hash_prefix
+
+    assert _run() != _run()

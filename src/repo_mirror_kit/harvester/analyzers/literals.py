@@ -1,34 +1,35 @@
-"""Single chokepoint for captured literal values (BEAN-082 / BEAN-083 seam).
+"""Capture-time passthrough for literal values (BEAN-082 marker).
 
 Every exact literal an analyzer copies verbatim out of source — error
 messages, column defaults, enum members, check-constraint expressions,
-validation regexes — MUST pass through :func:`sanitize_captured_literal`
-before it is stored on a surface's ``enrichment``. Today the function is an
-identity transform; BEAN-083 will replace the body with the sensitive-value
-filter (secret / PII redaction and reporting) so that one edit here protects
-every captured literal without touching each call site.
+validation regexes — is routed through :func:`sanitize_captured_literal` at
+capture time. It is intentionally an **identity** transform.
 
-Keeping this as the sole seam means the redaction pass has exactly one place
-to plug in, and a test can assert the chokepoint is actually exercised by
-monkeypatching it.
+Secret / PII redaction does NOT happen here. It is performed authoritatively
+by the :func:`repo_mirror_kit.harvester.redaction.redact_surfaces` post-pass,
+which runs after enrichment and recursively scans every surface's serialized
+strings — the only layer that has each surface's ``source_ref`` (for
+``file:line`` in findings) and sees LLM-produced fields too. Redacting at this
+per-value capture point instead would miss those and could not attribute
+locations, so this function is deliberately left as a no-op marker of where a
+literal enters a surface.
 """
 
 from __future__ import annotations
 
 
 def sanitize_captured_literal(value: str) -> str:
-    """Return a captured source literal, ready to store on a surface.
+    """Return a captured source literal unchanged (identity).
 
-    Identity for now (BEAN-082). BEAN-083 will wrap this to redact secrets
-    and PII from the value and record what was redacted. Every analyzer that
-    copies a literal out of source routes it through here first, so the
-    redaction pass has a single chokepoint to own.
+    Redaction is handled by the ``redact_surfaces`` post-pass, not here —
+    see the module docstring. Retained as an explicit, greppable marker of
+    literal-capture sites.
 
     Args:
         value: The exact literal copied verbatim from source.
 
     Returns:
-        The value, sanitized. Currently unchanged.
+        The value, unchanged.
     """
     return value
 
