@@ -32,6 +32,47 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     UIFlowSurface,
 )
 
+# BEAN-081: neutral in-body marker for an unknown, pointing the reader at the
+# ``## Gaps & unknowns`` section. Deliberately contains no ``TODO:`` literal so
+# the placeholder-free fidelity metric can reach 100% and absence is *declared*,
+# never silent.
+_UNDETERMINED = "_Not determined by the harvest — see **Gaps & unknowns** below._"
+
+# Sections where "nothing found" is a legitimate answer rather than a fidelity
+# gap (open questions, example payloads, feature flags). These use a neutral
+# note and are NOT added to the gap list.
+_NONE_IDENTIFIED = "_None identified._"
+
+
+def _md_cell(value: object) -> str:
+    """Sanitize a value for safe inclusion in a markdown table cell.
+
+    Escapes ``|`` (which would otherwise start a new column — common in the
+    regex/alternation patterns BEAN-082 feeds into the rule tables) and
+    collapses newlines to spaces so a multi-line literal cannot break the row.
+    """
+    text = str(value)
+    return text.replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ").strip()
+
+
+def _has_behavioral_signal(signals: object) -> bool:
+    """Whether BEAN-054 behavioral_signals actually carry renderable content.
+
+    Mirrors :func:`_format_behavioral_signals`: a truthy-but-empty dict (all
+    sub-fields blank) is NOT a behavioral description, so it must still count
+    as a gap rather than silently passing.
+    """
+    if not isinstance(signals, dict):
+        return False
+    docstring = signals.get("docstring")
+    jsdoc = signals.get("jsdoc")
+    test_names = signals.get("test_names")
+    return bool(
+        (isinstance(docstring, str) and docstring.strip())
+        or (isinstance(jsdoc, str) and jsdoc.strip())
+        or (isinstance(test_names, list) and test_names)
+    )
+
 
 def derive_confidence_and_gaps(surface: Surface) -> tuple[str, list[str]]:
     """Derive extraction confidence and known unknowns for a surface (BEAN-070).
@@ -41,6 +82,12 @@ def derive_confidence_and_gaps(surface: Surface) -> tuple[str, list[str]]:
     ``structural`` (existence only). Gaps are explicit statements of what
     the harvest could NOT determine — a rebuild agent must resolve them
     rather than guess.
+
+    BEAN-081: this is the single authority for a surface's gaps — the same
+    list feeds the frontmatter ``gaps:`` field, the visible ``## Gaps &
+    unknowns`` section, and the ``REQUIREMENTS.md`` rollup. Every place a
+    renderer would previously have emitted a ``TODO:`` placeholder is instead
+    recorded here as a declared gap, so nothing is silently missing.
     """
     gaps: list[str] = []
     enrichment = surface.enrichment or {}
@@ -61,10 +108,114 @@ def derive_confidence_and_gaps(surface: Surface) -> tuple[str, list[str]]:
         if response.get("unknown") is True:
             gaps.append("Response contract could not be inferred from source.")
 
+    # Behavioral unknowns (all surface types share the enrichment sections).
+    has_behavior = bool(enrichment.get("behavioral_description")) or (
+        _has_behavioral_signal(enrichment.get("behavioral_signals"))
+    )
+    if not has_behavior:
+        gaps.append(
+            "Behavioral description was not extracted (no docstring, JSDoc, "
+            "test-name signal, or LLM enrichment)."
+        )
+    if not enrichment.get("given_when_then"):
+        gaps.append("Given/When/Then acceptance criteria were not generated.")
+    if not enrichment.get("data_flow"):
+        gaps.append("Data flow was not described.")
+
+    # Contract-level unknowns, matched to each renderer's exact-value tables.
+    # These are populated by BEAN-082 via ``exact_rules`` / ``error_contract`` /
+    # ``token_session`` enrichment keys; absent until then → declared gap.
+    # Route has two exact-value sections (validation rules, error states); each
+    # empty section shows an _UNDETERMINED marker, so each gets its own gap so
+    # no marker is left without a backing declared gap (BEAN-081, even when
+    # BEAN-082 later fills only one of the two).
+    if isinstance(surface, RouteSurface):
+        if not enrichment.get("exact_rules"):
+            gaps.append("Validation rules for this route were not extracted.")
+        if not enrichment.get("error_contract"):
+            gaps.append("Error states for this route were not extracted.")
+    if isinstance(surface, ModelSurface) and not enrichment.get("exact_rules"):
+        gaps.append("Validation rules for this model were not extracted.")
+    if isinstance(surface, ApiSurface) and not enrichment.get("error_contract"):
+        gaps.append("Error responses for this endpoint were not extracted.")
+    if isinstance(surface, AuthSurface) and not enrichment.get("token_session"):
+        gaps.append("Token/session handling assumptions were not determined.")
+    if isinstance(surface, CrosscuttingSurface) and not surface.description:
+        gaps.append("A description of this cross-cutting concern was not extracted.")
+    if isinstance(surface, GeneralLogicSurface) and not surface.module_purpose:
+        gaps.append("The purpose of this module was not determined.")
+
     extra = enrichment.get("gaps")
     if isinstance(extra, list):
         gaps.extend(str(g) for g in extra)
     return confidence, gaps
+
+
+def _render_exact_rules_table(surface: Surface) -> str:
+    """Render the validation-rule table from ``enrichment["exact_rules"]``.
+
+    BEAN-081 defines the contract; BEAN-082 populates it. Each entry is a
+    dict with keys ``field``, ``rule``, ``value`` (the exact literal /
+    pattern, copied verbatim — never a source-code block), ``error_message``
+    (optional), and ``confidence`` (optional, default ``inferred``). When no
+    rules are present the section degrades to a neutral gap marker — never a
+    ``TODO:`` placeholder.
+    """
+    enrichment = surface.enrichment or {}
+    rules = enrichment.get("exact_rules")
+    if not isinstance(rules, list) or not rules:
+        return _UNDETERMINED
+    lines = [
+        "| Field | Rule | Value / pattern | Error message | Confidence |",
+        "|-------|------|-----------------|---------------|------------|",
+    ]
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        value = rule.get("value", "")
+        value_cell = f"`{_md_cell(value)}`" if value not in (None, "") else "—"
+        error = rule.get("error_message")
+        error_cell = _md_cell(error) if error else "—"
+        lines.append(
+            f"| `{_md_cell(rule.get('field', '?'))}` "
+            f"| {_md_cell(rule.get('rule', ''))} "
+            f"| {value_cell} "
+            f"| {error_cell} "
+            f"| {_md_cell(rule.get('confidence', 'inferred'))} |"
+        )
+    return "\n".join(lines)
+
+
+def _render_error_contract_table(surface: Surface) -> str:
+    """Render the error-response table from ``enrichment["error_contract"]``.
+
+    BEAN-081 defines the contract; BEAN-082 populates it. Each entry is a
+    dict with keys ``condition``, ``status`` (HTTP status code / name),
+    ``response`` (exact error body or message, verbatim), and ``confidence``
+    (optional). Absent → neutral gap marker, never a ``TODO:``.
+    """
+    enrichment = surface.enrichment or {}
+    errors = enrichment.get("error_contract")
+    if not isinstance(errors, list) or not errors:
+        return _UNDETERMINED
+    lines = [
+        "| Condition | Status | Response | Confidence |",
+        "|-----------|--------|----------|------------|",
+    ]
+    for err in errors:
+        if not isinstance(err, dict):
+            continue
+        status = err.get("status")
+        status_cell = f"`{_md_cell(status)}`" if status not in (None, "") else "—"
+        response = err.get("response")
+        response_cell = _md_cell(response) if response else "—"
+        lines.append(
+            f"| {_md_cell(err.get('condition', '?'))} "
+            f"| {status_cell} "
+            f"| {response_cell} "
+            f"| {_md_cell(err.get('confidence', 'inferred'))} |"
+        )
+    return "\n".join(lines)
 
 
 def _render_frontmatter(
@@ -140,7 +291,7 @@ def _format_behavioral_signals(signals: dict[str, Any]) -> str:
     """Render BEAN-054 behavioral_signals (docstring/jsdoc/test_names) as
     a fallback for the Behavioral description section when LLM enrichment
     is absent. Returns a string containing whichever signals are present;
-    if all are empty, falls back to the TODO placeholder."""
+    if all are empty, falls back to the neutral gap marker (BEAN-081)."""
     parts: list[str] = []
 
     docstring = signals.get("docstring")
@@ -166,7 +317,7 @@ def _format_behavioral_signals(signals: dict[str, Any]) -> str:
         )
 
     if not parts:
-        return "TODO: Describe the expected behavior from a user/system perspective."
+        return _UNDETERMINED
     return "\n\n".join(parts)
 
 
@@ -175,7 +326,8 @@ def _render_enrichment_sections(surface: Surface) -> str:
 
     If enrichment data is available, renders Behavioral Description,
     Acceptance Criteria (Given/When/Then), and Data Flow sections.
-    Otherwise renders structured TODO placeholders.
+    Otherwise renders neutral gap markers (BEAN-081) backed by declared
+    entries in the ``## Gaps & unknowns`` section — never ``TODO:``.
 
     Args:
         surface: Any Surface subclass with optional enrichment dict.
@@ -187,7 +339,7 @@ def _render_enrichment_sections(surface: Surface) -> str:
     lines: list[str] = []
 
     # Behavioral description — prefer LLM enrichment, fall back to BEAN-054
-    # behavioral_signals (docstring/JSDoc/test names), then a TODO placeholder.
+    # behavioral_signals (docstring/JSDoc/test names), then a neutral gap marker.
     lines.append("## Behavioral description")
     lines.append("")
     if enrichment and enrichment.get("behavioral_description"):
@@ -195,9 +347,7 @@ def _render_enrichment_sections(surface: Surface) -> str:
     elif enrichment and enrichment.get("behavioral_signals"):
         lines.append(_format_behavioral_signals(enrichment["behavioral_signals"]))
     else:
-        lines.append(
-            "TODO: Describe the expected behavior from a user/system perspective."
-        )
+        lines.append(_UNDETERMINED)
     lines.append("")
 
     # Inferred intent
@@ -218,7 +368,7 @@ def _render_enrichment_sections(surface: Surface) -> str:
             then = criterion.get("then", "")
             lines.append(f"- [ ] **Given** {given} **When** {when} **Then** {then}")
     else:
-        lines.append("- [ ] TODO: Define Given/When/Then acceptance criteria.")
+        lines.append(_UNDETERMINED)
     lines.append("")
 
     # Data flow
@@ -227,7 +377,7 @@ def _render_enrichment_sections(surface: Surface) -> str:
     if enrichment and enrichment.get("data_flow"):
         lines.append(enrichment["data_flow"])
     else:
-        lines.append("TODO: Describe the data flow for this surface.")
+        lines.append(_UNDETERMINED)
     lines.append("")
 
     # BEAN-070: known unknowns rendered visibly, not buried in frontmatter.
@@ -291,9 +441,13 @@ Route `{surface.path}` ({surface.method}).
 
 {_bullet_list([f"API: {api}" for api in surface.api_refs], "- No API interactions identified.")}
 
-## Validation & error states
+## Validation rules
 
-- TODO: Define validation rules and error states for this route.
+{_render_exact_rules_table(surface)}
+
+## Error states
+
+{_render_error_contract_table(surface)}
 
 ## Structural acceptance criteria
 
@@ -303,7 +457,7 @@ Route `{surface.path}` ({surface.method}).
 
 ## Open questions
 
-- TODO: Identify open design questions for this route.
+{_NONE_IDENTIFIED}
 """
     return fm + "\n" + body.lstrip("\n")
 
@@ -437,7 +591,7 @@ def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
 
 ## Errors
 
-- TODO: Define error responses for this endpoint.
+{_render_error_contract_table(surface)}
 
 ## Side effects
 
@@ -456,7 +610,7 @@ def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
 {surface.method} {surface.path}
 ```
 
-- TODO: Add example request/response payloads.
+{_NONE_IDENTIFIED}
 """
     return fm + "\n" + body.lstrip("\n")
 
@@ -507,7 +661,7 @@ Model entity: {surface.entity_name if surface.entity_name else surface.name}.
 
 ## Validation rules
 
-- TODO: Define validation rules for this model.
+{_render_exact_rules_table(surface)}
 
 ## Structural acceptance criteria
 
@@ -561,7 +715,7 @@ def render_auth_bean(surface: AuthSurface, bean_id: str) -> str:
 
 ## Token/session assumptions
 
-- TODO: Define token/session handling assumptions.
+{surface.enrichment.get("token_session") if surface.enrichment and surface.enrichment.get("token_session") else _UNDETERMINED}
 
 ## Structural acceptance criteria
 
@@ -611,11 +765,11 @@ Usage locations:
 
 ## Feature flags
 
-- TODO: Identify any feature flags related to this configuration.
+{_NONE_IDENTIFIED}
 
 ## Required external services
 
-- TODO: Identify external services that depend on this configuration.
+{_NONE_IDENTIFIED}
 
 ## Structural acceptance criteria
 
@@ -654,7 +808,7 @@ def render_crosscutting_bean(surface: CrosscuttingSurface, bean_id: str) -> str:
 
 ## Description
 
-{surface.description if surface.description else "TODO: Describe this cross-cutting concern."}
+{surface.description if surface.description else _UNDETERMINED}
 
 {_render_enrichment_sections(surface)}
 ## Affected files
@@ -1020,7 +1174,7 @@ def render_general_logic_bean(surface: GeneralLogicSurface, bean_id: str) -> str
 ## Module overview
 
 - **File:** `{surface.file_path}`
-- **Purpose:** {surface.module_purpose or "TODO: Describe the purpose of this module."}
+- **Purpose:** {surface.module_purpose or _UNDETERMINED}
 - **Complexity:** {surface.complexity_hint or "unassessed"}
 
 {_render_enrichment_sections(surface)}
