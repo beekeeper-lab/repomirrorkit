@@ -46,6 +46,14 @@ DEFAULT_FIDELITY_THRESHOLDS: dict[str, float] = {
     "placeholder_free_beans": 0.0,
 }
 
+# BEAN-080 / SPEC-MIRROR-MODE.md M5.1: threshold profile selected by
+# ``--mirror``. Currently equal to the defaults — the plumbing ships with
+# mirror mode so the flag is honest from day one; the values are raised
+# (contracts 90, model fields 100, placeholder-free 100, ...) alongside
+# BEAN-081/BEAN-082 as extraction depth lands, via the BEAN-076 amendment
+# tracked in SPEC-MIRROR-MODE.md Phase 5.
+MIRROR_FIDELITY_THRESHOLDS: dict[str, float] = {**DEFAULT_FIDELITY_THRESHOLDS}
+
 
 @dataclass(frozen=True)
 class FidelityMetric:

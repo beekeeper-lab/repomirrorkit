@@ -90,6 +90,7 @@ def generate_requirements_md(
     profile: StackProfile,
     beans: list[WrittenBean],
     output_dir: Path,
+    provenance: dict[str, object] | None = None,
 ) -> Path:
     """Render ``<output_dir>/REQUIREMENTS.md`` and return its path.
 
@@ -101,12 +102,16 @@ def generate_requirements_md(
         beans: WrittenBean records (one per surface) for resolving links.
         output_dir: The harvest output root. ``REQUIREMENTS.md`` is
             written at the top level of this directory.
+        provenance: Source-repo provenance (BEAN-080): repo_url, ref,
+            head_sha, harvested_at, source_included. Rendered into the
+            header so ``source_refs`` stay meaningful when the working
+            copy is removed by Stage H cleanup.
 
     Returns:
         The absolute path of the written ``REQUIREMENTS.md``.
     """
     bean_index = _index_beans_by_surface(beans)
-    text = _render(project_name, surfaces, profile, bean_index, len(beans))
+    text = _render(project_name, surfaces, profile, bean_index, len(beans), provenance)
     path = output_dir / "REQUIREMENTS.md"
     path.write_text(text, encoding="utf-8")
     return path
@@ -125,10 +130,11 @@ def _render(
     profile: StackProfile,
     bean_index: dict[tuple[str, str], WrittenBean],
     bean_count: int,
+    provenance: dict[str, object] | None = None,
 ) -> str:
     """Render the full document to a string."""
     parts: list[str] = []
-    parts.append(_render_header(project_name, profile, bean_count))
+    parts.append(_render_header(project_name, profile, bean_count, provenance))
     parts.append(_render_gaps_rollup(surfaces))
     parts.append(_render_tech_stack(profile))
     parts.append("## Functional Requirements\n")
@@ -143,19 +149,48 @@ def _render(
     return "\n".join(parts)
 
 
-def _render_header(project_name: str, profile: StackProfile, bean_count: int) -> str:
+def _render_header(
+    project_name: str,
+    profile: StackProfile,
+    bean_count: int,
+    provenance: dict[str, object] | None = None,
+) -> str:
     timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M UTC")
     detected = ", ".join(sorted(profile.stacks)) or "(none detected)"
+    rows = [
+        f"| Generated | {timestamp} |",
+        f"| Project | {project_name} |",
+        f"| Total beans | {bean_count} |",
+        f"| Tech stacks detected | {detected} |",
+    ]
+    provenance_note = ""
+    if provenance:
+        # BEAN-080: record which repo/commit the source_refs point at, and
+        # whether the source tree ships in this package.
+        repo_url = provenance.get("repo_url") or "(unknown)"
+        ref = provenance.get("ref") or "(default branch)"
+        head_sha = provenance.get("head_sha") or "(unknown)"
+        rows.append(f"| Source repo | {repo_url} |")
+        rows.append(f"| Source ref | {ref} |")
+        rows.append(f"| Source commit | `{head_sha}` |")
+        if provenance.get("source_included", True):
+            provenance_note = (
+                "\nSource references (`path:line`) refer to the repository "
+                "above at the listed commit; a working copy is included "
+                "under `repo/`.\n"
+            )
+        else:
+            provenance_note = (
+                "\nSource references (`path:line`) refer to the repository "
+                "above at the listed commit. The source tree is **not** "
+                "included in this package — it was removed after analysis "
+                "so the package stands alone.\n"
+            )
     return (
         f"# {project_name} — Requirements Specification\n"
         "\n"
         "| Field | Value |\n"
-        "|-------|-------|\n"
-        f"| Generated | {timestamp} |\n"
-        f"| Project | {project_name} |\n"
-        f"| Total beans | {bean_count} |\n"
-        f"| Tech stacks detected | {detected} |\n"
-        "\n"
+        "|-------|-------|\n" + "\n".join(rows) + "\n" + provenance_note + "\n"
         "This document is the front door of the harvest. Each section "
         "lists detected surfaces with a one-line summary and a relative "
         "link to its per-surface bean file. With LLM enrichment enabled, "
