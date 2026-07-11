@@ -262,6 +262,13 @@ def _pct(value: float | None) -> str:
     "Defaults to forge-loop's own whitelist when omitted.",
 )
 @click.option(
+    "--permission-mode",
+    default="acceptEdits",
+    show_default=True,
+    help="Cloud lane only: Claude Code permission mode for the headless run. "
+    "Use 'bypassPermissions' to let the agent run tests/installs unattended.",
+)
+@click.option(
     "--timeout",
     default=3600,
     type=int,
@@ -290,6 +297,7 @@ def rebuild(
     model: str | None,
     data_class: str,
     allowed_commands: tuple[str, ...],
+    permission_mode: str,
     timeout: int,
     out: Path | None,
     do_score: bool,
@@ -315,6 +323,7 @@ def rebuild(
             lane=RebuildLane(lane),
             model=model,
             timeout=timeout,
+            permission_mode=permission_mode,
             data_class=data_class,
             allowed_commands=allowed_commands or None,
         )
