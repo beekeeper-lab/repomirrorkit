@@ -32,11 +32,13 @@ is the agentic enrichment pass's job, BEAN-068).
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 from typing import Any
 
 import structlog
 
+from repo_mirror_kit.harvester.analyzers.literals import sanitize_captured_literal
 from repo_mirror_kit.harvester.analyzers.surfaces import ApiSurface
 
 logger = structlog.get_logger()
@@ -514,6 +516,198 @@ def _extract_flask_response(
 
 
 # ---------------------------------------------------------------------------
+# Error-contract extraction (BEAN-082)
+# ---------------------------------------------------------------------------
+
+# The lowest status code we treat as an error path. Below this a status is a
+# success/redirect default, not an error contract.
+_MIN_ERROR_STATUS = 400
+
+# Response-body keys whose string value is the human-facing error message.
+_ERROR_MESSAGE_KEYS: frozenset[str] = frozenset(
+    {"error", "message", "detail", "msg", "description"}
+)
+
+_HTTP_STATUS_NAME_RE = re.compile(r"HTTP_(\d{3})")
+
+
+def _status_value(node: ast.expr) -> int | None:
+    """Resolve a status-code expression to an int.
+
+    Handles integer constants and FastAPI's ``status.HTTP_404_NOT_FOUND``
+    style names (any node whose rendered text contains ``HTTP_<code>``).
+    """
+    if isinstance(node, ast.Constant) and isinstance(node.value, bool) is False:
+        return node.value if isinstance(node.value, int) else None
+    match = _HTTP_STATUS_NAME_RE.search(_annotation_str(node))
+    if match is not None:
+        return int(match.group(1))
+    return None
+
+
+def _string_const(node: ast.expr) -> str | None:
+    """Return the string value of a constant node, sanitized, else None."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return sanitize_captured_literal(node.value)
+    return None
+
+
+def _error_message_from_body(node: ast.expr) -> str | None:
+    """Best-effort exact error message from a returned response body node.
+
+    A bare string literal is the message. A ``jsonify({...})`` / dict literal
+    contributes the value of its first error-ish key (``error``/``message``/…).
+    """
+    literal = _string_const(node)
+    if literal is not None:
+        return literal
+    payload: ast.expr | None = None
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "jsonify"
+        and node.args
+    ):
+        payload = node.args[0]
+    elif isinstance(node, ast.Dict):
+        payload = node
+    if isinstance(payload, ast.Dict):
+        for key, value in zip(payload.keys, payload.values, strict=False):
+            if (
+                isinstance(key, ast.Constant)
+                and isinstance(key.value, str)
+                and key.value.lower() in _ERROR_MESSAGE_KEYS
+            ):
+                message = _string_const(value)
+                if message is not None:
+                    return message
+    return None
+
+
+def _iter_with_conditions(
+    node: ast.AST, condition: str | None
+) -> list[tuple[ast.AST, str | None]]:
+    """Yield ``node`` and every descendant paired with its enclosing ``if`` test.
+
+    Walking with the guarding condition lets an error entry name the branch
+    it fires on ("user is None") rather than an opaque "returns 404".
+    Statements in an ``if`` body inherit that branch's test; the test
+    expression and ``else`` branch keep the outer condition.
+    """
+    out: list[tuple[ast.AST, str | None]] = [(node, condition)]
+    for child in ast.iter_child_nodes(node):
+        if isinstance(node, ast.If) and child in node.body:
+            child_condition = _annotation_str(node.test) or None
+        else:
+            child_condition = condition
+        out.extend(_iter_with_conditions(child, child_condition))
+    return out
+
+
+def _extract_flask_errors(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[dict[str, Any]]:
+    """Extract error contracts from Flask ``abort(...)`` and status tuples."""
+    entries: list[dict[str, Any]] = []
+    for node, condition in _iter_with_conditions(func, None):
+        # abort(code) / abort(code, "message")
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "abort"
+            and node.args
+        ):
+            status = _status_value(node.args[0])
+            message = _string_const(node.args[1]) if len(node.args) > 1 else None
+            entries.append(
+                {
+                    "condition": condition or f"abort({status})",
+                    "status": status,
+                    "response": message,
+                    "confidence": "inferred",
+                }
+            )
+        # return <body>, <status>  where status >= 400
+        elif (
+            isinstance(node, ast.Return)
+            and isinstance(node.value, ast.Tuple)
+            and len(node.value.elts) >= 2
+        ):
+            status = _status_value(node.value.elts[1])
+            if status is not None and status >= _MIN_ERROR_STATUS:
+                entries.append(
+                    {
+                        "condition": condition or f"returns HTTP {status}",
+                        "status": status,
+                        "response": _error_message_from_body(node.value.elts[0]),
+                        "confidence": "inferred",
+                    }
+                )
+    return entries
+
+
+def _is_http_exception(func: ast.expr) -> bool:
+    """Whether a call target is ``HTTPException`` (bare or attribute access)."""
+    if isinstance(func, ast.Name):
+        return func.id == "HTTPException"
+    if isinstance(func, ast.Attribute):
+        return func.attr == "HTTPException"
+    return False
+
+
+def _extract_fastapi_errors(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> list[dict[str, Any]]:
+    """Extract error contracts from FastAPI ``raise HTTPException(...)`` and
+    an error ``status_code=`` on the route decorator (declared confidence)."""
+    entries: list[dict[str, Any]] = []
+    for node, condition in _iter_with_conditions(func, None):
+        if not (
+            isinstance(node, ast.Raise)
+            and isinstance(node.exc, ast.Call)
+            and _is_http_exception(node.exc.func)
+        ):
+            continue
+        call = node.exc
+        status: int | None = None
+        detail: str | None = None
+        for kw in call.keywords:
+            if kw.arg == "status_code":
+                status = _status_value(kw.value)
+            elif kw.arg == "detail":
+                detail = _string_const(kw.value)
+        if status is None and call.args:
+            status = _status_value(call.args[0])
+        if detail is None and len(call.args) > 1:
+            detail = _string_const(call.args[1])
+        entries.append(
+            {
+                "condition": condition or f"HTTPException({status})",
+                "status": status,
+                "response": detail,
+                "confidence": "declared",
+            }
+        )
+
+    deco = _fastapi_decorator_call(func)
+    if deco is not None:
+        for kw in deco.keywords:
+            if kw.arg != "status_code":
+                continue
+            status = _status_value(kw.value)
+            if status is not None and status >= _MIN_ERROR_STATUS:
+                entries.append(
+                    {
+                        "condition": "default response status",
+                        "status": status,
+                        "response": None,
+                        "confidence": "declared",
+                    }
+                )
+    return entries
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -552,11 +746,17 @@ def populate_python_api_contracts(
         if _fastapi_decorator_call(func) is not None:
             request_fields = _extract_fastapi_request(func, module_path, index)
             response = _extract_fastapi_response(func, module_path, index)
+            errors = _extract_fastapi_errors(func)
             confidence = "declared"
         else:
             request_fields = _extract_flask_request(func)
             response = _extract_flask_response(func)
+            errors = _extract_flask_errors(func)
             confidence = "inferred"
+
+        # BEAN-082: error contracts feed BEAN-081's error table.
+        if errors:
+            surface.enrichment["error_contract"] = errors
 
         got_any = False
         if request_fields:

@@ -105,3 +105,19 @@ class TestPromptInjectionCanary:
         prompt = build_enrichment_prompt("route", "X", hostile_data, "code")
         assert "</_repo_metadata>" in prompt
         assert prompt.count("</repo_metadata>") == 1
+
+
+class TestExactValueDirective:
+    """BEAN-082: prompt must demand verbatim literals and forbid code blocks."""
+
+    def test_system_prompt_requires_verbatim_and_forbids_code_blocks(self) -> None:
+        assert "VERBATIM" in SYSTEM_PROMPT
+        assert "code-block" in SYSTEM_PROMPT or "code block" in SYSTEM_PROMPT
+        assert "exact_rules" in SYSTEM_PROMPT
+        assert "error_contract" in SYSTEM_PROMPT
+
+    def test_user_prompt_reminds_about_exact_values(self) -> None:
+        prompt = build_enrichment_prompt("model", "User", {}, "class User: ...")
+        lowered = prompt.lower()
+        assert "verbatim" in lowered
+        assert "code block" in lowered or "fence" in lowered

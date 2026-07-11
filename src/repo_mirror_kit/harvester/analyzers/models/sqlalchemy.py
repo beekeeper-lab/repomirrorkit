@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any
 
+from repo_mirror_kit.harvester.analyzers.literals import sanitize_captured_literal
 from repo_mirror_kit.harvester.analyzers.models._common import (
     _MAX_FILES_PER_TECH,
     _read_file,
@@ -31,6 +33,87 @@ _SA_FK_RE = re.compile(r"ForeignKey\s*\(\s*['\"]([^'\"]+)['\"]")
 _SA_PK_RE = re.compile(r"primary_key\s*=\s*True")
 _SA_NULLABLE_RE = re.compile(r"nullable\s*=\s*False")
 _SA_UNIQUE_COLUMN_RE = re.compile(r"unique\s*=\s*True")
+
+# BEAN-082: exact-value extraction. ``default=`` / ``server_default=`` capture
+# the literal up to the next top-level comma or the column's closing paren.
+_SA_DEFAULT_RE = re.compile(r"(?<![\w])default\s*=\s*([^,)]+)")
+_SA_SERVER_DEFAULT_RE = re.compile(r"server_default\s*=\s*([^,)]+)")
+# ``Enum("a", "b", name="x")`` — inner arg list; string members are kept and
+# joined with ``|``; keyword args (``name=``, ``native_enum=``) are skipped.
+_SA_ENUM_RE = re.compile(r"Enum\s*\(([^)]*)\)")
+# ``CheckConstraint("<expr>", name="<name>")`` anywhere in the class body.
+_SA_CHECK_RE = re.compile(
+    r"CheckConstraint\s*\(\s*([\"'])(.+?)\1(?:\s*,\s*name\s*=\s*[\"'](\w+)[\"'])?",
+    re.DOTALL,
+)
+
+
+def _exact_rule(
+    field: str,
+    rule: str,
+    value: str = "",
+    error_message: str | None = None,
+) -> dict[str, Any]:
+    """Build one ``exact_rules`` entry (BEAN-081 contract, declared confidence).
+
+    ``value`` is the exact literal copied verbatim from source and is always
+    routed through the BEAN-083 chokepoint before it is stored.
+    """
+    return {
+        "field": field,
+        "rule": rule,
+        "value": sanitize_captured_literal(value) if value else "",
+        "error_message": error_message,
+        "confidence": "declared",
+    }
+
+
+def _enum_members(col_full: str) -> str | None:
+    """Return ``"a|b|c"`` for an ``Enum(...)`` column, or None when absent."""
+    match = _SA_ENUM_RE.search(col_full)
+    if match is None:
+        return None
+    members: list[str] = []
+    for raw in match.group(1).split(","):
+        arg = raw.strip()
+        if not arg or "=" in arg:  # skip keyword args (name=, native_enum=, ...)
+            continue
+        if arg[:1] in "\"'" and arg[-1:] in "\"'":
+            members.append(arg[1:-1])
+    if not members:
+        return None
+    return "|".join(members)
+
+
+def _column_exact_rules(col_name: str, col_full: str) -> list[dict[str, Any]]:
+    """Derive exact validation rules for a single SQLAlchemy column line."""
+    rules: list[dict[str, Any]] = []
+    if _SA_NULLABLE_RE.search(col_full):
+        rules.append(_exact_rule(col_name, "NOT NULL"))
+    if _SA_UNIQUE_COLUMN_RE.search(col_full):
+        rules.append(_exact_rule(col_name, "unique"))
+    members = _enum_members(col_full)
+    if members is not None:
+        rules.append(_exact_rule(col_name, "allowed values", members))
+    for regex, label in (
+        (_SA_SERVER_DEFAULT_RE, "server default"),
+        (_SA_DEFAULT_RE, "default"),
+    ):
+        match = regex.search(col_full)
+        if match is not None:
+            rules.append(_exact_rule(col_name, label, match.group(1).strip()))
+            break
+    return rules
+
+
+def _check_constraint_rules(body: str) -> list[dict[str, Any]]:
+    """Derive exact rules for every ``CheckConstraint(...)`` in a class body."""
+    rules: list[dict[str, Any]] = []
+    for match in _SA_CHECK_RE.finditer(body):
+        expr = match.group(2).strip()
+        name = match.group(3) or "check_constraint"
+        rules.append(_exact_rule(name, "check constraint", expr))
+    return rules
 
 
 def _extract_sqlalchemy(repo_root: Path, file_paths: list[str]) -> list[ModelSurface]:
@@ -72,6 +155,7 @@ def _extract_sqlalchemy(repo_root: Path, file_paths: list[str]) -> list[ModelSur
 
             # Columns
             fields: list[ModelField] = []
+            exact_rules: list[dict[str, Any]] = []
             for col_match in _SA_COLUMN_RE.finditer(body):
                 col_name = col_match.group(1)
                 col_type = col_match.group(2)
@@ -98,6 +182,10 @@ def _extract_sqlalchemy(repo_root: Path, file_paths: list[str]) -> list[ModelSur
                         constraints=constraints,
                     )
                 )
+                exact_rules.extend(_column_exact_rules(col_name, col_full))
+
+            # Table-level check constraints (e.g. in ``__table_args__``).
+            exact_rules.extend(_check_constraint_rules(body))
 
             # Relationships
             relationships: list[str] = []
@@ -112,21 +200,23 @@ def _extract_sqlalchemy(repo_root: Path, file_paths: list[str]) -> list[ModelSur
                 if fk_ref not in relationships:
                     relationships.append(f"FK -> {fk_ref}")
 
-            surfaces.append(
-                ModelSurface(
-                    name=class_name,
-                    entity_name=class_name,
-                    fields=fields,
-                    relationships=relationships,
-                    persistence_refs=[table_name],
-                    source_refs=[
-                        SourceRef(
-                            file_path=rel_path,
-                            start_line=start_line,
-                        )
-                    ],
-                )
+            surface = ModelSurface(
+                name=class_name,
+                entity_name=class_name,
+                fields=fields,
+                relationships=relationships,
+                persistence_refs=[table_name],
+                source_refs=[
+                    SourceRef(
+                        file_path=rel_path,
+                        start_line=start_line,
+                    )
+                ],
             )
+            # BEAN-082: exact validation rules feed BEAN-081's rule table.
+            if exact_rules:
+                surface.enrichment["exact_rules"] = exact_rules
+            surfaces.append(surface)
 
     return surfaces
 

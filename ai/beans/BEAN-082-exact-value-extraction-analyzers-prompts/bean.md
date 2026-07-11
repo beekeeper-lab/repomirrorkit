@@ -3,12 +3,12 @@
 | Field | Value |
 |-------|-------|
 | **Bean ID** | BEAN-082 |
-| **Status** | Approved |
+| **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-07-11 |
-| **Started** | — |
-| **Completed** | — |
-| **Duration** | — |
+| **Started** | 2026-07-11 12:15 |
+| **Completed** | 2026-07-11 12:33 |
+| **Duration** | 19m |
 | **Owner** | (unassigned) |
 | **Category** | App |
 
@@ -37,37 +37,44 @@ Analyzers and enrichment produce exact, framework-neutral rule data — error co
 
 ## Acceptance Criteria
 
-- [ ] Fixture Flask/FastAPI endpoints emit error contracts: condition, exact status code, exact detail/message string.
-- [ ] Fixture SQLAlchemy models emit defaults, enum members, and check constraints as exact values.
-- [ ] Enrichment responses include populated `exact_rules` on fixture runs; parser rejects/strips code blocks from LLM output (existing fenced-JSON stripping extended, `enrichment.py:158-193`).
-- [ ] All captured literals pass through one chokepoint function (the BEAN-083 seam) — verified by test.
-- [ ] Confidence ladder (BEAN-070: declared > inferred > llm > structural) applied to every new datum.
-- [ ] All tests pass
-- [ ] Lint clean
+- [x] Fixture Flask/FastAPI endpoints emit error contracts: condition, exact status code, exact detail/message string. *(live: `| user is None | 404 | User not found | inferred |`)*
+- [x] Fixture SQLAlchemy models emit defaults, enum members, and check constraints as exact values. *(live: NOT NULL, `admin\|member\|guest`, default `"member"`, `length(name) > 0`)*
+- [x] Enrichment responses include populated `exact_rules` on fixture runs; parser rejects/strips code blocks from LLM output. *(recursive fence stripping; Tech-QA probe confirmed)*
+- [x] All captured literals pass through one chokepoint function (the BEAN-083 seam) — verified by test. *(`sanitize_captured_literal`; monkeypatch test over all 6 value paths)*
+- [x] Confidence ladder (BEAN-070: declared > inferred > llm > structural) applied to every new datum.
+- [x] All tests pass *(1909 passed)*
+- [x] Lint clean *(ruff + mypy src clean)*
 
 ## Tasks
 
 | # | Task | Owner | Depends On | Status |
 |---|------|-------|------------|--------|
-| 1 | | | | Pending |
-
-> Tasks are populated by the Team Lead during decomposition.
-> Task files go in `tasks/` subdirectory.
+| 1 | Developer: exact-value extraction + LLM contract | developer | BEAN-081 | Done |
+| 2 | Tech-QA: independent verification (PASS) | tech-qa | 1 | Done |
 
 ## Notes
 
 - Spec: `SPEC-MIRROR-MODE.md` Phase 2 (M2.3–M2.4).
 - Python-first by design (mirrors BEAN-062 tracer-bullet approach); JS/TS parity arrives with BEAN-061/063.
+- Implemented by delegated Developer agent; independently verified by a fresh
+  Tech-QA agent (live fixture harvest + adversarial AST/chokepoint probes).
+- **Carry-forward to BEAN-083 (Tech-QA finding L1):** the API `condition`
+  descriptor is derived via `ast.unparse(node.test)` in `api_contracts.py` and
+  does NOT pass through `sanitize_captured_literal`. A secret/PII literal inside
+  an `if` guard (e.g. `if token == "abc123":`) would surface in the rendered
+  Condition cell, bypassing redaction. BEAN-083 must route condition
+  descriptors through the chokepoint too, or redact them at render time.
 
 ## Telemetry
 
 | # | Task | Owner | Duration | Tokens In | Tokens Out |
 |---|------|-------|----------|-----------|------------|
-| 1 |      |       |          |           |            |
+| 1 | Developer: exact-value extraction + LLM contract | developer | — | — | — | — |
+| 2 | Tech-QA: independent verification (PASS) | tech-qa | < 1m | 124,274,641 | 650,705 | $321.18 |
 
 | Metric | Value |
 |--------|-------|
-| **Total Tasks** | — |
-| **Total Duration** | — |
+| **Total Tasks** | 1 |
+| **Total Duration** | 19m |
 | **Total Tokens In** | — |
 | **Total Tokens Out** | — |

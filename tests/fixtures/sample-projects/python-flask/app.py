@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from flask import Flask, jsonify, request
+from flask import Flask, abort, jsonify, request
 from models import User, db
 
 app = Flask(__name__)
@@ -25,3 +25,12 @@ def create_user():
     db.session.add(user)
     db.session.commit()
     return jsonify({"id": user.id, "name": user.name}), 201
+
+
+@app.route("/api/users/<int:user_id>", methods=["GET"])
+def get_user(user_id):
+    """Return a single user, or 404 if no such user exists."""
+    user = User.query.get(user_id)
+    if user is None:
+        abort(404, "User not found")
+    return jsonify({"id": user.id, "name": user.name})

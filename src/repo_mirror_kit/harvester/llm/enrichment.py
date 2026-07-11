@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -121,8 +122,8 @@ def _enrich_single_surface(
 
     response = client.complete(SYSTEM_PROMPT, prompt)
 
-    enrichment = _parse_enrichment_response(response)
-    surface.enrichment = enrichment
+    parsed = _parse_enrichment_response(response)
+    surface.enrichment = _merge_enrichment(surface.enrichment or {}, parsed)
 
 
 def _read_source_for_surface(surface: Surface, workdir: Path) -> str:
@@ -155,6 +156,50 @@ def _read_source_for_surface(surface: Surface, workdir: Path) -> str:
     return "\n\n".join(parts)
 
 
+# BEAN-082: any ```code``` fence smuggled into a *string field* of the JSON
+# response is stripped to its inner text — the requirements are framework- and
+# code-block-free by contract, so a snippet must never survive into a bean.
+_CODE_FENCE_RE = re.compile(r"```[\w+-]*\n?(.*?)```", re.DOTALL)
+
+
+def _strip_code_fences(value: Any) -> Any:
+    """Strip Markdown code fences from a string, leaving inner text.
+
+    Non-strings pass through unchanged. Applied recursively to the string
+    fields of enrichment values so no ``exact_rules`` / description ever
+    carries a code block.
+    """
+    if isinstance(value, str):
+        return _CODE_FENCE_RE.sub(lambda m: m.group(1).strip(), value).strip()
+    if isinstance(value, list):
+        return [_strip_code_fences(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _strip_code_fences(item) for key, item in value.items()}
+    return value
+
+
+def _merge_enrichment(
+    existing: dict[str, Any], parsed: dict[str, Any]
+) -> dict[str, Any]:
+    """Merge LLM output over structural enrichment (BEAN-082).
+
+    Structurally-extracted ``exact_rules`` / ``error_contract`` (analyzer
+    output, declared/inferred confidence) are preserved and the LLM's entries
+    are appended after them — never overwritten. All other structural keys
+    (e.g. BEAN-054 ``behavioral_signals``) survive unless the LLM supplies a
+    replacement value.
+    """
+    for key in ("exact_rules", "error_contract"):
+        structural = existing.get(key)
+        if isinstance(structural, list) and structural:
+            combined = list(structural)
+            llm_entries = parsed.get(key)
+            if isinstance(llm_entries, list):
+                combined.extend(llm_entries)
+            parsed[key] = combined
+    return {**existing, **parsed}
+
+
 def _parse_enrichment_response(response: str) -> dict[str, Any]:
     """Parse LLM response into enrichment dict."""
     # Try to extract JSON from response (may be wrapped in markdown code blocks)
@@ -181,13 +226,23 @@ def _parse_enrichment_response(response: str) -> dict[str, Any]:
             "dependencies": [],
         }
 
-    # Validate expected keys, fill missing with defaults
+    # Validate expected keys, fill missing with defaults. String fields are
+    # stripped of any smuggled code fences (BEAN-082).
     result: dict[str, Any] = {
-        "behavioral_description": data.get("behavioral_description", ""),
-        "inferred_intent": data.get("inferred_intent", ""),
-        "given_when_then": data.get("given_when_then", []),
-        "data_flow": data.get("data_flow", ""),
+        "behavioral_description": _strip_code_fences(
+            data.get("behavioral_description", "")
+        ),
+        "inferred_intent": _strip_code_fences(data.get("inferred_intent", "")),
+        "given_when_then": _strip_code_fences(data.get("given_when_then", [])),
+        "data_flow": _strip_code_fences(data.get("data_flow", "")),
         "priority": data.get("priority", "medium"),
         "dependencies": data.get("dependencies", []),
     }
+
+    # Optional exact-value fields (BEAN-082). Only included when the model
+    # actually returned them, so an absent field never clears structural data.
+    for key in ("exact_rules", "error_contract"):
+        value = data.get(key)
+        if isinstance(value, list) and value:
+            result[key] = _strip_code_fences(value)
     return result
