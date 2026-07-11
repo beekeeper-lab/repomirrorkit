@@ -103,7 +103,7 @@
 | BEAN-079 | Stage G Orchestration-Policy Parameterization + Telemetry | App | Medium | In Progress | team-lead |
 | BEAN-080 | `--mirror` Mode + Stage H Cleanup (Delete Source & Git History) | App | High | Done | team-lead |
 | BEAN-081 | Verbatim-Rule Bean Templates + Zero-`TODO:` Placeholder Policy | App | High | Done | team-lead |
-| BEAN-082 | Exact-Value Extraction — Analyzer Depth + LLM `exact_rules` Contract | App | High | Approved | team-lead |
+| BEAN-082 | Exact-Value Extraction — Analyzer Depth + LLM `exact_rules` Contract | App | High | Done | team-lead |
 | BEAN-083 | Sensitive Findings — Redact Secrets/PII and Surface to Operator | App | High | Approved | team-lead |
 
 > BEAN-059–079 originate from the recreation-grade audit (2026-07-03). Sequencing, dependency graph, and parallelism analysis: see `ROADMAP-RECREATION.md` at the repo root.
