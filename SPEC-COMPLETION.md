@@ -51,7 +51,7 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 - [x] **4.1** BEAN-063 JS/TS API contracts (Express, NestJS, Next.js route handlers): populate request and response schemas. *Verify:* `ts-next` fixture: `gaps.md` shows 0 API schema gaps; fidelity gate PASSES; `api-contract.json` has fields for `/api/users`.
 - [x] **4.2** BEAN-064 `ScreenSurface`: pages, forms, fields, validation hints, field-to-model mapping, navigation edges. Start with React/Next, then Vue/Svelte; Python templates (Jinja) if cheap. *Verify:* `ts-next` yields a screen for `UserList` with fields mapped to `User`.
 - [x] **4.3** BEAN-065 `BusinessRuleSurface`: validation libraries (zod, pydantic, marshmallow, class-validator) and DB constraints. *Verify:* fixture rules appear as beans and in `surfaces.json`.
-- [ ] **4.4** BEAN-067 `WorkflowSurface` — BUILD (branch was empty). *Verify:* fixture or synthetic test emits a state graph.
+- [x] **4.4** BEAN-067 `WorkflowSurface` — BUILD (branch was empty). *Verify:* fixture or synthetic test emits a state graph.
 - [ ] **4.5** Non-Python/JS stacks: confirm .NET detector produces API contracts (parity with 4.1) or log it as a known gap in `README.md`. *Verify:* a .NET fixture exists and its output is checked.
 
 ## Phase 5 — Synthesis
@@ -103,3 +103,4 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 | 2026-11-11 | 4.1 | BEAN-063: JS/TS contract extraction (Next app router, Express, NestJS DTOs, zod, typed bodies, status codes, errors, arrays); OpenAPI renders arrays/status/errors; ts-next fidelity gate now PASSES; 1,909 tests. | bean/BEAN-063-js-ts-api-contracts |
 | 2026-11-11 | 4.2 | BEAN-064: ScreenSurface (React/Next via tree-sitter, HTML/Jinja/Vue/Svelte via regex): fields, labels, validation (HTML attrs, RHF register, zodResolver), actions (fetch/axios/SWR/forms), navigation, field→API→model mapping w/ gaps; TS interface/zod models extractor; fidelity screen_field_mappings metric live; UserForm added to ts-next fixture; 1,916 tests. | bean/BEAN-064-screen-surface |
 | 2026-11-11 | 4.3 | BEAN-065: BusinessRuleSurface mined from API/screen/model constraints + auth (zod, class-validator, pydantic Field/EmailStr, HTML/RHF, SQLAlchemy length/unique/not-null) in neutral language; both fixtures >=3 rules, 2+ kinds; 1,932 tests. | bean/BEAN-065-business-rules |
+| 2026-11-11 | 4.4 | BEAN-067: WorkflowSurface — declared (transitions lib, django-fsm, XState, transition tables py/ts) + inferred (status enum + assignments, linked to triggering API); new fixtures python-flask-workflow, ts-xstate; 1,940 tests. | bean/BEAN-067-workflows |

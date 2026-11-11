@@ -54,6 +54,8 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     SurfaceCollection,
     TestPatternSurface,
     UIFlowSurface,
+    WorkflowSurface,
+    WorkflowTransition,
 )
 from repo_mirror_kit.harvester.detectors.base import Signal, StackProfile
 from repo_mirror_kit.harvester.inventory import (
@@ -89,6 +91,7 @@ _SURFACE_TYPES: dict[str, type[Surface]] = {
     "seed_data": SeedDataSurface,
     "screen": ScreenSurface,
     "business_rule": BusinessRuleSurface,
+    "workflow": WorkflowSurface,
     "general_logic": GeneralLogicSurface,
 }
 
@@ -111,6 +114,7 @@ _COLLECTION_FIELDS: dict[str, str] = {
     "seed_data": "seed_data",
     "screens": "screen",
     "business_rules": "business_rule",
+    "workflows": "workflow",
     "general_logic": "general_logic",
 }
 
@@ -188,6 +192,18 @@ def surface_from_dict(data: dict[str, Any]) -> Surface:
                 **{k: v for k, v in a.items() if k in ScreenAction.__dataclass_fields__}
             )
             for a in data.get("actions", [])
+        ]
+
+    if cls is WorkflowSurface:
+        kwargs["transitions"] = [
+            WorkflowTransition(
+                **{
+                    k: v
+                    for k, v in t.items()
+                    if k in WorkflowTransition.__dataclass_fields__
+                }
+            )
+            for t in data.get("transitions", [])
         ]
 
     surface = cls(

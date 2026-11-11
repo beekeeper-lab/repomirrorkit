@@ -52,9 +52,12 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     SurfaceCollection,
     TestPatternSurface,
     UIFlowSurface,
+    WorkflowSurface,
+    WorkflowTransition,
 )
 from repo_mirror_kit.harvester.analyzers.test_patterns import analyze_test_patterns
 from repo_mirror_kit.harvester.analyzers.ui_flows import analyze_ui_flows
+from repo_mirror_kit.harvester.analyzers.workflows import analyze_workflows
 
 __all__ = [
     "ApiSurface",
@@ -82,6 +85,8 @@ __all__ = [
     "SurfaceCollection",
     "TestPatternSurface",
     "UIFlowSurface",
+    "WorkflowSurface",
+    "WorkflowTransition",
     "analyze_api_endpoints",
     "analyze_auth",
     "analyze_behavioral_spec",
@@ -101,6 +106,7 @@ __all__ = [
     "analyze_test_patterns",
     "analyze_ui_flows",
     "analyze_uncovered_files",
+    "analyze_workflows",
     "find_uncovered_files",
     "populate_js_api_contracts",
     "populate_python_api_contracts",

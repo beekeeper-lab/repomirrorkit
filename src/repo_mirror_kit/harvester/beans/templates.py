@@ -32,6 +32,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     Surface,
     TestPatternSurface,
     UIFlowSurface,
+    WorkflowSurface,
 )
 
 
@@ -1231,6 +1232,50 @@ def render_business_rule_bean(surface: BusinessRuleSurface, bean_id: str) -> str
     return fm + "\n" + body.lstrip("\n")
 
 
+def render_workflow_bean(surface: WorkflowSurface, bean_id: str) -> str:
+    """Render a workflow / state-machine bean (BEAN-067)."""
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="workflow",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+        surface=surface,
+    )
+    states = ", ".join(f"`{x}`" for x in surface.states) or "(none)"
+    rows = [
+        "| From | To | Trigger | Guard | Performed by |",
+        "|------|----|---------|-------|--------------|",
+    ]
+    for t in surface.transitions:
+        rows.append(
+            f"| `{t.from_state}` | `{t.to_state}` | {t.trigger or '-'} | "
+            f"{t.guard or '-'} | {t.trigger_ref or '-'} |"
+        )
+    table = "\n".join(rows) if surface.transitions else "_No transitions captured._"
+    body = f"""
+# {surface.name}
+
+## Lifecycle
+
+- Entity: `{surface.entity_ref or "unknown"}`
+- States: {states}
+- Initial state: {f"`{surface.initial_state}`" if surface.initial_state else "not determined"}
+- Evidence: {surface.confidence} ({surface.source_library or "code analysis"})
+
+{_render_enrichment_sections(surface)}
+## Transitions
+
+{table}
+
+## Structural acceptance criteria
+
+- [ ] The rebuilt application allows exactly these transitions and rejects all others.
+- [ ] Each transition is performed by the listed operation and enforces its guard.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
 _RENDERERS: dict[str, Any] = {
     "route": render_route_bean,
     "component": render_component_bean,
@@ -1249,6 +1294,7 @@ _RENDERERS: dict[str, Any] = {
     "seed_data": render_seed_data_bean,
     "screen": render_screen_bean,
     "business_rule": render_business_rule_bean,
+    "workflow": render_workflow_bean,
     "general_logic": render_general_logic_bean,
 }
 

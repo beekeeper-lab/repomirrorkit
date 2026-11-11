@@ -42,6 +42,7 @@ from repo_mirror_kit.harvester.analyzers import (
     analyze_test_patterns,
     analyze_ui_flows,
     analyze_uncovered_files,
+    analyze_workflows,
     find_uncovered_files,
     populate_js_api_contracts,
     populate_python_api_contracts,
@@ -806,6 +807,13 @@ class HarvestPipeline:
             test_patterns=test_patterns,
             seed_data=seed_data,
             screens=screens,
+        )
+
+        surfaces.workflows = analyze_workflows(workdir, inventory, apis)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Workflows: {len(surfaces.workflows)} found",
         )
 
         # BEAN-065: business rules are mined from the surfaces above.
