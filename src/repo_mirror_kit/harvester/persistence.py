@@ -32,6 +32,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ApiSurface,
     AuthSurface,
     BuildDeploySurface,
+    BusinessRuleSurface,
     ComponentSurface,
     ConfigSurface,
     CrosscuttingSurface,
@@ -87,6 +88,7 @@ _SURFACE_TYPES: dict[str, type[Surface]] = {
     "test_pattern": TestPatternSurface,
     "seed_data": SeedDataSurface,
     "screen": ScreenSurface,
+    "business_rule": BusinessRuleSurface,
     "general_logic": GeneralLogicSurface,
 }
 
@@ -108,6 +110,7 @@ _COLLECTION_FIELDS: dict[str, str] = {
     "test_patterns": "test_pattern",
     "seed_data": "seed_data",
     "screens": "screen",
+    "business_rules": "business_rule",
     "general_logic": "general_logic",
 }
 

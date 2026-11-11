@@ -172,6 +172,41 @@ def _find_class(tree: ast.Module, name: str) -> ast.ClassDef | None:
     return None
 
 
+_PYDANTIC_CONSTRAINTS: frozenset[str] = frozenset(
+    {
+        "min_length",
+        "max_length",
+        "ge",
+        "gt",
+        "le",
+        "lt",
+        "pattern",
+        "regex",
+        "multiple_of",
+        "min_items",
+        "max_items",
+    }
+)
+
+
+def _pydantic_rules(stmt: ast.AnnAssign) -> list[str]:
+    """Constraint kwargs of ``x: int = Field(ge=1)`` as ``"ge=1"`` strings."""
+    rules: list[str] = []
+    value = stmt.value
+    if (
+        isinstance(value, ast.Call)
+        and isinstance(value.func, ast.Name)
+        and value.func.id == "Field"
+    ):
+        for kw in value.keywords:
+            if kw.arg in _PYDANTIC_CONSTRAINTS:
+                rules.append(f"{kw.arg}={ast.unparse(kw.value)}")
+    annotation = _annotation_str(stmt.annotation)
+    if "EmailStr" in annotation:
+        rules.append("email")
+    return rules
+
+
 def _expand_model_fields(
     class_name: str,
     module_path: Path,
@@ -210,14 +245,16 @@ def _expand_model_fields(
             and stmt.value.args[0].value is Ellipsis
         ):
             required = True
-        fields.append(
-            {
-                "name": stmt.target.id,
-                "type": annotation or "unknown",
-                "required": required,
-                "source": source,
-            }
-        )
+        entry: dict[str, Any] = {
+            "name": stmt.target.id,
+            "type": annotation or "unknown",
+            "required": required,
+            "source": source,
+        }
+        rules = _pydantic_rules(stmt)
+        if rules:
+            entry["rules"] = rules
+        fields.append(entry)
     return fields or None
 
 

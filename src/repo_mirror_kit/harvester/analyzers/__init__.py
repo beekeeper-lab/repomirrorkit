@@ -10,6 +10,7 @@ from repo_mirror_kit.harvester.analyzers.apis import analyze_api_endpoints
 from repo_mirror_kit.harvester.analyzers.auth import analyze_auth
 from repo_mirror_kit.harvester.analyzers.behavioral_spec import analyze_behavioral_spec
 from repo_mirror_kit.harvester.analyzers.build_deploy import analyze_build_deploy
+from repo_mirror_kit.harvester.analyzers.business_rules import analyze_business_rules
 from repo_mirror_kit.harvester.analyzers.components import analyze_components
 from repo_mirror_kit.harvester.analyzers.config_env import analyze_config
 from repo_mirror_kit.harvester.analyzers.crosscutting import analyze_crosscutting
@@ -29,6 +30,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ApiSurface,
     AuthSurface,
     BuildDeploySurface,
+    BusinessRuleSurface,
     ComponentSurface,
     ConfigSurface,
     CrosscuttingSurface,
@@ -58,6 +60,7 @@ __all__ = [
     "ApiSurface",
     "AuthSurface",
     "BuildDeploySurface",
+    "BusinessRuleSurface",
     "ComponentSurface",
     "ConfigSurface",
     "CrosscuttingSurface",
@@ -83,6 +86,7 @@ __all__ = [
     "analyze_auth",
     "analyze_behavioral_spec",
     "analyze_build_deploy",
+    "analyze_business_rules",
     "analyze_components",
     "analyze_config",
     "analyze_crosscutting",

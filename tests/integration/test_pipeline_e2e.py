@@ -68,7 +68,7 @@ def test_pipeline_python_flask_fixture(
     api_beans = [
         p.read_text()
         for p in bean_files
-        if "post-api-users" in p.name.lower() or "POST /api/users" in p.read_text()
+        if "type: api\n" in p.read_text() and "POST /api/users" in p.read_text()
     ]
     assert api_beans, "Expected an API bean for POST /api/users"
     post_bean = api_beans[0]
@@ -207,3 +207,25 @@ def test_pipeline_ts_next_screen_with_field_mapping(
         if m["name"] == "screen_field_mappings"
     )
     assert metric["applicable"] and metric["percentage"] == 100.0
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("fixture", ["python-flask", "ts-next"])
+def test_fixture_business_rules(
+    local_git_repo: Callable[[str], Path], tmp_path: Path, fixture: str
+) -> None:
+    """BEAN-065: >=3 rules, >=2 kinds, every rule links to a real surface."""
+    out = tmp_path / "harvest-out"
+    assert _run_pipeline(local_git_repo(fixture), out).success
+    surfaces = json.loads((out / "surfaces.json").read_text())["surfaces"]
+    rules = surfaces["business_rules"]
+    assert len(rules) >= 3
+    assert len({r["rule_kind"] for r in rules}) >= 2
+    names = {
+        s["name"]
+        for key, group in surfaces.items()
+        if key != "business_rules"
+        for s in group
+    }
+    assert all(r["applies_to"] and set(r["applies_to"]) <= names for r in rules)
+    assert (out / "beans").glob("BEAN-*.md")

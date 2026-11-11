@@ -82,6 +82,12 @@ _SECTIONS: tuple[tuple[str, str, str, str], ...] = (
         "No screens or forms detected.",
     ),
     (
+        "Business Rules",
+        "business_rule",
+        "business_rules",
+        "No business rules detected.",
+    ),
+    (
         "Other Logic",
         "general_logic",
         "general_logic",
