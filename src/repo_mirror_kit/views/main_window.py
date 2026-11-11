@@ -14,13 +14,36 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from repo_mirror_kit.harvester.providers import (
+    PROVIDERS,
+    LlmSettings,
+    key_status,
+    load_settings,
+    load_user_env,
+)
 from repo_mirror_kit.services.clone_service import (
     check_git_available,
     validate_git_url,
     validate_project_name,
 )
+from repo_mirror_kit.views.settings_dialog import SettingsDialog
 from repo_mirror_kit.workers.clone_worker import CloneWorker
 from repo_mirror_kit.workers.harvest_worker import HarvestWorker
+
+
+def next_output_dir(project_dir: Path) -> Path:
+    """Fresh output folder for a harvest: ``ai``, then ``ai-2``, ``ai-3``, ...
+
+    The harvester clones into ``<out>/repo`` and refuses to overwrite it, so a
+    second run into the same folder would fail at Stage A. Earlier results are
+    never deleted.
+    """
+    candidate = project_dir / "ai"
+    n = 2
+    while candidate.exists():
+        candidate = project_dir / f"ai-{n}"
+        n += 1
+    return candidate
 
 
 class MainWindow(QMainWindow):
@@ -33,6 +56,8 @@ class MainWindow(QMainWindow):
         self._worker: CloneWorker | None = None
         self._harvest_worker: HarvestWorker | None = None
         self._clone_project_name: str | None = None
+        load_user_env()  # per-user key file; real environment variables still win
+        self._llm_settings: LlmSettings = load_settings()
         self._setup_ui()
         self._connect_signals()
 
@@ -80,6 +105,15 @@ class MainWindow(QMainWindow):
         self._harvest_button.hide()
         layout.addWidget(self._harvest_button)
 
+        # LLM settings summary + button
+        llm_layout = QHBoxLayout()
+        self._llm_label = QLabel()
+        self._settings_button = QPushButton("LLM Settings...")
+        llm_layout.addWidget(self._llm_label, 1)
+        llm_layout.addWidget(self._settings_button)
+        layout.addLayout(llm_layout)
+        self._refresh_llm_label()
+
         # Status label
         self._status_label = QLabel()
         layout.addWidget(self._status_label)
@@ -101,6 +135,28 @@ class MainWindow(QMainWindow):
         self._fetch_button.clicked.connect(self._on_fetch_clicked)
         self._log_toggle.toggled.connect(self._on_log_toggled)
         self._harvest_button.clicked.connect(self._on_harvest_clicked)
+        self._settings_button.clicked.connect(self._on_settings_clicked)
+
+    def _refresh_llm_label(self) -> None:
+        s = self._llm_settings
+        if not s.enabled:
+            self._llm_label.setText("LLM enrichment: off (structural analysis only)")
+            return
+        provider = PROVIDERS[s.provider]
+        status = key_status(provider)
+        suffix = (
+            ""
+            if status in ("not needed", "environment", "env file")
+            else " — NO KEY SET"
+        )
+        self._llm_label.setText(f"LLM enrichment: {provider.label}{suffix}")
+
+    @Slot()
+    def _on_settings_clicked(self) -> None:
+        dialog = SettingsDialog(self._llm_settings, self)
+        if dialog.exec():
+            self._llm_settings = dialog.settings()
+        self._refresh_llm_label()
 
     @Slot()
     def _on_fetch_clicked(self) -> None:
@@ -168,15 +224,20 @@ class MainWindow(QMainWindow):
             return
 
         project_dir = Path("projects") / self._clone_project_name
-        output_dir = project_dir / "ai"
+        output_dir = next_output_dir(project_dir)
 
         self._set_harvesting_state(enabled=False)
-        self._status_label.setText("Harvesting: starting pipeline...")
+        self._status_label.setText(
+            f"Harvesting: starting pipeline... (output: {output_dir})"
+        )
         self._log_area.clear()
         self._log_area.show()
         self._log_toggle.setChecked(True)
 
-        self._harvest_worker = HarvestWorker(project_dir, output_dir)
+        self._harvest_worker = HarvestWorker(
+            project_dir, output_dir, self._llm_settings
+        )
+        self._harvest_worker.log_message.connect(self._on_progress_updated)
         self._harvest_worker.stage_changed.connect(self._on_stage_changed)
         self._harvest_worker.progress_updated.connect(self._on_progress_updated)
         self._harvest_worker.harvest_finished.connect(self._on_harvest_finished)
@@ -219,3 +280,4 @@ class MainWindow(QMainWindow):
         self._harvest_button.setEnabled(enabled)
         self._name_input.setEnabled(enabled)
         self._url_input.setEnabled(enabled)
+        self._settings_button.setEnabled(enabled)

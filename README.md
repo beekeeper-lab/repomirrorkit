@@ -67,13 +67,26 @@ uv run requirements-harvester parity-score --harvest-dir out --rebuild-dir rebui
 
 Scores golden request/response replay, generated Gherkin scenarios (calibrated against the original) and database schema; gate ≥ 90%. See `docs/parity-eval-runbook.md` and the first results in `docs/rebuild-eval-2026-11-11.md`. **Security:** the rebuilt app is LLM-generated, untrusted code — `parity-score` runs it with a scrubbed environment (no host secrets), but run evals in a container or VM; `--permission-mode bypassPermissions` lets the rebuild agent execute commands unattended.
 
+### LLM providers and API keys
+
+Pick a provider with `--llm-provider` (CLI) or **LLM Settings...** (GUI). All of them can be tested with `requirements-harvester llm-check --provider <name>`.
+
+| Provider | `--llm-provider` | Key variable | Notes |
+|----------|------------------|--------------|-------|
+| Anthropic | `anthropic` | `ANTHROPIC_API_KEY` | default endpoint |
+| Kimi (Moonshot) | `kimi` | `KIMI_API_KEY` (or `MOONSHOT_API_KEY`) | Anthropic-compatible endpoint; model name editable |
+| DeepSeek | `deepseek` | `DEEPSEEK_API_KEY` | Anthropic-compatible endpoint; model name editable |
+| Claude Code login | `claude-cli` | none | uses your subscription via `claude -p` |
+
+**Keys never go in the repository or on a command line.** Either export the variable in your shell, or store it in the per-user file `~/.config/repomirrorkit/providers.env` (honours `XDG_CONFIG_HOME`; created with mode 600). The GUI's *Save key* button writes that file; it never displays a saved key back. Real environment variables win over the file. `.gitignore` blocks `.env`/`providers.env`, `scripts/check-no-secrets.sh` (run in CI and by a test) fails if a key-shaped string or key file is ever tracked, and a config's `repr` never includes its key.
+
 ### GUI (interactive launcher)
 
 ```bash
 uv run python -m repo_mirror_kit
 ```
 
-The GUI wraps a subset of CLI options (clone + harvest) and is intended as a quick-start surface; for advanced configuration (LLM enrichment, custom include/exclude globs, resume, file size limits) use the CLI.
+The GUI wraps clone + harvest, LLM provider settings and a live log panel (stage changes, per-surface LLM progress and the pipeline's structured logs). Each harvest writes to a fresh `projects/<name>/ai`, `ai-2`, ... folder. For advanced options (custom include/exclude globs, resume, mirror mode) use the CLI.
 
 ## Development
 

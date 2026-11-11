@@ -96,6 +96,11 @@ def enrich_with_client(
     neighbors = _neighbor_index(all_surfaces) if agentic else {}
     spent = 0.0
 
+    _emit_progress(
+        callback,
+        f"LLM enrichment starting: {total} surfaces, model {config.llm_model}"
+        + (" (agentic)" if agentic else " (single-shot)"),
+    )
     for i, surface in enumerate(all_surfaces):
         record = telemetry.start(surface)
         if config.llm_budget_usd > 0 and spent >= config.llm_budget_usd:
@@ -139,19 +144,10 @@ def enrich_with_client(
         spent += float(record["est_cost_usd"])
         telemetry.add(record)
 
-        if callback is not None and (i + 1) % 5 == 0:
-            from repo_mirror_kit.harvester.pipeline import (
-                PipelineEvent,
-                PipelineEventType,
-            )
-
-            callback(
-                PipelineEvent(
-                    event_type=PipelineEventType.PROGRESS_UPDATE,
-                    stage="C2",
-                    message=f"Enriched {i + 1}/{total} surfaces",
-                )
-            )
+        _emit_progress(
+            callback,
+            f"LLM enrichment {i + 1}/{total}: {surface.name} ({record['status']})",
+        )
 
     summary = telemetry.summary(spent, config.llm_budget_usd, price)
     logger.info("llm_enrichment_complete", **summary)
@@ -161,13 +157,27 @@ def enrich_with_client(
     return surfaces
 
 
+def _emit_progress(callback: Callable[..., Any] | None, message: str) -> None:
+    """Log a progress line and forward it to the pipeline callback, if any."""
+    logger.info("llm_progress", message=message)
+    if callback is None:
+        return
+    from repo_mirror_kit.harvester.pipeline import PipelineEvent, PipelineEventType
+
+    callback(
+        PipelineEvent(
+            event_type=PipelineEventType.PROGRESS_UPDATE, stage="C2", message=message
+        )
+    )
+
+
 # Estimated $/MTok (input, output) for budgeting only — assumptions, not a
 # billing source of truth. Local endpoints cost nothing.
 _ASSUMED_PRICE_PER_MTOK = (3.0, 15.0)
 
 
 def _price_for(client: Any, config: HarvestConfig) -> tuple[float, float]:
-    if getattr(client, "is_local", False) or config.llm_base_url:
+    if getattr(client, "is_local", False):
         return (0.0, 0.0)
     return _ASSUMED_PRICE_PER_MTOK
 

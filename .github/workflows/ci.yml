@@ -22,6 +22,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libegl1 libgl1 libxkbcommon0 libdbus-1-3 libfontconfig1 libglib2.0-0
       - run: uv sync --all-extras --dev
+      - name: Secret scan (no keys in the repo)
+        run: scripts/check-no-secrets.sh
       - name: Lint
         run: uv run ruff check src tests
       - name: Format check

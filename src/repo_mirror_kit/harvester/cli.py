@@ -180,6 +180,14 @@ def main() -> None:
     "(and recorded as skipped_budget) once reached. Local endpoints cost $0.",
 )
 @click.option(
+    "--llm-provider",
+    type=click.Choice(["anthropic", "kimi", "deepseek", "claude-cli"]),
+    default=None,
+    help="LLM provider: fills in the endpoint, key lookup and default model. "
+    "Keys come from the environment or ~/.config/repomirrorkit/providers.env "
+    "(never from the command line). 'claude-cli' uses your Claude Code login.",
+)
+@click.option(
     "--llm-backend",
     type=click.Choice(["api", "claude-cli"]),
     default="api",
@@ -245,6 +253,7 @@ def harvest(
     llm_enabled: bool,
     llm_model: str,
     llm_agentic: bool,
+    llm_provider: str | None,
     llm_backend: str,
     llm_concurrency: int,
     llm_max_turns: int,
@@ -259,7 +268,14 @@ def harvest(
     # argv (would leak into shell history and ps output). If --llm is on
     # without ANTHROPIC_API_KEY, HarvestConfig downgrades to structural-only
     # output with a warning (BEAN-056).
-    llm_api_key = os.environ.get("ANTHROPIC_API_KEY")
+    from repo_mirror_kit.harvester.providers import load_user_env
+
+    load_user_env()  # per-user env file; real environment variables still win
+    llm_api_key = (
+        os.environ.get("ANTHROPIC_API_KEY")
+        if llm_provider in (None, "anthropic")
+        else None
+    )
     try:
         config = HarvestConfig(
             repo=repo,
@@ -280,6 +296,7 @@ def harvest(
             llm_base_url=llm_base_url,
             llm_agentic=llm_agentic,
             llm_backend=llm_backend,
+            llm_provider=llm_provider,
             llm_concurrency=llm_concurrency,
             llm_max_turns=llm_max_turns,
             llm_budget_usd=llm_budget_usd,
@@ -294,7 +311,7 @@ def harvest(
 
     from repo_mirror_kit.harvester.pipeline import HarvestPipeline
 
-    pipeline = HarvestPipeline()
+    pipeline = HarvestPipeline(callback=_print_progress)
     result = pipeline.run(config)
 
     if not result.success:
@@ -580,6 +597,18 @@ def score(original: Path, rebuilt: Path, out: Path | None) -> None:
     sys.exit(EXIT_SUCCESS)
 
 
+def _print_progress(event: Any) -> None:
+    """Terminal progress: stage starts and in-stage updates go to stderr."""
+    from repo_mirror_kit.harvester.pipeline import PipelineEventType
+
+    if event.event_type is PipelineEventType.STAGE_START:
+        click.echo(f"[{event.stage}] {event.message}...", err=True)
+    elif event.event_type is PipelineEventType.PROGRESS_UPDATE:
+        click.echo(f"    {event.message}", err=True)
+    elif event.event_type is PipelineEventType.STAGE_ERROR:
+        click.echo(f"[{event.stage}] ERROR: {event.message}", err=True)
+
+
 def _parse_kv(pairs: tuple[str, ...], sep: str) -> dict[str, str]:
     out: dict[str, str] = {}
     for item in pairs:
@@ -802,3 +831,37 @@ def parity_score(
         click.echo(f"  {family}: {'N/A' if score is None else f'{100 * score:.1f}%'}")
     click.echo(f"Report: {mpath}")
     sys.exit(EXIT_SUCCESS if report.passed else EXIT_FIDELITY_FAILED)
+
+
+@main.command("llm-check")
+@click.option(
+    "--provider",
+    type=click.Choice(["anthropic", "kimi", "deepseek", "claude-cli"]),
+    required=True,
+    help="Provider to test with a tiny request.",
+)
+@click.option("--model", default=None, help="Override the provider's default model.")
+def llm_check(provider: str, model: str | None) -> None:
+    """Check that a provider's key/login works (same as the GUI's Test connection)."""
+    from repo_mirror_kit.harvester.llm.probe import probe_provider
+    from repo_mirror_kit.harvester.providers import (
+        PROVIDERS,
+        env_file_path,
+        load_user_env,
+    )
+
+    load_user_env()
+    info = PROVIDERS[provider]
+    click.echo(f"Testing {info.label}...")
+    result = probe_provider(provider, model)
+    if result.ok:
+        click.echo(f"OK: {result.message} ({result.seconds:.1f}s)")
+        return
+    click.echo(f"FAILED: {result.message}", err=True)
+    if info.kind == "api":
+        click.echo(
+            f"Set {' or '.join(info.env_vars)} in your environment, or add it to "
+            f"{env_file_path()} (the GUI's LLM Settings can write it).",
+            err=True,
+        )
+    sys.exit(EXIT_UNEXPECTED)

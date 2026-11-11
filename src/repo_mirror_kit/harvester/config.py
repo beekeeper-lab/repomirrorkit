@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+
+from repo_mirror_kit.harvester.providers import is_local_endpoint
 
 DEFAULT_EXCLUDE_GLOBS: tuple[str, ...] = (
     "node_modules",
@@ -28,6 +30,8 @@ DEFAULT_LLM_ENABLED: bool = True
 
 VALID_LOG_LEVELS: frozenset[str] = frozenset({"debug", "info", "warn", "error"})
 
+
+DEFAULT_LLM_MODEL = "claude-sonnet-5-5"
 
 VALID_STAGES: tuple[str, ...] = ("A", "B", "C", "C2", "C3", "D", "E", "F", "G")
 
@@ -90,8 +94,9 @@ class HarvestConfig:
     fail_on_fidelity: bool | None = None
     log_level: str = "info"
     llm_enabled: bool = DEFAULT_LLM_ENABLED
-    llm_api_key: str | None = None
-    llm_model: str = "claude-sonnet-5-5"
+    # repr=False: a config must never print its key (logs, tracebacks, debuggers).
+    llm_api_key: str | None = field(default=None, repr=False)
+    llm_model: str = DEFAULT_LLM_MODEL
     llm_base_url: str | None = None
     # BEAN-068: agentic enrichment (read/grep/list tools over the clone).
     llm_agentic: bool = True
@@ -101,10 +106,19 @@ class HarvestConfig:
     # (headless `claude -p` on the operator's Claude Code login — no API key).
     llm_backend: str = "api"
     llm_concurrency: int = 1
+    # Provider id from harvester.providers (anthropic | kimi | deepseek | claude-cli).
+    # Fills in endpoint, key lookup and default model when those are not given.
+    llm_provider: str | None = None
     # BEAN-080: mirror mode + Stage H cleanup. See SPEC-MIRROR-MODE.md.
     mirror: bool = False
     keep_source: bool = False
     cleanup: bool | None = None
+
+    def _apply_provider(self) -> None:
+        _provider_defaults(self)
+
+    def _key_hint(self) -> str:
+        return _key_hint_for(self)
 
     def __post_init__(self) -> None:
         """Validate configuration values after initialization."""
@@ -123,6 +137,7 @@ class HarvestConfig:
             raise ConfigValidationError(str(exc)) from exc
         if self.llm_max_turns < 1:
             raise ConfigValidationError("--llm-max-turns must be >= 1")
+        self._apply_provider()
         if self.llm_backend not in ("api", "claude-cli"):
             raise ConfigValidationError(
                 f"Invalid --llm-backend '{self.llm_backend}'. Must be 'api' or 'claude-cli'."
@@ -169,7 +184,7 @@ class HarvestConfig:
                         "`claude` CLI on PATH."
                     )
             else:
-                if not self.llm_api_key and not self.llm_base_url:
+                if not self.llm_api_key and not is_local_endpoint(self.llm_base_url):
                     raise ConfigValidationError(
                         "--mirror requires ANTHROPIC_API_KEY to be set (or "
                         "--llm-backend claude-cli / --llm-base-url).\n"
@@ -202,7 +217,11 @@ class HarvestConfig:
                     "falling back to structural-only mode.\n\n"
                 )
                 object.__setattr__(self, "llm_enabled", False)
-        elif self.llm_enabled and not self.llm_api_key and not self.llm_base_url:
+        elif (
+            self.llm_enabled
+            and not self.llm_api_key
+            and not is_local_endpoint(self.llm_base_url)
+        ):
             # BEAN-056: --llm is default-on, so a missing API key must NOT
             # raise — it would break every default invocation. Emit a clear,
             # actionable warning to stderr and silently downgrade
@@ -214,7 +233,7 @@ class HarvestConfig:
 
             sys.stderr.write(
                 "\n"
-                "⚠ ANTHROPIC_API_KEY is not set — falling back to "
+                f"⚠ No API key found for {self._key_hint()} — falling back to "
                 "structural-only mode (no LLM enrichment).\n"
                 "\n"
                 "  Get a key: https://console.anthropic.com/settings/keys\n"
@@ -224,6 +243,39 @@ class HarvestConfig:
                 "\n"
             )
             object.__setattr__(self, "llm_enabled", False)
+
+
+def _key_hint_for(config: HarvestConfig) -> str:
+    from repo_mirror_kit.harvester.providers import PROVIDERS, env_file_path
+
+    provider = PROVIDERS.get(config.llm_provider or "anthropic")
+    names = " / ".join(provider.env_vars) if provider else "ANTHROPIC_API_KEY"
+    return f"{names} (set it in your environment or in {env_file_path()})"
+
+
+def _provider_defaults(config: HarvestConfig) -> None:
+    """Resolve ``llm_provider`` into backend / endpoint / key / model."""
+    from repo_mirror_kit.harvester.providers import PROVIDERS, find_key
+
+    if config.llm_provider is None:
+        return
+    provider = PROVIDERS.get(config.llm_provider)
+    if provider is None:
+        raise ConfigValidationError(
+            f"Invalid --llm-provider '{config.llm_provider}'. "
+            f"Must be one of: {', '.join(PROVIDERS)}"
+        )
+    if provider.kind == "cli":
+        object.__setattr__(config, "llm_backend", "claude-cli")
+    else:
+        if config.llm_base_url is None and provider.base_url:
+            object.__setattr__(config, "llm_base_url", provider.base_url)
+        if not config.llm_api_key:
+            value, _source = find_key(provider)
+            if value:
+                object.__setattr__(config, "llm_api_key", value)
+    if config.llm_model == DEFAULT_LLM_MODEL and provider.default_model:
+        object.__setattr__(config, "llm_model", provider.default_model)
 
 
 def parse_glob_patterns(value: str) -> tuple[str, ...]:

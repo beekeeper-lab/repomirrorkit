@@ -12,6 +12,9 @@ venv/
 # Environment and secrets
 .env
 .env.*
+!.env.example
+providers.env
+*.env
 *.local.json
 
 # IDE

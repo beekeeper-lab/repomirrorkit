@@ -135,6 +135,28 @@ def _snapshot_to_kwargs(snapshot: ProgressSnapshot) -> dict[str, Any]:
     return kwargs
 
 
+# Extra handlers (e.g. the GUI log panel) survive ``configure_logging``, which
+# the pipeline calls at the start of every run and which resets the root logger.
+_EXTRA_HANDLERS: list[logging.Handler] = []
+
+
+def register_log_handler(handler: logging.Handler) -> None:
+    """Attach *handler* to the harvester's logging now and across reconfigures.
+
+    The handler is given a plain-text (no ANSI colour) formatter.
+    """
+    if handler not in _EXTRA_HANDLERS:
+        _EXTRA_HANDLERS.append(handler)
+    logging.getLogger().addHandler(handler)
+
+
+def unregister_log_handler(handler: logging.Handler) -> None:
+    """Detach a handler added with :func:`register_log_handler`."""
+    if handler in _EXTRA_HANDLERS:
+        _EXTRA_HANDLERS.remove(handler)
+    logging.getLogger().removeHandler(handler)
+
+
 def configure_logging(
     log_level: str = "info",
     *,
@@ -184,9 +206,20 @@ def configure_logging(
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
 
+    plain_formatter = structlog.stdlib.ProcessorFormatter(
+        processors=[
+            structlog.stdlib.ProcessorFormatter.remove_processors_meta,
+            structlog.dev.ConsoleRenderer(colors=False),
+        ],
+        foreign_pre_chain=shared_processors,
+    )
+
     root_logger = logging.getLogger()
     root_logger.handlers.clear()
     root_logger.addHandler(handler)
+    for extra in _EXTRA_HANDLERS:
+        extra.setFormatter(plain_formatter)
+        root_logger.addHandler(extra)
     root_logger.setLevel(level)
 
 

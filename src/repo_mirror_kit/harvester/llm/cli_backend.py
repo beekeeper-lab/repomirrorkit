@@ -42,6 +42,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import Surface, SurfaceCollect
 from repo_mirror_kit.harvester.config import HarvestConfig
 from repo_mirror_kit.harvester.llm.agent import parse_agent_json
 from repo_mirror_kit.harvester.llm.enrichment import (
+    _emit_progress,
     _neighbor_index,
     _read_source_for_surface,
     _Telemetry,
@@ -198,6 +199,11 @@ def enrich_with_claude_cli(
     lock = threading.Lock()
     state = {"spent": 0.0, "done": 0}
     budget = config.llm_budget_usd
+    _emit_progress(
+        callback,
+        f"LLM enrichment starting via claude CLI: {len(all_surfaces)} surfaces "
+        f"(concurrency {config.llm_concurrency}); each call takes ~10-30s",
+    )
 
     def work(surface: Surface) -> dict[str, Any]:
         record = telemetry.start(surface)
@@ -251,23 +257,15 @@ def enrich_with_claude_cli(
         record["status"] = "ok"
         return record
 
-    def tick(_: Any) -> None:
+    def tick(rec: dict[str, Any]) -> None:
         with lock:
             state["done"] += 1
             n = state["done"]
-        if callback is not None and n % 5 == 0:
-            from repo_mirror_kit.harvester.pipeline import (
-                PipelineEvent,
-                PipelineEventType,
-            )
-
-            callback(
-                PipelineEvent(
-                    event_type=PipelineEventType.PROGRESS_UPDATE,
-                    stage="C2",
-                    message=f"Enriched {n}/{len(all_surfaces)} surfaces",
-                )
-            )
+        _emit_progress(
+            callback,
+            f"LLM enrichment {n}/{len(all_surfaces)}: {rec['surface']} "
+            f"({rec['status']}{', ' + str(rec['seconds']) + 's' if rec.get('seconds') else ''})",
+        )
 
     with ThreadPoolExecutor(max_workers=config.llm_concurrency) as pool:
         records = []

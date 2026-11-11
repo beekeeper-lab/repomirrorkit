@@ -8,6 +8,8 @@ from typing import Any
 
 import structlog
 
+from repo_mirror_kit.harvester.providers import is_local_endpoint
+
 logger = structlog.get_logger()
 
 # Guarded import — anthropic is optional
@@ -63,7 +65,7 @@ class LLMClient:
             msg = "anthropic package is not installed. Install with: pip install anthropic"
             raise ImportError(msg)
         if base_url:
-            resolved_key = api_key or "ollama"
+            resolved_key = api_key or ("ollama" if is_local_endpoint(base_url) else "")
             self._client: Any = anthropic.Anthropic(
                 api_key=resolved_key, base_url=base_url, timeout=REQUEST_TIMEOUT_S
             )
@@ -72,7 +74,7 @@ class LLMClient:
                 api_key=api_key, timeout=REQUEST_TIMEOUT_S
             )
         self._model = model
-        self._local = bool(base_url)
+        self._local = is_local_endpoint(base_url)
         self._rpm = requests_per_minute
         self._min_interval = 60.0 / requests_per_minute
         self._last_request_time: float = 0.0
