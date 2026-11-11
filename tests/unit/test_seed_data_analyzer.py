@@ -9,7 +9,7 @@ from repo_mirror_kit.harvester.analyzers.seed_data import (
     analyze_seed_data,
 )
 from repo_mirror_kit.harvester.config import HarvestConfig
-from repo_mirror_kit.harvester.inventory import scan
+from repo_mirror_kit.harvester.inventory import FileEntry, InventoryResult, scan
 
 
 def _inventory(tmp_path: Path):
@@ -125,3 +125,33 @@ class TestFixturesAndTruncation:
     def test_invalid_json_fixture_skipped(self, tmp_path: Path) -> None:
         _write(tmp_path, "fixtures/broken.json", "{not json")
         assert analyze_seed_data(tmp_path, _inventory(tmp_path)) == []
+
+
+class TestConstantCollections:
+    """Reference data defined as module-level constants (found by the parity eval)."""
+
+    def test_python_constants_and_js_arrays(self, tmp_path: Path) -> None:
+        (tmp_path / "app.py").write_text(
+            'SEED_CATEGORIES = ["books", "games", "music"]\n'
+            'ROLE_LEVELS = {"admin": 3, "user": 1}\n'
+            "ITEMS = [1, 2, 3]\n"  # not seed-like by name
+            'DEFAULT_TIERS = [{"name": "free", "price": 0}, {"name": "pro", "price": 9}]\n'
+        )
+        (tmp_path / "server.js").write_text(
+            "const categories = [\n  { id: 1, name: 'books' },\n  { id: 2, name: 'games' },\n];\n"
+            "const orders = [];\n"
+            "const statuses = ['draft', 'paid'];\n"
+        )
+        entries = [
+            FileEntry(path=p, size=1, extension="." + p.rsplit(".", 1)[-1], hash="h", category="source")
+            for p in ("app.py", "server.js")
+        ]
+        inv = InventoryResult(files=entries, skipped=[], total_files=2, total_size=1, total_skipped=0)
+
+        found = {s.dataset_name: s for s in analyze_seed_data(tmp_path, inv)}
+
+        assert set(found) == {"SEED_CATEGORIES", "ROLE_LEVELS", "DEFAULT_TIERS", "categories", "statuses"}
+        assert [r["value"] for r in found["SEED_CATEGORIES"].values] == ["books", "games", "music"]
+        assert found["ROLE_LEVELS"].values == [{"key": "admin", "value": 3}, {"key": "user", "value": 1}]
+        assert found["categories"].values == [{"id": 1, "name": "books"}, {"id": 2, "name": "games"}]
+        assert found["categories"].kind == "constant"

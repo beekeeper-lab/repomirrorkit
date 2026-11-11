@@ -84,6 +84,16 @@ _EXPRESS_AUTH_RE: re.Pattern[str] = re.compile(
     re.VERBOSE | re.IGNORECASE,
 )
 
+# Whole-word auth middleware identifiers (never substrings: "unauthorized").
+_EXPRESS_MIDDLEWARE_AUTH_RE: re.Pattern[str] = re.compile(
+    r"""
+    \b(?:authenticate|isAuth\w*|requireAuth\w*|ensureAuth\w*|passport\.authenticate
+       |verifyToken|authMiddleware|requireLogin|isAuthenticated|protect|auth|jwtCheck
+       |checkJwt|requireRole\w*|authorize)\b
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
 # ---------------------------------------------------------------------------
 # NestJS patterns
 # ---------------------------------------------------------------------------
@@ -273,12 +283,20 @@ def _extract_express_endpoints(
         if not content:
             continue
 
-        has_auth = bool(_EXPRESS_AUTH_RE.search(content))
-
         for match in _EXPRESS_ROUTE_RE.finditer(content):
             method = match.group("method").upper()
             path = match.group("path")
             line_num = content[: match.start()].count("\n") + 1
+            # Auth middleware sits between the path and the handler; judging
+            # the whole file would flag every route in it (and would match
+            # words like "unauthorized"). Handler-body auth is handled by the
+            # api_auth refinement pass.
+            segment = re.split(
+                r"\(\s*(?:req|request|ctx)\b|=>|\basync\b|\bfunction\b",
+                content[match.end() : content.find("\n", match.end())],
+                maxsplit=1,
+            )[0]
+            has_auth = bool(_EXPRESS_MIDDLEWARE_AUTH_RE.search(segment))
 
             surfaces.append(
                 ApiSurface(

@@ -107,7 +107,7 @@ class TestFlaskExtraction:
         populate_python_api_contracts([surface], tmp_path)
 
         assert surface.request_schema == {"fields": [], "confidence": "inferred"}
-        assert surface.response_schema == {"unknown": True}
+        assert surface.response_schema == {"unknown": True, "status": 200}
 
 
 FASTAPI_APP = """\
@@ -261,3 +261,51 @@ class TestFlaskShorthandContracts:
         fields = {f["name"]: f for f in surface.request_schema["fields"]}
         assert fields["name"]["required"] is True
         assert surface.request_schema["confidence"] == "inferred"
+
+
+FLASK_STATUS_APP = """\
+from flask import abort, jsonify, request
+
+
+def create_app():
+    def unauthorized():
+        return jsonify({"error": "unauthorized"}), 401
+
+    def transition(order_id, target):
+        if not request.headers.get("X-API-Key"):
+            return unauthorized()
+        if order_id > 100:
+            return jsonify({"error": "not found"}), 404
+        return jsonify({"id": order_id, "status": target})
+
+    @app.post("/orders")
+    def create():
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "invalid json"}), 400
+        if "customer" not in data:
+            abort(422)
+        return jsonify({"id": 1}), 201
+
+    @app.post("/orders/<int:order_id>/pay")
+    def pay(order_id):
+        return transition(order_id, "paid")
+"""
+
+
+class TestFlaskStatusAndErrors:
+    def test_statuses_and_error_messages_follow_helpers(self, tmp_path: Path) -> None:
+        _write(tmp_path, "app.py", FLASK_STATUS_APP)
+        create = _surface("POST", "/orders", "app.py", 16)
+        pay = _surface("POST", "/orders/<int:order_id>/pay", "app.py", 26)
+
+        populate_python_api_contracts([create, pay], tmp_path)
+
+        assert create.response_schema["status"] == 201
+        assert {"status": 400, "message": "invalid json"} in create.response_schema[
+            "errors"
+        ]
+        assert {"status": 422} in create.response_schema["errors"]
+        assert pay.response_schema["status"] == 200
+        errs = {e["status"]: e.get("message") for e in pay.response_schema["errors"]}
+        assert errs == {401: "unauthorized", 404: "not found"}

@@ -212,3 +212,27 @@ def test_handler_without_inferable_body_is_unknown(tmp_path: Path) -> None:
     s = _surface("POST", "/r", "r.ts", 1)
     populate_js_api_contracts([s], tmp_path)
     assert s.request_schema == {"unknown": True}
+
+
+def test_handler_factory_with_status_and_error_messages(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "server.js",
+        "function transition(allowed, target) {\n"
+        "  return (req, res) => {\n"
+        "    if (!req.get('X-API-Key')) return res.status(401).json({ error: 'unauthorized' });\n"
+        "    const order = find(req.params.id);\n"
+        "    if (!order) return res.status(404).json({ error: 'not found' });\n"
+        "    if (!allowed.includes(order.status)) {\n"
+        "      return res.status(409).json({ error: 'invalid transition' });\n"
+        "    }\n"
+        "    res.json(order);\n"
+        "  };\n"
+        "}\n"
+        "app.post('/orders/:id/pay', transition(['submitted'], 'paid'));\n",
+    )
+    s = _surface("POST", "/orders/:id/pay", "server.js", 12)
+    populate_js_api_contracts([s], tmp_path)
+    errs = {e["status"]: e.get("message") for e in s.response_schema["errors"]}
+    assert errs == {401: "unauthorized", 404: "not found", 409: "invalid transition"}
+    assert ("path", "id") in {(f["source"], f["name"]) for f in s.request_schema["fields"]}

@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "name": "shop-orders",
+  "defaults": { "headers": {} },
+  "requests": [
+    { "name": "health", "method": "GET", "path": "/api/health" },
+    { "name": "categories (seeded lookup)", "method": "GET", "path": "/api/categories" },
+    { "name": "create without auth", "method": "POST", "path": "/api/orders", "json": { "customer": "Ada", "category_id": 1 } },
+    { "name": "create ok", "method": "POST", "path": "/api/orders", "auth": true, "json": { "customer": "Ada", "category_id": 1 } },
+    { "name": "create short customer", "method": "POST", "path": "/api/orders", "auth": true, "json": { "customer": "A", "category_id": 1 } },
+    { "name": "create unknown category", "method": "POST", "path": "/api/orders", "auth": true, "json": { "customer": "Grace", "category_id": 99 } },
+    { "name": "create missing fields", "method": "POST", "path": "/api/orders", "auth": true, "json": {} },
+    { "name": "list orders", "method": "GET", "path": "/api/orders" },
+    { "name": "get order", "method": "GET", "path": "/api/orders/1" },
+    { "name": "get missing order", "method": "GET", "path": "/api/orders/999" },
+    { "name": "pay a draft (invalid)", "method": "POST", "path": "/api/orders/1/pay", "auth": true },
+    { "name": "submit draft", "method": "POST", "path": "/api/orders/1/submit", "auth": true },
+    { "name": "submit twice (invalid)", "method": "POST", "path": "/api/orders/1/submit", "auth": true },
+    { "name": "pay submitted", "method": "POST", "path": "/api/orders/1/pay", "auth": true },
+    { "name": "cancel paid (invalid)", "method": "POST", "path": "/api/orders/1/cancel", "auth": true },
+    { "name": "create second", "method": "POST", "path": "/api/orders", "auth": true, "json": { "customer": "Linus", "category_id": 3 } },
+    { "name": "cancel draft", "method": "POST", "path": "/api/orders/2/cancel", "auth": true },
+    { "name": "submit missing order", "method": "POST", "path": "/api/orders/999/submit", "auth": true },
+    { "name": "pay without auth", "method": "POST", "path": "/api/orders/1/pay" },
+    { "name": "final order list", "method": "GET", "path": "/api/orders" }
+  ]
+}

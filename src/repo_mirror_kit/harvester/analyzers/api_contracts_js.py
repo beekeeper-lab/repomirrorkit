@@ -378,6 +378,21 @@ def _enclosing_function(ps: ParsedSource, line: int, verb: str) -> Any | None:
         funcs = [a for a in (args.children if args else []) if a.type in _FUNC_TYPES]
         if funcs:
             return funcs[-1]
+        # Handler factory: app.post('/x', transition([...], 'paid')) where
+        # `function transition(...) { return (req, res) => {...} }`.
+        factories = [
+            a for a in (args.children if args else []) if a.type == "call_expression"
+        ]
+        if factories:
+            callee = factories[-1].child_by_field_name("function")
+            target = ps.text(callee) if callee is not None else ""
+            for decl in ps.find_all("function_declaration"):
+                n = decl.child_by_field_name("name")
+                if n is not None and ps.text(n) == target:
+                    for ret in ps.find_all("return_statement", node=decl):
+                        for c in ret.children:
+                            if c.type in _FUNC_TYPES:
+                                return c
         idents = [a for a in (args.children if args else []) if a.type == "identifier"]
         if idents:
             target = ps.text(idents[-1])

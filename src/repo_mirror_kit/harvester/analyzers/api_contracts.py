@@ -567,6 +567,107 @@ def _extract_flask_response(
 
 
 # ---------------------------------------------------------------------------
+# Response status codes and error responses (Flask)
+# ---------------------------------------------------------------------------
+
+_MAX_HELPER_DEPTH = 2
+
+
+def _local_functions(
+    tree: ast.Module,
+) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+    return {
+        n.name: n
+        for n in ast.walk(tree)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+
+
+def _dict_message(node: ast.expr | None) -> str | None:
+    """``"..."`` of ``{"error": "..."}`` / ``{"message": "..."}`` literals."""
+    if isinstance(node, ast.Dict):
+        for k, v in zip(node.keys, node.values, strict=False):
+            if (
+                isinstance(k, ast.Constant)
+                and k.value in ("error", "message", "detail")
+                and isinstance(v, ast.Constant)
+                and isinstance(v.value, str)
+            ):
+                return v.value
+    return None
+
+
+def _collect_responses(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+    funcs: dict[str, ast.FunctionDef | ast.AsyncFunctionDef],
+    depth: int = 0,
+    seen: frozenset[str] = frozenset(),
+) -> list[tuple[int, ast.expr | None]]:
+    """(status, payload) for each way the handler can respond.
+
+    Follows ``return helper(...)`` into same-module helpers (bounded depth) and
+    treats ``abort(N)`` as an error response.
+    """
+    out: list[tuple[int, ast.expr | None]] = []
+    for node in ast.walk(func):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "abort"
+        ):
+            if (
+                node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, int)
+            ):
+                out.append((node.args[0].value, None))
+        if not isinstance(node, ast.Return) or node.value is None:
+            continue
+        value = node.value
+        status = 200
+        if isinstance(value, ast.Tuple) and value.elts:
+            if (
+                len(value.elts) > 1
+                and isinstance(value.elts[1], ast.Constant)
+                and isinstance(value.elts[1].value, int)
+            ):
+                status = value.elts[1].value
+            value = value.elts[0]
+        if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
+            name = value.func.id
+            if name in ("jsonify", "make_response"):
+                out.append((status, value.args[0] if value.args else None))
+            elif name in funcs and depth < _MAX_HELPER_DEPTH and name not in seen:
+                inner = _collect_responses(funcs[name], funcs, depth + 1, seen | {name})
+                # An explicit status on the outer tuple overrides the helper's.
+                if status != 200 and isinstance(node.value, ast.Tuple):
+                    inner = [(status, p) for _, p in inner]
+                out.extend(inner)
+        elif isinstance(value, (ast.Dict, ast.List)):
+            out.append((status, value))
+        elif isinstance(value, ast.Constant) and isinstance(value.value, str):
+            out.append((status, None))
+    return out
+
+
+def _status_and_errors(
+    func: ast.FunctionDef | ast.AsyncFunctionDef, tree: ast.Module
+) -> tuple[int | None, list[dict[str, Any]]]:
+    responses = _collect_responses(func, _local_functions(tree))
+    success = [s for s, _ in responses if s < 400]
+    errors: list[dict[str, Any]] = []
+    for status, payload in responses:
+        if status >= 400:
+            entry: dict[str, Any] = {"status": status}
+            message = _dict_message(payload)
+            if message:
+                entry["message"] = message
+            if entry not in errors:
+                errors.append(entry)
+    return (success[0] if success else None), errors
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -610,6 +711,9 @@ def populate_python_api_contracts(
             request_fields = _extract_flask_request(func)
             response = _extract_flask_response(func)
             confidence = "inferred"
+            flask_status, flask_errors = (
+                _status_and_errors(func, tree) if tree is not None else (None, [])
+            )
 
         got_any = False
         if request_fields:
@@ -629,6 +733,14 @@ def populate_python_api_contracts(
             got_any = True
         elif not surface.response_schema:
             surface.response_schema = unknown_schema()
+
+        if confidence == "inferred" and tree is not None:
+            if flask_status is not None:
+                surface.response_schema["status"] = flask_status
+                got_any = True
+            if flask_errors:
+                surface.response_schema["errors"] = flask_errors
+                got_any = True
 
         if got_any:
             populated += 1

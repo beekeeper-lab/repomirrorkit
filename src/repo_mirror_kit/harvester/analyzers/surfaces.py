@@ -695,7 +695,9 @@ class SeedDataSurface(Surface):
     """
 
     dataset_name: str = ""
-    kind: str = ""  # "enum" | "lookup_table" | "fixture" | "migration_seed"
+    kind: str = (
+        ""  # "enum" | "lookup_table" | "fixture" | "migration_seed" | "constant"
+    )
     values: list[dict[str, Any]] = field(default_factory=list)
     target_model_ref: str = ""
     truncated: bool = False  # True when values were capped (visible, not silent)

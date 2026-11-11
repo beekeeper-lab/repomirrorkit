@@ -342,7 +342,21 @@ def _pct(value: float | None) -> str:
     help="Re-harvest the rebuild and score it (tier-1 surface diff) "
     "against the original.",
 )
+@click.option(
+    "--target-stack",
+    default=None,
+    help="Cloud lane: rebuild in this technology stack instead of the "
+    "original's (e.g. 'Node.js with Express').",
+)
+@click.option(
+    "--start-script/--no-start-script",
+    default=False,
+    help="Cloud lane: require a start.sh serving HTTP on $PORT so the rebuild "
+    "can be behaviour-scored with `parity-score`.",
+)
 def rebuild(
+    target_stack: str | None,
+    start_script: bool,
     from_dir: Path,
     workspace: Path,
     lane: str,
@@ -378,6 +392,8 @@ def rebuild(
             permission_mode=permission_mode,
             data_class=data_class,
             allowed_commands=allowed_commands or None,
+            target_stack=target_stack,
+            require_start_script=start_script,
         )
     except RebuildError as exc:
         click.echo(f"Error: {exc}", err=True)
