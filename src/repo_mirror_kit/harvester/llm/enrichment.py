@@ -55,6 +55,11 @@ def enrich_surfaces(
         logger.info("llm_enrichment_skipped", reason="llm_not_enabled")
         return surfaces
 
+    if config.llm_backend == "claude-cli":
+        from repo_mirror_kit.harvester.llm.cli_backend import enrich_with_claude_cli
+
+        return enrich_with_claude_cli(surfaces, config, workdir, callback)
+
     if not HAS_ANTHROPIC:
         logger.warning("llm_enrichment_skipped", reason="anthropic_not_installed")
         return surfaces
@@ -285,6 +290,14 @@ def _enrich_agentic(
     data = parse_agent_json(result.final_text)
     if data is None:
         raise ValueError("agent reply was not valid JSON")
+    apply_agent_data(surface, data, turn_limited=result.status == "turn_limit")
+    record["status"] = "turn_limit" if result.status == "turn_limit" else "ok"
+
+
+def apply_agent_data(
+    surface: Surface, data: dict[str, Any], turn_limited: bool = False
+) -> None:
+    """Turn a parsed agent reply into the surface's enrichment (shared by backends)."""
     enrichment = _parse_enrichment_response(json.dumps(data))
     enrichment["confidence"] = str(data.get("confidence", "medium"))
     enrichment["gaps"] = [str(g) for g in data.get("gaps", []) if g]
@@ -292,13 +305,12 @@ def _enrich_agentic(
     fill = data.get("contract_fill")
     if isinstance(fill, dict):
         enrichment["contract_fill"] = fill
-    if result.status == "turn_limit":
+    if turn_limited:
         enrichment["gaps"].append(
             "Agent hit the turn limit before finishing its trace."
         )
     surface.enrichment = enrichment
     apply_contract_fill(surface)
-    record["status"] = "turn_limit" if result.status == "turn_limit" else "ok"
 
 
 def _clean_flow(raw: Any) -> list[dict[str, Any]]:

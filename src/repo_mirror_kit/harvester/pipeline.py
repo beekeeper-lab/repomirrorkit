@@ -430,7 +430,11 @@ class HarvestPipeline:
             )
             self._llm_active = bool(
                 config.llm_enabled
-                and (config.llm_base_url or os.environ.get("ANTHROPIC_API_KEY"))
+                and (
+                    config.llm_backend == "claude-cli"
+                    or config.llm_base_url
+                    or os.environ.get("ANTHROPIC_API_KEY")
+                )
             )
             cached = self._rehydrate(
                 state,

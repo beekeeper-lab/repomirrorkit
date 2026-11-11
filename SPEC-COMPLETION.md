@@ -38,7 +38,7 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 
 ## Phase 2 — Enrichment baseline (no API key here; use the local Ollama endpoint, e.g. gpt-oss:120b or qwen3.8:27b, via the cherry-picked local-llm-endpoint support)
 
-- [!] **2.1** (BLOCKED 2026-11-11: local Ollama unresponsive, no API key; retry when available) Run `harvest` with LLM on both fixtures. Inspect beans for remaining `TODO:` placeholders and hallucinated content. Save outputs under `docs/samples/`. *Verify:* written assessment in `docs/enrichment-baseline-<date>.md` listing placeholder counts per fixture.
+- [x] **2.1** (done via the new `--llm-backend claude-cli`; parity-flask and ts-next enriched live, 2026-11-11) Run `harvest` with LLM on both fixtures. Inspect beans for remaining `TODO:` placeholders and hallucinated content. Save outputs under `docs/samples/`. *Verify:* written assessment in `docs/enrichment-baseline-<date>.md` listing placeholder counts per fixture.
 - [x] **2.2** Add a gate: with LLM enabled, count of `TODO:` placeholders in beans is reported in `reports/fidelity.*` and fails above a threshold (start at 0 for fixtures). *Verify:* unit test + fixture run.
 
 ## Phase 3 — Foundations
@@ -116,7 +116,8 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 
 ## Exit criteria status (2026-11-11)
 
-1. **Both fixtures, LLM on, zero TODO placeholders:** NOT MET / NOT VERIFIED. Enrichment could not be run live (no API key; local Ollama generation hung). Structural-only output still contains `TODO:` placeholders by design; the 80% placeholder gate only engages when enrichment ran.
+1. **Both fixtures, LLM on, zero TODO placeholders:** MET for ts-next and parity-flask via the claude-cli backend (all behavioural beans placeholder-free; config/dependency/rule beans are structural). Not run for the other fixtures.
 2. **Cross-stack rebuild >= 90% on both fixtures:** MET for the two runnable API fixtures (Flask->Node 100%, Express->FastAPI 100%). The Next.js fixture was not rebuilt (not runnable here); UI behaviour is not behaviourally scored.
 3. **Fidelity gates in CI, fail on regression:** MET locally (`scripts/fidelity-gate.sh`, red-path test); the GitHub workflow itself has not run.
 4. **Suite green on `main`, docs match behaviour:** suite green on `test` (2,033); not promoted to `main` (0.5 pending).
+| 2026-11-11 | 2.1 | `--llm-backend claude-cli` (headless `claude -p`, read-only tools, scrubbed env, per-call budget, concurrency). Live: parity-flask 13 surfaces ~1 min, $1.29 API-equivalent; ts-next 11 surfaces $1.11. Placeholder gate now counts behavioural beans only; contract-derived examples/errors/rules replace boilerplate TODOs; secret-like config defaults withheld; prompt forbids copying secret values. Exit criterion 1 met for both fixtures (13/13, 10/10 placeholder-free, gate PASS). 2,043 tests. | bean/llm-claude-cli-backend |

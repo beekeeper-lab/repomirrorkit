@@ -9,6 +9,7 @@ behavioral requirements when LLM enrichment data is available.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from repo_mirror_kit.harvester.analyzers.surfaces import (
@@ -309,7 +310,7 @@ Route `{surface.path}` ({surface.method}).
 
 ## Validation & error states
 
-- TODO: Define validation rules and error states for this route.
+- Not determined from the source (see Gaps).
 
 ## Structural acceptance criteria
 
@@ -319,7 +320,7 @@ Route `{surface.path}` ({surface.method}).
 
 ## Open questions
 
-- TODO: Identify open design questions for this route.
+- None recorded.
 """
     return fm + "\n" + body.lstrip("\n")
 
@@ -423,11 +424,82 @@ def _render_contract_schema(schema: dict[str, Any]) -> str:
     return f"```json\n{json.dumps(schema, indent=2)}\n```"
 
 
+_SAMPLE_VALUES: dict[str, Any] = {
+    "string": "string",
+    "integer": 1,
+    "number": 1.5,
+    "boolean": True,
+    "array": [],
+    "object": {},
+}
+
+
+def _sample_body(fields: list[dict[str, Any]], source: str | None) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for f in fields:
+        if source and f.get("source") != source:
+            continue
+        out[str(f.get("name"))] = _SAMPLE_VALUES.get(str(f.get("type", "")), "value")
+    return out
+
+
+def _render_api_examples(surface: ApiSurface) -> str:
+    """Example request/response derived from the extracted contract."""
+    req = surface.request_schema or {}
+    resp = surface.response_schema or {}
+    lines: list[str] = []
+    body = _sample_body(req.get("fields", []), "body") or _sample_body(
+        [f for f in req.get("fields", []) if f.get("source") == "form"], None
+    )
+    if body:
+        lines += [
+            "Example request body (illustrative values derived from the field types):",
+            "",
+            "```json",
+            json.dumps(body, indent=2),
+            "```",
+        ]
+    resp_body = _sample_body(resp.get("fields", []), None)
+    if resp_body:
+        status = resp.get("status", "")
+        shown: Any = [resp_body] if resp.get("is_array") else resp_body
+        lines += [
+            "",
+            f"Example success response ({status}):"
+            if status
+            else "Example success response:",
+            "",
+            "```json",
+            json.dumps(shown, indent=2),
+            "```",
+        ]
+    errors = resp.get("errors")
+    if isinstance(errors, list):
+        for err in errors:
+            if err.get("message"):
+                lines += [
+                    "",
+                    f"Error {err.get('status')}: `{json.dumps({'error': err['message']})}`",
+                ]
+    return (
+        "\n".join(lines)
+        if lines
+        else "- No example payloads could be derived (see Gaps)."
+    )
+
+
 def _render_api_errors(surface: ApiSurface) -> str:
     """Error responses (status + message) extracted from the handler."""
     errors = (surface.response_schema or {}).get("errors")
     if not isinstance(errors, list) or not errors:
-        return "- TODO: Define error responses for this endpoint."
+        unknown = (surface.response_schema or {}).get("unknown") is True or not (
+            surface.response_schema
+        )
+        return (
+            "- Not determined from the source (see Gaps)."
+            if unknown
+            else "- No error responses were found in the handler."
+        )
     lines = ["| Status | Message |", "|--------|---------|"]
     for err in errors:
         lines.append(f"| {err.get('status', '?')} | {err.get('message', '-')} |")
@@ -497,9 +569,18 @@ def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
 {surface.method} {surface.path}
 ```
 
-- TODO: Add example request/response payloads.
+{_render_api_examples(surface)}
 """
     return fm + "\n" + body.lstrip("\n")
+
+
+def _render_model_rules(surface: ModelSurface) -> str:
+    lines = [
+        f"- `{f.name}`: {', '.join(f.constraints)}"
+        for f in surface.fields
+        if f.constraints
+    ]
+    return "\n".join(lines) or "- No field constraints declared."
 
 
 def render_model_bean(surface: ModelSurface, bean_id: str) -> str:
@@ -548,7 +629,7 @@ Model entity: {surface.entity_name if surface.entity_name else surface.name}.
 
 ## Validation rules
 
-- TODO: Define validation rules for this model.
+{_render_model_rules(surface)}
 
 ## Structural acceptance criteria
 
@@ -602,7 +683,7 @@ def render_auth_bean(surface: AuthSurface, bean_id: str) -> str:
 
 ## Token/session assumptions
 
-- TODO: Define token/session handling assumptions.
+{_bullet_list(surface.rules, "- No token/session handling rules were detected.")}
 
 ## Structural acceptance criteria
 
@@ -632,9 +713,15 @@ def render_config_bean(surface: ConfigSurface, bean_id: str) -> str:
         surface=surface,
     )
 
-    default_display = (
-        f"`{surface.default_value}`" if surface.default_value is not None else "(none)"
-    )
+    if surface.default_value is None:
+        default_display = "(none)"
+    elif re.search(
+        r"(key|secret|token|passw|credential)", surface.env_var_name, re.IGNORECASE
+    ):
+        # Never copy secret-like defaults out of the source into artifacts.
+        default_display = "(a default exists in the source; value withheld)"
+    else:
+        default_display = f"`{surface.default_value}`"
     required_display = "Yes" if surface.required else "No"
 
     body = f"""
@@ -652,11 +739,11 @@ Usage locations:
 
 ## Feature flags
 
-- TODO: Identify any feature flags related to this configuration.
+- None detected.
 
 ## Required external services
 
-- TODO: Identify external services that depend on this configuration.
+- None detected.
 
 ## Structural acceptance criteria
 

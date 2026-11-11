@@ -180,6 +180,22 @@ def main() -> None:
     "(and recorded as skipped_budget) once reached. Local endpoints cost $0.",
 )
 @click.option(
+    "--llm-backend",
+    type=click.Choice(["api", "claude-cli"]),
+    default="api",
+    show_default=True,
+    help="'api' uses the Anthropic SDK (ANTHROPIC_API_KEY or --llm-base-url). "
+    "'claude-cli' runs headless `claude -p` on your Claude Code login — no API "
+    "key; read-only tools; spend counts against your subscription limits.",
+)
+@click.option(
+    "--llm-concurrency",
+    default=1,
+    type=int,
+    show_default=True,
+    help="Parallel enrichment calls (1-8). Mind subscription rate limits.",
+)
+@click.option(
     "--llm-base-url",
     "llm_base_url",
     default=None,
@@ -205,6 +221,8 @@ def harvest(
     llm_enabled: bool,
     llm_model: str,
     llm_agentic: bool,
+    llm_backend: str,
+    llm_concurrency: int,
     llm_max_turns: int,
     llm_budget_usd: float,
     llm_base_url: str | None,
@@ -234,6 +252,8 @@ def harvest(
             llm_model=llm_model,
             llm_base_url=llm_base_url,
             llm_agentic=llm_agentic,
+            llm_backend=llm_backend,
+            llm_concurrency=llm_concurrency,
             llm_max_turns=llm_max_turns,
             llm_budget_usd=llm_budget_usd,
         )

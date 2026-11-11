@@ -86,6 +86,10 @@ class HarvestConfig:
     llm_agentic: bool = True
     llm_max_turns: int = 8
     llm_budget_usd: float = 5.0
+    # "api" (Anthropic SDK; needs a key or local endpoint) or "claude-cli"
+    # (headless `claude -p` on the operator's Claude Code login — no API key).
+    llm_backend: str = "api"
+    llm_concurrency: int = 1
 
     def __post_init__(self) -> None:
         """Validate configuration values after initialization."""
@@ -104,6 +108,12 @@ class HarvestConfig:
             raise ConfigValidationError(str(exc)) from exc
         if self.llm_max_turns < 1:
             raise ConfigValidationError("--llm-max-turns must be >= 1")
+        if self.llm_backend not in ("api", "claude-cli"):
+            raise ConfigValidationError(
+                f"Invalid --llm-backend '{self.llm_backend}'. Must be 'api' or 'claude-cli'."
+            )
+        if not 1 <= self.llm_concurrency <= 8:
+            raise ConfigValidationError("--llm-concurrency must be between 1 and 8")
         if self.llm_budget_usd < 0:
             raise ConfigValidationError("--llm-budget-usd must be >= 0")
         if self.from_stage is not None and self.from_stage not in VALID_STAGES:
@@ -127,7 +137,17 @@ class HarvestConfig:
             raise ConfigValidationError(
                 f"--max-total-bytes must be positive, got {self.max_total_bytes}"
             )
-        if self.llm_enabled and not self.llm_api_key and not self.llm_base_url:
+        if self.llm_enabled and self.llm_backend == "claude-cli":
+            import shutil
+            import sys
+
+            if shutil.which("claude") is None:
+                sys.stderr.write(
+                    "\n⚠ --llm-backend claude-cli needs the `claude` CLI on PATH — "
+                    "falling back to structural-only mode.\n\n"
+                )
+                object.__setattr__(self, "llm_enabled", False)
+        elif self.llm_enabled and not self.llm_api_key and not self.llm_base_url:
             # BEAN-056: --llm is default-on, so a missing API key must NOT
             # raise — it would break every default invocation. Emit a clear,
             # actionable warning to stderr and silently downgrade
