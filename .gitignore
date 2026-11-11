@@ -35,3 +35,6 @@ Thumbs.db
 
 # Project
 projects/
+
+# AEP: activity logs live outside the repo; this is a safety net
+.agentic/*.jsonl

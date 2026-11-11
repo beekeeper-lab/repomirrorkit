@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from collections.abc import Sequence
@@ -211,4 +212,226 @@ def harvest(
     if not result.fidelity_passed and fail_on_fidelity:
         sys.exit(EXIT_FIDELITY_FAILED)
 
+    sys.exit(EXIT_SUCCESS)
+
+
+def _pct(value: float | None) -> str:
+    return "n/a" if value is None else f"{value * 100:.1f}%"
+
+
+@main.command()
+@click.option(
+    "--from",
+    "from_dir",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Original harvest --out directory to rebuild from.",
+)
+@click.option(
+    "--workspace",
+    required=True,
+    type=click.Path(path_type=Path),
+    help="Fresh directory to rebuild into (must be outside --from).",
+)
+@click.option(
+    "--lane",
+    type=click.Choice(["cloud", "local"]),
+    default="cloud",
+    show_default=True,
+    help="Rebuild lane: 'cloud' (Claude Code headless via claude -p) or "
+    "'local' (forge-loop over the requirements; --model required).",
+)
+@click.option(
+    "--model",
+    default=None,
+    help="Model passed to the rebuild lane (required for 'local': an Ollama "
+    "tag registered in the forge model registry, e.g. gemma4:26b).",
+)
+@click.option(
+    "--data-class",
+    type=click.Choice(["public", "internal", "client-confidential"]),
+    default="internal",
+    show_default=True,
+    help="Local lane only: forge-loop data class for the security gate.",
+)
+@click.option(
+    "--allow",
+    "allowed_commands",
+    multiple=True,
+    help="Local lane only: a verify command forge-loop may run (repeatable). "
+    "Defaults to forge-loop's own whitelist when omitted.",
+)
+@click.option(
+    "--permission-mode",
+    default="acceptEdits",
+    show_default=True,
+    help="Cloud lane only: Claude Code permission mode for the headless run. "
+    "Use 'bypassPermissions' to let the agent run tests/installs unattended.",
+)
+@click.option(
+    "--timeout",
+    default=3600,
+    type=int,
+    show_default=True,
+    help="Seconds before the rebuild invocation is killed.",
+)
+@click.option(
+    "--out",
+    default=None,
+    type=click.Path(path_type=Path),
+    help="Directory for score reports + the rebuild's re-harvest "
+    "(default: <workspace>-eval).",
+)
+@click.option(
+    "--score/--no-score",
+    "do_score",
+    default=True,
+    show_default=True,
+    help="Re-harvest the rebuild and score it (tier-1 surface diff) "
+    "against the original.",
+)
+def rebuild(
+    from_dir: Path,
+    workspace: Path,
+    lane: str,
+    model: str | None,
+    data_class: str,
+    allowed_commands: tuple[str, ...],
+    permission_mode: str,
+    timeout: int,
+    out: Path | None,
+    do_score: bool,
+) -> None:
+    """Rebuild an app from harvest output, then score the rebuild.
+
+    Assembles a workspace with ONLY the requirement artifacts (never the
+    original source or the surfaces.json answer key), drives the rebuild
+    agent, then re-harvests the result and diffs the two surface maps.
+    """
+    from repo_mirror_kit.harvester.rebuild.executor import (
+        RebuildError,
+        RebuildLane,
+        run_rebuild,
+    )
+
+    eval_dir = out or workspace.parent / f"{workspace.name}-eval"
+
+    try:
+        rebuild_result = run_rebuild(
+            harvest_dir=from_dir,
+            workspace=workspace,
+            lane=RebuildLane(lane),
+            model=model,
+            timeout=timeout,
+            permission_mode=permission_mode,
+            data_class=data_class,
+            allowed_commands=allowed_commands or None,
+        )
+    except RebuildError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(EXIT_INVALID_INPUT)
+
+    eval_dir.mkdir(parents=True, exist_ok=True)
+    (eval_dir / "rebuild-result.json").write_text(
+        json.dumps(rebuild_result.to_dict(), indent=2), encoding="utf-8"
+    )
+
+    click.echo(f"Rebuild lane: {rebuild_result.lane}")
+    click.echo(f"Duration: {rebuild_result.duration_seconds:.1f}s")
+    if rebuild_result.tokens_in is not None:
+        click.echo(
+            f"Tokens: {rebuild_result.tokens_in} in / {rebuild_result.tokens_out} out"
+        )
+    if rebuild_result.cost_usd is not None:
+        click.echo(f"Cost: ${rebuild_result.cost_usd:.4f}")
+
+    if not rebuild_result.success:
+        click.echo(f"Rebuild failed: {rebuild_result.error}", err=True)
+        sys.exit(EXIT_UNEXPECTED)
+    click.echo(f"Rebuild written to: {rebuild_result.workspace}")
+
+    if not do_score:
+        sys.exit(EXIT_SUCCESS)
+
+    from repo_mirror_kit.harvester.pipeline import HarvestPipeline
+    from repo_mirror_kit.harvester.rebuild.scoring import (
+        diff_harvest_dirs,
+        write_score_reports,
+    )
+
+    rebuild_harvest = eval_dir / "rebuild-harvest"
+    click.echo("Re-harvesting the rebuild for scoring...")
+    harvest_result = HarvestPipeline().run(
+        HarvestConfig(
+            repo=str(rebuild_result.workspace),
+            out=rebuild_harvest,
+            llm_enabled=False,
+            fail_on_gaps=False,
+            log_level="warn",
+        )
+    )
+    if not harvest_result.success:
+        click.echo(
+            f"Re-harvest failed at stage {harvest_result.error_stage}: "
+            f"{harvest_result.error_message}",
+            err=True,
+        )
+        sys.exit(EXIT_UNEXPECTED)
+
+    report = diff_harvest_dirs(from_dir, rebuild_harvest)
+    write_score_reports(eval_dir, report)
+    click.echo("")
+    click.echo("Tier-1 surface re-extraction diff:")
+    click.echo(f"  Recall:    {_pct(report.overall_recall)} "
+               f"({report.total_matched}/{report.total_original})")
+    click.echo(f"  Precision: {_pct(report.overall_precision)} "
+               f"({report.total_matched}/{report.total_rebuilt})")
+    click.echo(f"  F1:        {_pct(report.overall_f1)}")
+    click.echo(f"Score reports written to: {eval_dir}")
+    sys.exit(EXIT_SUCCESS)
+
+
+@main.command()
+@click.option(
+    "--original",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Original project's harvest --out directory.",
+)
+@click.option(
+    "--rebuilt",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Rebuilt project's harvest --out directory.",
+)
+@click.option(
+    "--out",
+    default=None,
+    type=click.Path(path_type=Path),
+    help="Directory for score reports (default: the --rebuilt directory).",
+)
+def score(original: Path, rebuilt: Path, out: Path | None) -> None:
+    """Score one harvest against another (tier-1 surface re-extraction diff).
+
+    Both arguments are harvest --out directories containing surfaces.json.
+    """
+    from repo_mirror_kit.harvester.rebuild.scoring import (
+        ScoringError,
+        diff_harvest_dirs,
+        write_score_reports,
+    )
+
+    try:
+        report = diff_harvest_dirs(original, rebuilt)
+    except ScoringError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(EXIT_INVALID_INPUT)
+
+    write_score_reports(out or rebuilt, report)
+    click.echo("Tier-1 surface re-extraction diff:")
+    click.echo(f"  Recall:    {_pct(report.overall_recall)} "
+               f"({report.total_matched}/{report.total_original})")
+    click.echo(f"  Precision: {_pct(report.overall_precision)} "
+               f"({report.total_matched}/{report.total_rebuilt})")
+    click.echo(f"  F1:        {_pct(report.overall_f1)}")
     sys.exit(EXIT_SUCCESS)

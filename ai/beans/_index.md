@@ -101,5 +101,8 @@
 | BEAN-077 | Golden Parity Fixtures (Request/Response Captures) | App | Medium | Unapproved | team-lead |
 | BEAN-078 | Rebuild Eval Harness — Parity Scoring | App | Critical | Unapproved | team-lead |
 | BEAN-079 | Stage G Orchestration-Policy Parameterization + Telemetry | App | Medium | In Progress | team-lead |
+| BEAN-080 | Rebuild-and-Score Executor — Tier-1 Surface Diff | App | High | Done | forge |
 
-> BEAN-059–079 originate from the recreation-grade audit (2026-07-03). Sequencing, dependency graph, and parallelism analysis: see `ROADMAP-RECREATION.md` at the repo root.
+> BEAN-059–079 originate from the recreation-grade audit (2026-07-03).
+> BEAN-080 is the buildable-now first slice of BEAN-078, from the Forge
+> improvements program (forgeSetup IMP-09 / WP-3.4). Sequencing, dependency graph, and parallelism analysis: see `ROADMAP-RECREATION.md` at the repo root.
