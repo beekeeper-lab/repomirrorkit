@@ -214,3 +214,36 @@ class TestContractGeneration:
             if op.get("x-harvester-gap")
         ]
         assert len(gaps) == 2
+
+
+def test_array_status_and_error_responses(tmp_path: Path) -> None:
+    from repo_mirror_kit.harvester.analyzers import SurfaceCollection
+    from repo_mirror_kit.harvester.analyzers.surfaces import ApiSurface
+    from repo_mirror_kit.harvester.generator.openapi import generate_openapi_contract
+
+    surface = ApiSurface(
+        name="GET /items",
+        method="GET",
+        path="/items",
+        request_schema={"fields": [], "confidence": "inferred"},
+        response_schema={
+            "fields": [
+                {"name": "id", "type": "number", "required": True, "source": "body"}
+            ],
+            "confidence": "inferred",
+            "is_array": True,
+            "status": 200,
+            "errors": [{"status": 404, "message": "not found"}],
+        },
+    )
+    coll = SurfaceCollection()
+    coll.apis = [surface]
+    path = generate_openapi_contract(coll, tmp_path, "demo")
+    import json
+
+    op = json.loads(path.read_text())["paths"]["/items"]["get"]
+    assert (
+        op["responses"]["200"]["content"]["application/json"]["schema"]["type"]
+        == "array"
+    )
+    assert op["responses"]["404"]["description"] == "not found"

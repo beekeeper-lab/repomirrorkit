@@ -154,7 +154,14 @@ def _build_operation(surface: ApiSurface, path_template: str) -> dict[str, Any]:
     elif not request:
         gap = True
 
-    success_code = "201" if surface.method == "POST" else "200"
+    success_code = str(
+        response.get("status") or ("201" if surface.method == "POST" else "200")
+    )
+    is_array = bool(response.get("is_array"))
+
+    def _wrap(schema: dict[str, Any]) -> dict[str, Any]:
+        return {"type": "array", "items": schema} if is_array else schema
+
     if response.get("unknown") is True:
         gap = True
         operation["responses"][success_code] = {"description": "Unknown (gap)"}
@@ -163,7 +170,7 @@ def _build_operation(surface: ApiSurface, path_template: str) -> dict[str, Any]:
             "description": "Success",
             "content": {
                 "application/json": {
-                    "schema": _fields_to_object_schema(response["fields"])
+                    "schema": _wrap(_fields_to_object_schema(response["fields"]))
                 }
             },
         }
@@ -174,6 +181,13 @@ def _build_operation(surface: ApiSurface, path_template: str) -> dict[str, Any]:
     else:
         gap = True
         operation["responses"][success_code] = {"description": "Unknown (gap)"}
+
+    for err in response.get("errors") or []:
+        code = str(err.get("status"))
+        if code and code not in operation["responses"]:
+            operation["responses"][code] = {
+                "description": err.get("message") or "Error"
+            }
 
     if gap:
         operation["x-harvester-gap"] = True
