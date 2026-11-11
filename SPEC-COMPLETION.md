@@ -25,8 +25,8 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 - [x] **0.2** (060 is a WIP checkpoint, handled in 3.1; 067/072 branches had no work, built in 4.4/6.1; local-llm-endpoint cherry-picked) Merge the open bean branches into `test` ( check `git branch --no-merged test`). Resolve conflicts in `surfaces.py` / `pipeline.py` by keeping additions append-only. *Verify:* full suite green on `test`; `git branch --no-merged test` shows only intentional leftovers.
 - [x] **0.3** Merge `bean/local-rebuild-score-executor` (BEAN-080) into `test`. *Verify:* suite green; `requirements-harvester rebuild --help` works.
 - [-] **0.4** (deferred: orchestration policy serves the Stage G experiment, not the rebuild goal) Finish BEAN-079 (Stage G policy parameterization + telemetry hooks). *Verify:* its bean acceptance criteria all checked; suite green; set bean status to Done in `ai/beans/_index.md`.
-- [ ] **0.5** Promote `test` to `main` (PR). *Verify:* `main` contains BEAN-059..080 work; CI green.
-- [ ] **0.6** Update `ai/beans/_index.md` and the memory file so statuses match reality (060, 067, 072 etc.).
+- [ ] **0.5** (PENDING USER: pushing `test` and opening a PR to `main` is outward-facing and was not done) Promote `test` to `main` (PR). *Verify:* `main` contains BEAN-059..080 work; CI green.
+- [x] **0.6** Update `ai/beans/_index.md` and the memory file so statuses match reality (060, 067, 072 etc.).
 
 ## Phase 1 — Fix scoring blockers (small, high value)
 
@@ -77,9 +77,9 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 
 ## Phase 8 — Hardening and docs
 
-- [ ] **8.1** Update `README.md` and `CLAUDE.md` for the final pipeline stages and outputs; remove stale framing.
-- [ ] **8.2** Security pass (persona: Security Engineer) on the LLM path, clone path and tree-sitter dependencies.
-- [ ] **8.3** Final full run on all fixtures; archive outputs and scores in `docs/`.
+- [x] **8.1** Update `README.md` and `CLAUDE.md` for the final pipeline stages and outputs; remove stale framing.
+- [x] **8.2** (self-review: docs/security-review-2026-11-11.md; one real finding fixed — untrusted app inherited host env) Security pass (persona: Security Engineer) on the LLM path, clone path and tree-sitter dependencies.
+- [x] **8.3** (docs/final-run-2026-11-11.md) Final full run on all fixtures; archive outputs and scores in `docs/`.
 
 ---
 
@@ -112,3 +112,11 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 | 2026-11-11 | 6.3 | BEAN-074: gherkin/FEAT-*.feature per cluster (API success/negative/auth/errors, rules, invariants, workflow transitions + invalid-source outlines, screens, enrichment GWT); parsed with gherkin-official; @BEAN/@FEAT/@generated/@gap tags; implementation-neutrality test; 1,994 tests. | bean/BEAN-074-gherkin |
 | 2026-11-11 | 6.4/6.5 | BEAN-075: diagrams/ (stateDiagram-v2 per workflow, sequenceDiagram from traced_flow or screen→API chains, cap + skipped count reported, syntax tests); REQUIREMENTS.md Design artifacts index with orphan test; 2,003 tests. Phase 6 complete. | bean/BEAN-075-diagrams |
 | 2026-11-11 | 7.1-7.5 | Parity engine (goldens, gherkin runner, schema diff, report), parity-capture/parity-score CLI, runnable parity-flask/parity-express fixtures + goldens, rebuild allowlist/target stack. Eval-driven extractor work: Flask status/errors/validation/serializers/path params, handler-level auth, per-route Express auth, constant seed lists, module-identity blueprint prefixes, SQLAlchemy 2.0, WTForms, FK-only relationships. Real runs: Flask→Node 100% ($0.23), Express→FastAPI 100% ($0.25), baseline 25%. microblog triage + beans 082-086. CI + fidelity gate script. 2,032 tests. | bean/parity-gaps |
+| 2026-11-11 | 8.1-8.3 | README/CLAUDE.md updated; security self-review (parity runner env scrubbing); final run over 8 fixtures all gates PASS; 2,033 tests. Exit criteria status in the section below. | bean/phase8-docs-security |
+
+## Exit criteria status (2026-11-11)
+
+1. **Both fixtures, LLM on, zero TODO placeholders:** NOT MET / NOT VERIFIED. Enrichment could not be run live (no API key; local Ollama generation hung). Structural-only output still contains `TODO:` placeholders by design; the 80% placeholder gate only engages when enrichment ran.
+2. **Cross-stack rebuild >= 90% on both fixtures:** MET for the two runnable API fixtures (Flask->Node 100%, Express->FastAPI 100%). The Next.js fixture was not rebuilt (not runnable here); UI behaviour is not behaviourally scored.
+3. **Fidelity gates in CI, fail on regression:** MET locally (`scripts/fidelity-gate.sh`, red-path test); the GitHub workflow itself has not run.
+4. **Suite green on `main`, docs match behaviour:** suite green on `test` (2,033); not promoted to `main` (0.5 pending).
