@@ -163,6 +163,10 @@ your answer.
 Phrase every behavioral statement framework-neutrally (WHAT the system does for
 its users, never which library does it).
 
+Never reproduce secret or credential VALUES you see in the code (API keys,
+tokens, passwords, connection strings, default secrets). Name the variable or
+mechanism instead, e.g. "the key is read from configuration variable API_KEY".
+
 Be honest about uncertainty: list in "gaps" everything you could NOT determine.
 Never invent fields, endpoints, rules or values.
 

@@ -26,12 +26,14 @@ distinct from 100%, never a silent vacuous pass.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import structlog
 
 from repo_mirror_kit.harvester.analyzers import SurfaceCollection
+from repo_mirror_kit.harvester.llm.types import ENRICH_TYPES
 
 logger = structlog.get_logger()
 
@@ -161,12 +163,18 @@ def compute_fidelity(
     placeholder_free = 0
     if beans_dir is not None and beans_dir.is_dir():
         for bean_path in sorted(beans_dir.glob("BEAN-*.md")):
-            placeholder_total += 1
             try:
-                if "TODO:" not in bean_path.read_text(encoding="utf-8"):
-                    placeholder_free += 1
+                text = bean_path.read_text(encoding="utf-8")
             except OSError:
                 continue
+            kind = re.search(r"^type:\s*(\S+)", text, re.MULTILINE)
+            # Only beans a model is expected to describe count toward the
+            # placeholder gate (config/dependency/rule beans are structural).
+            if kind and kind.group(1) not in ENRICH_TYPES:
+                continue
+            placeholder_total += 1
+            if "TODO:" not in text:
+                placeholder_free += 1
 
     screen_fields = [f for scr in surfaces.screens for f in scr.fields]
     screen_mapped = sum(1 for f in screen_fields if f.bound_model_field)
@@ -227,7 +235,7 @@ _METRIC_LABELS: dict[str, str] = {
     "model_fields": "Models with extracted fields",
     "model_relationships": "Models with structured relationships",
     "screen_field_mappings": "Screen fields mapped to models",
-    "placeholder_free_beans": "Beans free of TODO placeholders",
+    "placeholder_free_beans": "Behavioural beans free of TODO placeholders",
 }
 
 
