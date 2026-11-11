@@ -93,7 +93,7 @@ class TestLLMClientInit:
 
             client = client_mod.LLMClient(api_key="sk-test")
 
-            assert client._model == "claude-sonnet-4-6"
+            assert client._model == "claude-sonnet-5-5"
 
     def test_init_without_base_url_is_unchanged(self) -> None:
         """When base_url is not passed, the SDK call must not gain kwargs."""

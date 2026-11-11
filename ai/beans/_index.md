@@ -89,7 +89,7 @@
 | BEAN-065 | `BusinessRuleSurface` — Validation & Constraint Mining | App | High | Done | team-lead |
 | BEAN-066 | `SeedDataSurface` — Enums, Lookups, Fixtures, Migration Seeds | App | Medium | Done | team-lead |
 | BEAN-067 | `WorkflowSurface` — Entity State Machines | App | Medium | Done | team-lead |
-| BEAN-068 | Agentic Enrichment v2 — Repo-Aware Feature Tracing | App | Critical | Unapproved | team-lead |
+| BEAN-068 | Agentic Enrichment v2 — Repo-Aware Feature Tracing | App | Critical | Done | team-lead |
 | BEAN-069 | Feature Clustering Stage (C3) + `build-manifest.json` | App | High | Done | team-lead |
 | BEAN-070 | Framework-Neutral Bean Language + Confidence/Gaps Fields | App | Medium | Done | team-lead |
 | BEAN-071 | OpenAPI 3.1 Contract Generator | App | High | Done | team-lead |

@@ -80,8 +80,12 @@ class HarvestConfig:
     log_level: str = "info"
     llm_enabled: bool = DEFAULT_LLM_ENABLED
     llm_api_key: str | None = None
-    llm_model: str = "claude-sonnet-4-6"
+    llm_model: str = "claude-sonnet-5-5"
     llm_base_url: str | None = None
+    # BEAN-068: agentic enrichment (read/grep/list tools over the clone).
+    llm_agentic: bool = True
+    llm_max_turns: int = 8
+    llm_budget_usd: float = 5.0
 
     def __post_init__(self) -> None:
         """Validate configuration values after initialization."""
@@ -98,6 +102,10 @@ class HarvestConfig:
             validate_clone_url(self.repo)
         except GitCloneError as exc:
             raise ConfigValidationError(str(exc)) from exc
+        if self.llm_max_turns < 1:
+            raise ConfigValidationError("--llm-max-turns must be >= 1")
+        if self.llm_budget_usd < 0:
+            raise ConfigValidationError("--llm-budget-usd must be >= 0")
         if self.from_stage is not None and self.from_stage not in VALID_STAGES:
             raise ConfigValidationError(
                 f"Invalid --from-stage '{self.from_stage}'. "

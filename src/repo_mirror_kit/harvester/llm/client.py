@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from dataclasses import dataclass
 from typing import Any
 
 import structlog
@@ -19,8 +20,20 @@ except ImportError:
     HAS_ANTHROPIC = False
 
 
+DEFAULT_MODEL = "claude-sonnet-5-5"
+
 # Per-request timeout so an unresponsive endpoint cannot stall a harvest.
 REQUEST_TIMEOUT_S = 120.0
+
+
+@dataclass
+class ToolResponse:
+    """Normalized result of one tool-capable model turn."""
+
+    content: list[dict[str, Any]]
+    stop_reason: str = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
 
 
 class LLMClient:
@@ -42,7 +55,7 @@ class LLMClient:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "claude-sonnet-4-6",
+        model: str = DEFAULT_MODEL,
         requests_per_minute: int = 30,
         base_url: str | None = None,
     ) -> None:
@@ -59,6 +72,7 @@ class LLMClient:
                 api_key=api_key, timeout=REQUEST_TIMEOUT_S
             )
         self._model = model
+        self._local = bool(base_url)
         self._rpm = requests_per_minute
         self._min_interval = 60.0 / requests_per_minute
         self._last_request_time: float = 0.0
@@ -103,6 +117,65 @@ class LLMClient:
         text_block = response.content[0]
         result: str = text_block.text
         return result
+
+    def create_message(
+        self,
+        system_prompt: str,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        max_tokens: int = 4096,
+    ) -> ToolResponse:
+        """One tool-capable turn (BEAN-068).
+
+        Args:
+            system_prompt: System instruction.
+            messages: Conversation so far (Messages-API format).
+            tools: Tool specs; omit to force a plain text answer.
+            max_tokens: Max response tokens.
+
+        Returns:
+            A normalized :class:`ToolResponse`.
+        """
+        self._throttle()
+        kwargs: dict[str, Any] = {
+            "model": self._model,
+            "max_tokens": max_tokens,
+            "system": system_prompt,
+            "messages": messages,
+        }
+        if tools:
+            kwargs["tools"] = tools
+        response: Any = self._client.messages.create(**kwargs)
+        self._request_count += 1
+        self._total_input_tokens += response.usage.input_tokens
+        self._total_output_tokens += response.usage.output_tokens
+        blocks: list[dict[str, Any]] = []
+        for block in response.content:
+            if block.type == "tool_use":
+                blocks.append(
+                    {
+                        "type": "tool_use",
+                        "id": block.id,
+                        "name": block.name,
+                        "input": dict(block.input),
+                    }
+                )
+            elif block.type == "text":
+                blocks.append({"type": "text", "text": block.text})
+        return ToolResponse(
+            content=blocks,
+            stop_reason=str(response.stop_reason or ""),
+            input_tokens=int(response.usage.input_tokens),
+            output_tokens=int(response.usage.output_tokens),
+        )
+
+    @property
+    def model(self) -> str:
+        return self._model
+
+    @property
+    def is_local(self) -> bool:
+        return self._local
 
     @property
     def total_input_tokens(self) -> int:
