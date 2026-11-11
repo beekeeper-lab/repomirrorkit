@@ -229,3 +229,35 @@ def test_fixture_business_rules(
     }
     assert all(r["applies_to"] and set(r["applies_to"]) <= names for r in rules)
     assert (out / "beans").glob("BEAN-*.md")
+
+
+@pytest.mark.integration
+def test_pipeline_flask_workflow_fixture(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    """BEAN-067: status enum + transition endpoints → inferred and declared workflows."""
+    out = tmp_path / "harvest-out"
+    assert _run_pipeline(local_git_repo("python-flask-workflow"), out).success
+    wfs = json.loads((out / "surfaces.json").read_text())["surfaces"]["workflows"]
+    inferred = next(w for w in wfs if w["confidence"] == "inferred")
+    assert set(inferred["states"]) >= {"DRAFT", "SUBMITTED", "PAID"}
+    pairs = {
+        (t["from_state"], t["to_state"]): t["trigger_ref"]
+        for t in inferred["transitions"]
+    }
+    assert pairs[("DRAFT", "SUBMITTED")] == "POST /api/orders/<int:order_id>/submit"
+    assert pairs[("SUBMITTED", "PAID")] == "POST /api/orders/<int:order_id>/pay"
+    table = next(w for w in wfs if w["source_library"] == "transition-table")
+    assert len(table["transitions"]) == 5
+
+
+@pytest.mark.integration
+def test_pipeline_xstate_fixture(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    out = tmp_path / "harvest-out"
+    assert _run_pipeline(local_git_repo("ts-xstate"), out).success
+    wfs = json.loads((out / "surfaces.json").read_text())["surfaces"]["workflows"]
+    (wf,) = [w for w in wfs if w["source_library"] == "xstate"]
+    assert wf["initial_state"] == "draft" and len(wf["transitions"]) == 5
+    assert any(t["guard"] == "hasPaymentMethod" for t in wf["transitions"])

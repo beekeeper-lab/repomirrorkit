@@ -88,6 +88,12 @@ _SECTIONS: tuple[tuple[str, str, str, str], ...] = (
         "No business rules detected.",
     ),
     (
+        "Workflows & State Machines",
+        "workflow",
+        "workflows",
+        "No entity state machines detected.",
+    ),
+    (
         "Other Logic",
         "general_logic",
         "general_logic",

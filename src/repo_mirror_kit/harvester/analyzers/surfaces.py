@@ -631,6 +631,57 @@ class BusinessRuleSurface(Surface):
 
 
 @dataclass
+class WorkflowTransition:
+    """One legal state transition (BEAN-067)."""
+
+    from_state: str
+    to_state: str
+    trigger: str = ""  # event name, method or function that performs it
+    guard: str = ""  # precondition, framework-neutral
+    trigger_ref: str = ""  # API/route surface name that performs it, if resolved
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        return {
+            "from_state": self.from_state,
+            "to_state": self.to_state,
+            "trigger": self.trigger,
+            "guard": self.guard,
+            "trigger_ref": self.trigger_ref,
+        }
+
+
+@dataclass
+class WorkflowSurface(Surface):
+    """An entity lifecycle: states and legal transitions (BEAN-067)."""
+
+    entity_ref: str = ""
+    states: list[str] = field(default_factory=list)
+    initial_state: str = ""
+    transitions: list[WorkflowTransition] = field(default_factory=list)
+    confidence: str = "inferred"  # "declared" | "inferred"
+    source_library: str = ""
+
+    def __post_init__(self) -> None:
+        self.surface_type = "workflow"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "entity_ref": self.entity_ref,
+                "states": list(self.states),
+                "initial_state": self.initial_state,
+                "transitions": [t.to_dict() for t in self.transitions],
+                "confidence": self.confidence,
+                "source_library": self.source_library,
+            }
+        )
+        return result
+
+
+@dataclass
 class SeedDataSurface(Surface):
     """Seed/reference data required for the application to function (BEAN-066).
 
@@ -688,6 +739,7 @@ class SurfaceCollection:
     seed_data: list[SeedDataSurface] = field(default_factory=list)
     screens: list[ScreenSurface] = field(default_factory=list)
     business_rules: list[BusinessRuleSurface] = field(default_factory=list)
+    workflows: list[WorkflowSurface] = field(default_factory=list)
     general_logic: list[GeneralLogicSurface] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[Surface]:
@@ -709,6 +761,7 @@ class SurfaceCollection:
         yield from self.seed_data
         yield from self.screens
         yield from self.business_rules
+        yield from self.workflows
         yield from self.general_logic
 
     def __len__(self) -> int:
@@ -731,6 +784,7 @@ class SurfaceCollection:
             + len(self.seed_data)
             + len(self.screens)
             + len(self.business_rules)
+            + len(self.workflows)
             + len(self.general_logic)
         )
 
@@ -754,6 +808,7 @@ class SurfaceCollection:
             "seed_data": [s.to_dict() for s in self.seed_data],
             "screens": [s.to_dict() for s in self.screens],
             "business_rules": [s.to_dict() for s in self.business_rules],
+            "workflows": [s.to_dict() for s in self.workflows],
             "general_logic": [s.to_dict() for s in self.general_logic],
         }
 
