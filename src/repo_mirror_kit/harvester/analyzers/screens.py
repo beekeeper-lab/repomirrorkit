@@ -20,6 +20,7 @@ Visual styling is deliberately out of scope.
 
 from __future__ import annotations
 
+import ast
 import re
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -68,6 +69,19 @@ _UI_KIT_CONTROLS = {
     "DatePicker",
     "NumberInput",
 }
+_LAYOUT_TEMPLATES = frozenset(
+    {
+        "base",
+        "layout",
+        "layouts",
+        "header",
+        "footer",
+        "navbar",
+        "nav",
+        "sidebar",
+        "bootstrap_wtf",
+    }
+)
 _SKIP_INPUT_TYPES = {"submit", "button", "reset", "image", "hidden"}
 _HTML_VALIDATION_ATTRS = ("minLength", "maxLength", "min", "max", "pattern", "step")
 _HTTP_VERBS = {"get", "post", "put", "delete", "patch"}
@@ -708,6 +722,218 @@ def _template_screen(text: str, rel: str, route_ref: str) -> ScreenSurface | Non
 
 
 # ---------------------------------------------------------------------------
+# WTForms / Flask-WTF (Python server-rendered forms)
+# ---------------------------------------------------------------------------
+
+_WTF_BASES = {"FlaskForm", "Form", "BaseForm", "ModelForm"}
+_WTF_FIELD_TYPES: dict[str, str] = {
+    "StringField": "text",
+    "PasswordField": "password",
+    "BooleanField": "checkbox",
+    "TextAreaField": "textarea",
+    "IntegerField": "number",
+    "DecimalField": "number",
+    "FloatField": "number",
+    "SelectField": "select",
+    "SelectMultipleField": "select",
+    "RadioField": "radio",
+    "EmailField": "email",
+    "DateField": "date",
+    "DateTimeField": "datetime",
+    "FileField": "file",
+    "URLField": "url",
+    "TelField": "tel",
+}
+_WTF_SKIP = {"SubmitField", "HiddenField", "CSRFTokenField"}
+
+
+def _wtf_validators(node: ast.expr | None) -> tuple[list[str], bool]:
+    rules: list[str] = []
+    required = False
+    if not isinstance(node, (ast.List, ast.Tuple)):
+        return rules, required
+    for v in node.elts:
+        if not isinstance(v, ast.Call):
+            if isinstance(v, ast.Name) and v.id in ("DataRequired", "InputRequired"):
+                required = True
+                rules.append("required")
+            continue
+        name = ast.unparse(v.func).rsplit(".", 1)[-1]
+        kw = {k.arg: ast.unparse(k.value) for k in v.keywords if k.arg}
+        if name in ("DataRequired", "InputRequired"):
+            required = True
+            rules.append("required")
+        elif name == "Length":
+            lo = kw.get("min") or (ast.unparse(v.args[0]) if v.args else None)
+            hi = kw.get("max") or (ast.unparse(v.args[1]) if len(v.args) > 1 else None)
+            if lo and lo != "-1":
+                rules.append(f"minLength={lo}")
+            if hi and hi != "-1":
+                rules.append(f"maxLength={hi}")
+        elif name == "Email":
+            rules.append("email")
+        elif name == "EqualTo" and v.args and isinstance(v.args[0], ast.Constant):
+            rules.append(f"equal_to={ast.unparse(v.args[0])}".replace("'", ""))
+        elif name == "NumberRange":
+            if "min" in kw:
+                rules.append(f"min={kw['min']}")
+            if "max" in kw:
+                rules.append(f"max={kw['max']}")
+        elif name == "Regexp" and v.args:
+            rules.append(f"pattern={ast.unparse(v.args[0])}")
+        elif name == "URL":
+            rules.append("url")
+        elif name == "Optional":
+            pass
+    return rules, required
+
+
+def _wtforms_screens(
+    workdir: Path,
+    inventory: InventoryResult,
+    apis: list[ApiSurface],
+) -> list[ScreenSurface]:
+    """Screens from WTForms classes, linked to the route handlers that use them."""
+    forms: dict[str, tuple[str, ast.ClassDef]] = {}
+    trees: dict[str, ast.Module] = {}
+    for entry in inventory.files:
+        if not entry.path.endswith(".py"):
+            continue
+        text = _read(workdir / entry.path)
+        if text is None or ("wtforms" not in text.lower() and "FlaskForm" not in text):
+            continue
+        try:
+            tree = ast.parse(text)
+        except (SyntaxError, ValueError):
+            continue
+        trees[entry.path] = tree
+        for cls in (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)):
+            bases = {ast.unparse(b).rsplit(".", 1)[-1] for b in cls.bases}
+            if bases & _WTF_BASES:
+                forms[cls.name] = (entry.path, cls)
+    if not forms:
+        return []
+
+    # Which API handlers instantiate which form class.
+    users: dict[str, list[ApiSurface]] = {}
+    for api in apis:
+        if not api.source_refs or not api.source_refs[0].file_path.endswith(".py"):
+            continue
+        ref = api.source_refs[0]
+        text = _read(workdir / ref.file_path)
+        if text is None:
+            continue
+        try:
+            tree = ast.parse(text)
+        except (SyntaxError, ValueError):
+            continue
+        for fn in (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)):
+            if not any(d.lineno == ref.start_line for d in fn.decorator_list):
+                continue
+            for call in (c for c in ast.walk(fn) if isinstance(c, ast.Call)):
+                cname = ast.unparse(call.func).rsplit(".", 1)[-1]
+                if cname in forms:
+                    users.setdefault(cname, []).append(api)
+
+    out: list[ScreenSurface] = []
+    for name, (rel, cls) in sorted(forms.items()):
+        fields: list[ScreenField] = []
+        custom_validators = {
+            fn.name[len("validate_") :]
+            for fn in cls.body
+            if isinstance(fn, ast.FunctionDef) and fn.name.startswith("validate_")
+        }
+        for stmt in cls.body:
+            target: str | None = None
+            value: ast.expr | None = None
+            if (
+                isinstance(stmt, ast.Assign)
+                and len(stmt.targets) == 1
+                and isinstance(stmt.targets[0], ast.Name)
+            ):
+                target, value = stmt.targets[0].id, stmt.value
+            elif isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+                target, value = stmt.target.id, stmt.value
+            if not target or not isinstance(value, ast.Call):
+                continue
+            ftype = ast.unparse(value.func).rsplit(".", 1)[-1]
+            if ftype in _WTF_SKIP or ftype not in _WTF_FIELD_TYPES:
+                continue
+            label = ""
+            if (
+                value.args
+                and isinstance(value.args[0], ast.Constant)
+                and isinstance(value.args[0].value, str)
+            ):
+                label = value.args[0].value
+            kws = {k.arg: k.value for k in value.keywords if k.arg}
+            rules, required = _wtf_validators(kws.get("validators"))
+            if target in custom_validators:
+                rules.append(f"custom validation (validate_{target})")
+            fields.append(
+                ScreenField(
+                    name=target,
+                    input_type=_WTF_FIELD_TYPES[ftype],
+                    label=label,
+                    required=required,
+                    validation=rules,
+                )
+            )
+        if not fields:
+            continue
+        handlers = users.get(name, [])
+        post = next((a for a in handlers if a.method == "POST"), None)
+        first = handlers[0] if handlers else None
+        actions = (
+            [ScreenAction(trigger="submit form", api_ref=f"POST {post.path}")]
+            if post
+            else []
+        )
+        out.append(
+            ScreenSurface(
+                name=name,
+                screen_name=name,
+                route_ref=first.path if first else "",
+                framework="wtforms",
+                fields=fields,
+                actions=actions,
+                source_refs=[SourceRef(file_path=rel, start_line=cls.lineno)],
+            )
+        )
+        # A form-posting handler has no JSON body to infer: the form IS its
+        # contract. Merge the form fields into whatever the handler exposes.
+        if post is not None:
+            existing = (
+                post.request_schema.get("fields", [])
+                if isinstance(post.request_schema, dict)
+                else []
+            )
+            have = {(f.get("source"), f.get("name")) for f in existing}
+            merged = list(existing)
+            for f in fields:
+                if ("form", f.name) in have:
+                    continue
+                rules = [r for r in f.validation if r != "required"]
+                spec: dict[str, Any] = {
+                    "name": f.name,
+                    "type": {"checkbox": "boolean", "number": "number"}.get(
+                        f.input_type, "string"
+                    ),
+                    "required": f.required,
+                    "source": "form",
+                }
+                if rules:
+                    spec["rules"] = rules
+                merged.append(spec)
+            post.request_schema = {
+                "fields": merged,
+                "confidence": "declared",
+                "content_type": "application/x-www-form-urlencoded",
+            }
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Field -> API -> model mapping
 # ---------------------------------------------------------------------------
 
@@ -764,7 +990,7 @@ def map_screen_fields(
             for api in body_apis:
                 for rf in (api.request_schema or {}).get("fields", []):
                     if (
-                        rf.get("source") in ("body", None)
+                        rf.get("source") in ("body", "form", None)
                         and _norm_name(str(rf.get("name", ""))) == norm
                     ):
                         api_field = str(rf["name"])
@@ -790,6 +1016,20 @@ def map_screen_fields(
                 model = _model_for_path(api_for_field.path, models)
             if model is None and bound_apis:
                 model = _model_for_path(bound_apis[0].path, models)
+            if model is None and screen.framework == "wtforms":
+                # Server-rendered forms post to action-named paths ("/register"):
+                # pick the model whose columns best overlap the form's fields.
+                form_names = {_norm_name(x.name) for x in screen.fields}
+                scored = [
+                    (
+                        sum(1 for mf in m.fields if _norm_name(mf.name) in form_names),
+                        m,
+                    )
+                    for m in models
+                ]
+                top = max(scored, key=lambda t: t[0], default=(0, None))
+                if top[0] >= 2 or (top[0] >= 1 and len(form_names) <= 2):
+                    model = top[1]
             col = None
             if model is not None:
                 col = next(
@@ -849,12 +1089,16 @@ def analyze_screens(
             if ps is not None:
                 screen = _react_screen(ps, rel, route_ref)
         elif suffix in _TEMPLATE_EXTS:
+            stem = PurePosixPath(rel).stem.lower()
+            if stem.startswith("_") or stem in _LAYOUT_TEMPLATES or "macro" in stem:
+                continue  # layouts, partials and macro libraries are not screens
             text = _read(workdir / rel)
             if text is None:
                 continue
             screen = _template_screen(text, rel, route_ref)
         if screen is not None:
             screens.append(screen)
+    screens.extend(_wtforms_screens(workdir, inventory, apis or []))
     map_screen_fields(screens, apis or [], models or [])
     logger.info(
         "screens_analyzed",

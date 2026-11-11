@@ -191,3 +191,82 @@ export function F() {
 
 def test_no_form_files_yield_nothing(tmp_path: Path) -> None:
     assert _run(tmp_path, {"util.tsx": "export const x = 1;"}) == []
+
+
+def test_wtforms_screens_link_routes_and_merge_form_contract(tmp_path: Path) -> None:
+    """Flask-WTF forms (microblog eval): fields, validators, handler link, contract."""
+    forms = """\
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired, Email, EqualTo, Length
+
+
+class RegistrationForm(FlaskForm):
+    username = StringField("Username", validators=[DataRequired(), Length(min=3, max=20)])
+    email = StringField("Email", validators=[DataRequired(), Email()])
+    password = PasswordField("Password", validators=[DataRequired()])
+    password2 = PasswordField("Repeat", validators=[DataRequired(), EqualTo("password")])
+    submit = SubmitField("Register")
+
+    def validate_username(self, username):
+        pass
+"""
+    routes = """\
+from flask import render_template
+from forms import RegistrationForm
+
+
+@bp.route("/register", methods=["POST"])
+def register():
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        pass
+    return render_template("register.html", form=form)
+"""
+    api = ApiSurface(
+        name="POST /auth/register",
+        method="POST",
+        path="/auth/register",
+        source_refs=[SourceRef(file_path="routes.py", start_line=5)],
+        request_schema={"unknown": True},
+    )
+    model = ModelSurface(
+        name="User",
+        entity_name="User",
+        fields=[
+            ModelField(name="username", field_type="str"),
+            ModelField(name="email", field_type="str"),
+        ],
+    )
+    screens = _run(
+        tmp_path, {"forms.py": forms, "routes.py": routes}, apis=[api], models=[model]
+    )
+    (screen,) = [s for s in screens if s.framework == "wtforms"]
+    f = {x.name: x for x in screen.fields}
+    assert set(f) == {"username", "email", "password", "password2"}  # submit skipped
+    assert f["username"].validation == [
+        "required",
+        "minLength=3",
+        "maxLength=20",
+        "custom validation (validate_username)",
+    ]
+    assert (
+        f["password2"].validation == ["required", "equal_to=password"]
+        and f["password"].input_type == "password"
+    )
+    assert screen.route_ref == "/auth/register"
+    assert [a.api_ref for a in screen.actions] == ["POST /auth/register"]
+    assert (
+        f["username"].bound_model_field == "User.username"
+        and f["email"].bound_model_field == "User.email"
+    )
+    assert f["password"].bound_model_field is None  # honest gap, not a guess
+    # the handler's unknown contract became the form's declared contract
+    assert api.request_schema["confidence"] == "declared"
+    assert {x["name"] for x in api.request_schema["fields"]} == {
+        "username",
+        "email",
+        "password",
+        "password2",
+    }
+    assert all(x["source"] == "form" for x in api.request_schema["fields"])
