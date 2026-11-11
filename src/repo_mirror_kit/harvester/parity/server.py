@@ -25,6 +25,23 @@ import structlog
 logger = structlog.get_logger()
 
 DEFAULT_START_COMMAND = "bash start.sh"
+
+# Variables the app under test may inherit. Everything else — notably
+# ANTHROPIC_API_KEY and any cloud/CI credentials — is withheld: the rebuilt app
+# is LLM-generated, untrusted code and must not see the operator's secrets.
+SAFE_ENV_KEYS: tuple[str, ...] = (
+    "PATH",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "TMPDIR",
+    "TERM",
+    "USER",
+    "SHELL",
+    "NODE_PATH",
+    "PYTHONPATH",
+    "VIRTUAL_ENV",
+)
 STARTUP_TIMEOUT_SECONDS = 120.0
 
 
@@ -55,6 +72,8 @@ class AppProcess:
         app_dir: directory containing the app.
         command: shell command that starts it (reads ``$PORT``).
         env: extra environment variables (e.g. ``{"API_KEY": "demo-key"}``).
+            The app otherwise sees only :data:`SAFE_ENV_KEYS` from the host —
+            never the operator's secrets (``inherit_env=True`` opts out).
         startup_timeout: seconds to wait for the port to accept connections.
     """
 
@@ -64,7 +83,9 @@ class AppProcess:
         command: str = DEFAULT_START_COMMAND,
         env: dict[str, str] | None = None,
         startup_timeout: float = STARTUP_TIMEOUT_SECONDS,
+        inherit_env: bool = False,
     ) -> None:
+        self.inherit_env = inherit_env
         self.app_dir = Path(app_dir)
         self.command = command
         self.env = env or {}
@@ -95,8 +116,13 @@ class AppProcess:
 
     def __enter__(self) -> AppProcess:
         self.port = free_port()
+        base = (
+            dict(os.environ)
+            if self.inherit_env
+            else {k: v for k, v in os.environ.items() if k in SAFE_ENV_KEYS}
+        )
         env = {
-            **os.environ,
+            **base,
             **self.env,
             "PORT": str(self.port),
             "PYTHONUNBUFFERED": "1",
