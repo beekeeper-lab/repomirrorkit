@@ -7,12 +7,17 @@ A **requirements harvester**: point it at a Git repository and it produces struc
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-# Create virtual environment
-uv venv
+git clone --recursive https://github.com/beekeeper-lab/repomirrorkit.git
+cd repomirrorkit
 
-# Install the package with dev dependencies
-uv pip install -e ".[dev]"
+# Create the environment and install runtime + dev dependencies
+uv sync --all-extras
+
+# Smoke test
+uv run requirements-harvester --help
 ```
+
+The `--recursive` flag pulls the `claude-kit` submodule used for the generated Claude Code scaffold; the harvester itself runs without it (it logs a notice and skips that step). Node.js 22+ is only needed for the optional parity tests (`-m parity`).
 
 ## Run
 
