@@ -179,7 +179,9 @@ def build_rebuild_prompt(workspace: Path, copied_inputs: list[str]) -> str:
         inputs_desc.append("`openapi.*` (API contract)")
     if have_runbook:
         inputs_desc.append("`RUNBOOK.md` (how the app is run)")
-    inputs_line = "; ".join(inputs_desc) if inputs_desc else "the files in this directory"
+    inputs_line = (
+        "; ".join(inputs_desc) if inputs_desc else "the files in this directory"
+    )
 
     return (
         "You are rebuilding an application from its extracted requirements. "
@@ -363,8 +365,14 @@ def run_rebuild(
         )
     if lane is RebuildLane.LOCAL:
         return _rebuild_local(
-            workspace, model, timeout, copied, data_class,
-            allowed_commands, final_verify, runner,
+            workspace,
+            model,
+            timeout,
+            copied,
+            data_class,
+            allowed_commands,
+            final_verify,
+            runner,
         )
     raise RebuildError(f"unknown rebuild lane: {lane}")
 
@@ -379,8 +387,15 @@ def _rebuild_cloud(
     runner: Runner,
 ) -> RebuildResult:
     prompt = build_rebuild_prompt(workspace, copied)
-    argv = ["claude", "-p", prompt, "--output-format", "json",
-            "--permission-mode", permission_mode]
+    argv = [
+        "claude",
+        "-p",
+        prompt,
+        "--output-format",
+        "json",
+        "--permission-mode",
+        permission_mode,
+    ]
     if model:
         argv += ["--model", model]
 
@@ -389,15 +404,23 @@ def _rebuild_cloud(
         proc = runner(argv, workspace, timeout)
     except subprocess.TimeoutExpired:
         return RebuildResult(
-            lane=RebuildLane.CLOUD.value, model=model, workspace=workspace,
-            success=False, duration_seconds=time.monotonic() - start,
-            copied_inputs=tuple(copied), error=f"rebuild timed out after {timeout}s",
+            lane=RebuildLane.CLOUD.value,
+            model=model,
+            workspace=workspace,
+            success=False,
+            duration_seconds=time.monotonic() - start,
+            copied_inputs=tuple(copied),
+            error=f"rebuild timed out after {timeout}s",
         )
     except (OSError, FileNotFoundError) as exc:
         return RebuildResult(
-            lane=RebuildLane.CLOUD.value, model=model, workspace=workspace,
-            success=False, duration_seconds=time.monotonic() - start,
-            copied_inputs=tuple(copied), error=f"could not launch rebuild agent: {exc}",
+            lane=RebuildLane.CLOUD.value,
+            model=model,
+            workspace=workspace,
+            success=False,
+            duration_seconds=time.monotonic() - start,
+            copied_inputs=tuple(copied),
+            error=f"could not launch rebuild agent: {exc}",
         )
     duration = time.monotonic() - start
 
@@ -459,22 +482,36 @@ def _rebuild_local(
         encoding="utf-8",
     )
 
-    argv = ["forge-loop", "run", str(task_dir), "--model", model,
-            "--repo", str(workspace)]
+    argv = [
+        "forge-loop",
+        "run",
+        str(task_dir),
+        "--model",
+        model,
+        "--repo",
+        str(workspace),
+    ]
 
     start = time.monotonic()
     try:
         proc = runner(argv, workspace, timeout)
     except subprocess.TimeoutExpired:
         return RebuildResult(
-            lane=RebuildLane.LOCAL.value, model=model, workspace=workspace,
-            success=False, duration_seconds=time.monotonic() - start,
-            copied_inputs=tuple(copied), error=f"rebuild timed out after {timeout}s",
+            lane=RebuildLane.LOCAL.value,
+            model=model,
+            workspace=workspace,
+            success=False,
+            duration_seconds=time.monotonic() - start,
+            copied_inputs=tuple(copied),
+            error=f"rebuild timed out after {timeout}s",
         )
     except (OSError, FileNotFoundError) as exc:
         return RebuildResult(
-            lane=RebuildLane.LOCAL.value, model=model, workspace=workspace,
-            success=False, duration_seconds=time.monotonic() - start,
+            lane=RebuildLane.LOCAL.value,
+            model=model,
+            workspace=workspace,
+            success=False,
+            duration_seconds=time.monotonic() - start,
             copied_inputs=tuple(copied),
             error=f"could not launch forge-loop: {exc}",
         )
@@ -489,7 +526,10 @@ def _rebuild_local(
     elif state["phase"] == "escalated":
         error = f"forge-loop escalated (see {task_dir}/ESCALATION.md)"
     else:
-        error = proc.stderr.strip() or f"forge-loop phase={state['phase']}, exit={proc.returncode}"
+        error = (
+            proc.stderr.strip()
+            or f"forge-loop phase={state['phase']}, exit={proc.returncode}"
+        )
 
     return RebuildResult(
         lane=RebuildLane.LOCAL.value,

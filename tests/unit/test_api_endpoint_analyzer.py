@@ -423,6 +423,55 @@ class TestFastAPIExtraction:
 # ---------------------------------------------------------------------------
 
 
+class TestFlaskShorthandAndFactory:
+    """Flask 2.0+ verb shorthand, tuple methods, and app-factory routes."""
+
+    def test_verb_shorthand(self, tmp_path: Path) -> None:
+        code = (
+            "@app.get('/api/users')\ndef a(): pass\n"
+            "@app.post('/api/users')\ndef b(): pass\n"
+            "@bp.delete('/api/users/<int:uid>')\ndef c(): pass\n"
+        )
+        _setup_files(tmp_path, {"app.py": code})
+        surfaces = analyze_api_endpoints(
+            tmp_path, _make_inventory(["app.py"]), _make_profile({"flask": 0.7})
+        )
+        got = {(s.method, s.path) for s in surfaces}
+        assert got == {
+            ("GET", "/api/users"),
+            ("POST", "/api/users"),
+            ("DELETE", "/api/users/<int:uid>"),
+        }
+
+    def test_routes_inside_app_factory(self, tmp_path: Path) -> None:
+        code = (
+            "from flask import Flask\n\n"
+            "def create_app():\n"
+            "    app = Flask(__name__)\n\n"
+            "    @app.get('/api/users')\n"
+            "    def list_users():\n"
+            "        return []\n\n"
+            "    @app.route('/api/users', methods=('POST',))\n"
+            "    def create_user():\n"
+            "        return {}\n\n"
+            "    return app\n"
+        )
+        _setup_files(tmp_path, {"src/app.py": code})
+        surfaces = analyze_api_endpoints(
+            tmp_path, _make_inventory(["src/app.py"]), _make_profile({"flask": 0.7})
+        )
+        got = {(s.method, s.path) for s in surfaces}
+        assert got == {("GET", "/api/users"), ("POST", "/api/users")}
+
+    def test_methods_before_path_kwarg_order(self, tmp_path: Path) -> None:
+        code = "@app.route('/x', strict_slashes=False, methods=['PUT'])\ndef x(): pass"
+        _setup_files(tmp_path, {"app.py": code})
+        surfaces = analyze_api_endpoints(
+            tmp_path, _make_inventory(["app.py"]), _make_profile({"flask": 0.7})
+        )
+        assert [(s.method, s.path) for s in surfaces] == [("PUT", "/x")]
+
+
 class TestFlaskExtraction:
     """Extract endpoints from Flask route decorators."""
 

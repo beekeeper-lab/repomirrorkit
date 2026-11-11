@@ -131,3 +131,24 @@ def test_pipeline_ts_next_fixture(
 
     # BEAN-051: top-level REQUIREMENTS.md exists.
     assert (out / "REQUIREMENTS.md").is_file(), "REQUIREMENTS.md missing"
+
+
+@pytest.mark.integration
+def test_pipeline_flask_factory_fixture(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    """BEAN-081: blueprint prefixes, verb shorthand and factory routes resolve."""
+    repo = local_git_repo("python-flask-factory")
+    out = tmp_path / "harvest-out"
+
+    result = _run_pipeline(repo, out)
+
+    assert result.success
+    contract = json.loads((out / "api-contract.json").read_text())
+    ops = {(m.upper(), p) for p, v in contract["paths"].items() for m in v}
+    assert ops == {
+        ("GET", "/health"),
+        ("GET", "/api/items/"),
+        ("POST", "/api/items/"),
+        ("DELETE", "/api/items/{item_id}"),
+    }

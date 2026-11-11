@@ -23,14 +23,22 @@ def _surfaces(**by_category: list[dict]) -> dict[str, list]:
 
 def _write_surfaces_json(path: Path, surfaces: dict[str, list]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps({"summary": {}, "surfaces": surfaces}), encoding="utf-8"
-    )
+    path.write_text(json.dumps({"summary": {}, "surfaces": surfaces}), encoding="utf-8")
 
 
 ROUTES = [
-    {"name": "list_users", "surface_type": "route", "method": "GET", "path": "/api/users"},
-    {"name": "create_user", "surface_type": "route", "method": "POST", "path": "/api/users"},
+    {
+        "name": "list_users",
+        "surface_type": "route",
+        "method": "GET",
+        "path": "/api/users",
+    },
+    {
+        "name": "create_user",
+        "surface_type": "route",
+        "method": "POST",
+        "path": "/api/users",
+    },
 ]
 MODELS = [{"name": "User", "surface_type": "model"}]
 
@@ -63,8 +71,12 @@ def test_extra_surface_lowers_precision() -> None:
     rebuilt = _surfaces(
         routes=[
             ROUTES[0],
-            {"name": "delete_user", "surface_type": "route",
-             "method": "DELETE", "path": "/api/users/{id}"},
+            {
+                "name": "delete_user",
+                "surface_type": "route",
+                "method": "DELETE",
+                "path": "/api/users/{id}",
+            },
         ]
     )
     report = score_surfaces(original, rebuilt)
@@ -121,9 +133,7 @@ def test_diff_harvest_dirs_reads_surfaces_json(tmp_path: Path) -> None:
     orig_dir = tmp_path / "orig"
     rebuilt_dir = tmp_path / "rebuilt"
     _write_surfaces_json(orig_dir / "surfaces.json", _surfaces(routes=list(ROUTES)))
-    _write_surfaces_json(
-        rebuilt_dir / "surfaces.json", _surfaces(routes=[ROUTES[0]])
-    )
+    _write_surfaces_json(rebuilt_dir / "surfaces.json", _surfaces(routes=[ROUTES[0]]))
     report = diff_harvest_dirs(orig_dir, rebuilt_dir)
     assert report.overall_recall == 0.5
 
@@ -142,7 +152,9 @@ def test_load_surfaces_accepts_bare_surfaces_object(tmp_path: Path) -> None:
 
 
 def test_write_score_reports_emits_both_formats(tmp_path: Path) -> None:
-    report = score_surfaces(_surfaces(routes=list(ROUTES)), _surfaces(routes=list(ROUTES)))
+    report = score_surfaces(
+        _surfaces(routes=list(ROUTES)), _surfaces(routes=list(ROUTES))
+    )
     json_path, md_path = write_score_reports(tmp_path, report)
     assert json_path.is_file() and md_path.is_file()
     data = json.loads(json_path.read_text())

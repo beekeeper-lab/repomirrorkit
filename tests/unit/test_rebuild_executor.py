@@ -64,7 +64,9 @@ def test_prepare_workspace_empty_harvest_raises(tmp_path: Path) -> None:
 
 
 def test_build_prompt_mentions_available_inputs(tmp_path: Path) -> None:
-    prompt = build_rebuild_prompt(tmp_path, ["REQUIREMENTS.md", "beans", "openapi.yaml"])
+    prompt = build_rebuild_prompt(
+        tmp_path, ["REQUIREMENTS.md", "beans", "openapi.yaml"]
+    )
     assert "REQUIREMENTS.md" in prompt
     assert "beans/" in prompt
     assert "no original source" in prompt.lower()
@@ -115,8 +117,12 @@ def test_local_lane_success_parses_state(tmp_path: Path) -> None:
         return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
 
     result = run_rebuild(
-        harvest, workspace, lane=RebuildLane.LOCAL, model="gemma4:26b",
-        data_class="public", runner=fake_forge_loop,
+        harvest,
+        workspace,
+        lane=RebuildLane.LOCAL,
+        model="gemma4:26b",
+        data_class="public",
+        runner=fake_forge_loop,
     )
     assert result.success is True
     assert result.lane == "local"
@@ -143,7 +149,10 @@ def test_local_lane_escalation_is_failure(tmp_path: Path) -> None:
         return subprocess.CompletedProcess(argv, 1, stdout="", stderr="")
 
     result = run_rebuild(
-        harvest, workspace, lane=RebuildLane.LOCAL, model="gemma4:26b",
+        harvest,
+        workspace,
+        lane=RebuildLane.LOCAL,
+        model="gemma4:26b",
         runner=fake_forge_loop,
     )
     assert result.success is False
@@ -163,7 +172,9 @@ def test_run_rebuild_success_parses_telemetry(tmp_path: Path) -> None:
         )
         return subprocess.CompletedProcess(argv, 0, stdout=payload, stderr="")
 
-    result = run_rebuild(harvest, workspace, model="claude-opus-4-8", runner=fake_runner)
+    result = run_rebuild(
+        harvest, workspace, model="claude-opus-4-8", runner=fake_runner
+    )
     assert isinstance(result, RebuildResult)
     assert result.success is True
     assert result.tokens_in == 1000
