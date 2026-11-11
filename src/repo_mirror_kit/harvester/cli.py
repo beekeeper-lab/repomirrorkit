@@ -109,8 +109,16 @@ def main() -> None:
     "--resume",
     is_flag=True,
     default=False,
-    help="Resume from a previous incomplete run. Skips the clone (Stage A) "
-    "if the working copy already exists; analysis stages always re-run.",
+    help="Resume from a previous incomplete run. Completed stages (A, B, C, "
+    "C2) are rehydrated from <out>/state/ when their artifacts are intact "
+    "and the config is unchanged; later stages re-run.",
+)
+@click.option(
+    "--from-stage",
+    type=click.Choice(["A", "B", "C", "C2", "D", "E", "F", "G"]),
+    default=None,
+    help="Re-run from this stage onward, reusing persisted earlier stages "
+    "(implies --resume). E.g. --from-stage C2 re-runs LLM enrichment only.",
 )
 @click.option(
     "--fail-on-gaps/--no-fail-on-gaps",
@@ -168,6 +176,7 @@ def harvest(
     max_file_bytes: int,
     max_total_bytes: int,
     resume: bool,
+    from_stage: str | None,
     fail_on_gaps: bool,
     fail_on_fidelity: bool,
     log_level: str,
@@ -190,7 +199,8 @@ def harvest(
             exclude=merge_exclude_globs(exclude),
             max_file_bytes=max_file_bytes,
             max_total_bytes=max_total_bytes,
-            resume=resume,
+            resume=resume or from_stage is not None,
+            from_stage=from_stage,
             fail_on_gaps=fail_on_gaps,
             fail_on_fidelity=fail_on_fidelity,
             log_level=log_level,

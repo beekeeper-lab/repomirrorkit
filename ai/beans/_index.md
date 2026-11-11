@@ -81,7 +81,7 @@
 | BEAN-057 | Split `analyzers/models.py` by Framework (Tracer Bullet) | App | Low | Done | team-lead |
 | BEAN-058 | Fix `telemetry-stamp` Hook Path Resolution | Infra | High | Done | team-lead |
 | BEAN-059 | Fix `--llm` Flag Doc Drift + Config Default Mismatch | App | Low | Done | team-lead |
-| BEAN-060 | Persist Stage Outputs → Real `--resume` | App | High | Unapproved | team-lead |
+| BEAN-060 | Persist Stage Outputs → Real `--resume` | App | High | Done | team-lead |
 | BEAN-061 | Tree-sitter Extraction Foundation | App | High | Unapproved | team-lead |
 | BEAN-062 | API Contract Extraction — Python (Tracer Bullet) | App | Critical | Done | team-lead |
 | BEAN-063 | API Contract Extraction — JS/TS Stacks | App | High | Unapproved | team-lead |

@@ -8,15 +8,19 @@ for progress reporting. Both the CLI and GUI entry points delegate to
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
+from typing import Any
 
 import structlog
 
+from repo_mirror_kit.harvester import persistence
 from repo_mirror_kit.harvester.analyzers import (
     SurfaceCollection,
     analyze_api_endpoints,
@@ -181,6 +185,24 @@ class HarvestResult:
 ENRICHED_PLACEHOLDER_THRESHOLD = 80.0
 
 
+def _config_fingerprint(config: HarvestConfig) -> str:
+    """Hash of the config inputs that shape persisted stage outputs."""
+    payload = json.dumps(
+        {
+            "repo": config.repo,
+            "ref": config.ref,
+            "include": list(config.include),
+            "exclude": list(config.exclude),
+            "max_file_bytes": config.max_file_bytes,
+            "llm_enabled": config.llm_enabled,
+            "llm_model": config.llm_model,
+            "llm_base_url": config.llm_base_url,
+        },
+        sort_keys=True,
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 class HarvestPipeline:
     """Orchestrates the harvester pipeline stages A through G.
 
@@ -198,12 +220,12 @@ class HarvestPipeline:
     def run(self, config: HarvestConfig) -> HarvestResult:
         """Execute the full pipeline.
 
-        ``--resume`` semantics: Stage A (clone) is skipped if the working
-        copy already exists on disk; all later stages (B-G) always re-run
-        because their outputs are not persisted across runs and re-running
-        is fast relative to the slow network operation. ``state.json``
-        still records per-stage completion for diagnostics, but does not
-        gate stage execution.
+        ``--resume`` semantics (BEAN-060): stages A, B, C, and C2 persist
+        their outputs under ``<out>/state/`` with SHA-256 hashes recorded in
+        ``state.json``. On resume a completed stage is rehydrated when its
+        artifact hash and the config fingerprint still match; otherwise it
+        (and every later stage) re-runs. ``--from-stage X`` forces a re-run
+        from stage X. Stages D-G are cheap and always re-run.
 
         Args:
             config: Harvest configuration.
@@ -231,6 +253,19 @@ class HarvestPipeline:
                 state.initialize(STAGE_NAMES)
         else:
             state.initialize(STAGE_NAMES)
+
+        # BEAN-060: stage outputs are persisted under <out>/state/ and
+        # rehydrated on resume when their hash and the config fingerprint match.
+        state_dir = output_dir / "state"
+        fingerprint = _config_fingerprint(config)
+        resume_ok = config.resume and state.state.fingerprint == fingerprint
+        if config.resume and not resume_ok and state.get_completed_stages():
+            logger.info("resume_config_changed_invalidating_persisted_stages")
+            state.invalidate_from("B")
+        state.state.fingerprint = fingerprint
+        if config.resume and config.from_stage is not None:
+            state.invalidate_from(config.from_stage)
+            logger.info("resume_forced_from_stage", stage=config.from_stage)
 
         logger.info("pipeline_starting", output_dir=str(output_dir))
 
@@ -278,12 +313,42 @@ class HarvestPipeline:
                 "B",
                 "Scanning inventory and detecting frameworks",
             )
-            try:
-                inventory_result, profile = self._run_stage_b(
-                    config, workdir, output_dir
+            cached = self._rehydrate(
+                state,
+                resume_ok,
+                "B",
+                [persistence.INVENTORY_ARTIFACT, persistence.PROFILE_ARTIFACT],
+                state_dir,
+            )
+            if cached is not None:
+                logger.info("stage_rehydrated", stage="B")
+                inventory_result = persistence.inventory_from_dict(
+                    cached[persistence.INVENTORY_ARTIFACT]
                 )
-            except _FS_EXCEPTIONS as exc:
-                return self._handle_stage_error("B", exc, state, output_dir)
+                profile = persistence.profile_from_dict(
+                    cached[persistence.PROFILE_ARTIFACT]
+                )
+            else:
+                state.invalidate_from("B")
+                try:
+                    inventory_result, profile = self._run_stage_b(
+                        config, workdir, output_dir
+                    )
+                except _FS_EXCEPTIONS as exc:
+                    return self._handle_stage_error("B", exc, state, output_dir)
+                self._persist(
+                    state,
+                    state_dir,
+                    "B",
+                    {
+                        persistence.INVENTORY_ARTIFACT: persistence.inventory_to_dict(
+                            inventory_result
+                        ),
+                        persistence.PROFILE_ARTIFACT: persistence.profile_to_dict(
+                            profile
+                        ),
+                    },
+                )
             state.complete_stage("B")
             self._emit(
                 PipelineEventType.STAGE_COMPLETE,
@@ -302,12 +367,28 @@ class HarvestPipeline:
                 "C",
                 "Extracting surfaces",
             )
-            try:
-                surfaces = self._run_stage_c(
-                    workdir, inventory_result, profile, output_dir
+            cached = self._rehydrate(
+                state, resume_ok, "C", [persistence.SURFACES_ARTIFACT], state_dir
+            )
+            if cached is not None:
+                logger.info("stage_rehydrated", stage="C")
+                surfaces = persistence.surface_collection_from_dict(
+                    cached[persistence.SURFACES_ARTIFACT]
                 )
-            except _FS_EXCEPTIONS as exc:
-                return self._handle_stage_error("C", exc, state, output_dir)
+            else:
+                state.invalidate_from("C")
+                try:
+                    surfaces = self._run_stage_c(
+                        workdir, inventory_result, profile, output_dir
+                    )
+                except _FS_EXCEPTIONS as exc:
+                    return self._handle_stage_error("C", exc, state, output_dir)
+                self._persist(
+                    state,
+                    state_dir,
+                    "C",
+                    {persistence.SURFACES_ARTIFACT: surfaces.to_dict()},
+                )
             state.complete_stage("C")
             self._emit(
                 PipelineEventType.STAGE_COMPLETE,
@@ -340,10 +421,30 @@ class HarvestPipeline:
                 config.llm_enabled
                 and (config.llm_base_url or os.environ.get("ANTHROPIC_API_KEY"))
             )
-            try:
-                surfaces = self._run_stage_c2(surfaces, config, workdir)
-            except _FS_EXCEPTIONS as exc:
-                return self._handle_stage_error("C2", exc, state, output_dir)
+            cached = self._rehydrate(
+                state,
+                resume_ok,
+                "C2",
+                [persistence.ENRICHED_SURFACES_ARTIFACT],
+                state_dir,
+            )
+            if cached is not None:
+                logger.info("stage_rehydrated", stage="C2")
+                surfaces = persistence.surface_collection_from_dict(
+                    cached[persistence.ENRICHED_SURFACES_ARTIFACT]
+                )
+            else:
+                state.invalidate_from("C2")
+                try:
+                    surfaces = self._run_stage_c2(surfaces, config, workdir)
+                except _FS_EXCEPTIONS as exc:
+                    return self._handle_stage_error("C2", exc, state, output_dir)
+                self._persist(
+                    state,
+                    state_dir,
+                    "C2",
+                    {persistence.ENRICHED_SURFACES_ARTIFACT: surfaces.to_dict()},
+                )
             state.complete_stage("C2")
             self._emit(
                 PipelineEventType.STAGE_COMPLETE,
@@ -493,6 +594,44 @@ class HarvestPipeline:
             config.ref,
             repo_dir,
             max_total_bytes=config.max_total_bytes,
+        )
+
+    def _rehydrate(
+        self,
+        state: StateManager,
+        resume_ok: bool,
+        stage: str,
+        filenames: list[str],
+        state_dir: Path,
+    ) -> dict[str, dict[str, Any]] | None:
+        """Load a completed stage's persisted artifacts, or None to re-run."""
+        if not resume_ok or not state.is_stage_done(stage):
+            return None
+        recorded = state.get_artifacts(stage)
+        loaded: dict[str, dict[str, Any]] = {}
+        for filename in filenames:
+            if filename not in recorded:
+                return None
+            data = persistence.read_artifact(state_dir, filename, recorded[filename])
+            if data is None:
+                return None
+            loaded[filename] = data
+        return loaded
+
+    def _persist(
+        self,
+        state: StateManager,
+        state_dir: Path,
+        stage: str,
+        artifacts: dict[str, dict[str, Any]],
+    ) -> None:
+        """Write a stage's artifacts and record their hashes in state."""
+        state.set_artifacts(
+            stage,
+            {
+                name: persistence.write_artifact(state_dir, name, data)
+                for name, data in artifacts.items()
+            },
         )
 
     def _run_stage_b(
@@ -711,6 +850,9 @@ class HarvestPipeline:
         state: StateManager,
     ) -> list[WrittenBean]:
         """Stage E: generate bean files."""
+        # Beans always regenerate (cheap, deterministic) — never trust stale
+        # per-bean checkpoints from a prior run.
+        state.reset_beans()
         return write_beans(surfaces, output_dir, state)
 
     def _run_stage_f(

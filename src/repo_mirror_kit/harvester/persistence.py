@@ -170,9 +170,7 @@ def surface_from_dict(data: dict[str, Any]) -> Surface:
 
     surface = cls(
         name=data.get("name", ""),
-        source_refs=[
-            _source_ref_from_dict(r) for r in data.get("source_refs", [])
-        ],
+        source_refs=[_source_ref_from_dict(r) for r in data.get("source_refs", [])],
         enrichment=dict(data.get("enrichment", {})),
         **kwargs,
     )

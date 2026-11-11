@@ -145,9 +145,7 @@ class PipelineState:
             last_checkpoint=str(last_cp) if last_cp is not None else None,
             started_at=str(started) if started is not None else None,
             artifacts=artifacts,
-            fingerprint=str(raw_fingerprint)
-            if raw_fingerprint is not None
-            else None,
+            fingerprint=str(raw_fingerprint) if raw_fingerprint is not None else None,
         )
 
 
@@ -308,6 +306,34 @@ class StateManager:
             True if this bean was already completed.
         """
         return bean_number <= self._state.bean_count
+
+    def reset_beans(self) -> None:
+        """Forget recorded beans so every bean is regenerated (BEAN-060)."""
+        self._state.bean_count = 0
+
+    def invalidate_from(self, stage_name: str) -> None:
+        """Mark *stage_name* and every later stage pending; drop their artifacts.
+
+        Args:
+            stage_name: First stage to re-run.
+        """
+        invalid = False
+        for stage in self._state.stages:
+            if stage.name == stage_name:
+                invalid = True
+            if invalid:
+                stage.status = StageStatus.PENDING
+                stage.completed_at = None
+                self._state.artifacts.pop(stage.name, None)
+        self.save()
+
+    def set_artifacts(self, stage_name: str, records: dict[str, str]) -> None:
+        """Record ``{filename: sha256}`` artifacts for a stage."""
+        self._state.artifacts[stage_name] = dict(records)
+
+    def get_artifacts(self, stage_name: str) -> dict[str, str]:
+        """Return ``{filename: sha256}`` recorded for a stage (maybe empty)."""
+        return dict(self._state.artifacts.get(stage_name, {}))
 
     def finalize(self) -> None:
         """Save final state after the pipeline completes."""
