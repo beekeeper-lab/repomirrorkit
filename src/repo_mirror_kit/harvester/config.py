@@ -29,7 +29,7 @@ DEFAULT_LLM_ENABLED: bool = True
 VALID_LOG_LEVELS: frozenset[str] = frozenset({"debug", "info", "warn", "error"})
 
 
-VALID_STAGES: tuple[str, ...] = ("A", "B", "C", "C2", "D", "E", "F", "G")
+VALID_STAGES: tuple[str, ...] = ("A", "B", "C", "C2", "C3", "D", "E", "F", "G")
 
 
 class ConfigValidationError(Exception):

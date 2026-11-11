@@ -57,7 +57,7 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 ## Phase 5 — Synthesis
 
 - [ ] **5.1** BEAN-068 agentic enrichment v2: repo tool access (read, grep) for feature tracing, Batch API, cost cap flag, prompt-injection defenses retained (BEAN-046). *Verify:* on fixtures, behavioral descriptions reference real code paths; cost per run recorded in the log.
-- [ ] **5.2** BEAN-069 feature clustering stage: `features/FEAT-*.md` plus `build-manifest.json` (dependency-ordered build DAG). *Verify:* manifest is a valid DAG covering all APIs, screens and models in the fixtures.
+- [x] **5.2** BEAN-069 feature clustering stage: `features/FEAT-*.md` plus `build-manifest.json` (dependency-ordered build DAG). *Verify:* manifest is a valid DAG covering all APIs, screens and models in the fixtures.
 
 ## Phase 6 — Design artifacts
 
@@ -105,3 +105,4 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 | 2026-11-11 | 4.3 | BEAN-065: BusinessRuleSurface mined from API/screen/model constraints + auth (zod, class-validator, pydantic Field/EmailStr, HTML/RHF, SQLAlchemy length/unique/not-null) in neutral language; both fixtures >=3 rules, 2+ kinds; 1,932 tests. | bean/BEAN-065-business-rules |
 | 2026-11-11 | 4.4 | BEAN-067: WorkflowSurface — declared (transitions lib, django-fsm, XState, transition tables py/ts) + inferred (status enum + assignments, linked to triggering API); new fixtures python-flask-workflow, ts-xstate; 1,940 tests. | bean/BEAN-067-workflows |
 | 2026-11-11 | 4.5 | ASP.NET contracts via tree-sitter C# (controllers + minimal API, DTO classes/records, DataAnnotations rules, status helpers); fixture dotnet-api; fixed tree-sitter Node identity bug (use == not is); 1,943 tests. | bean/dotnet-contracts |
+| 2026-11-11 | 5.2 | BEAN-069: Stage C3 deterministic feature clustering (resource affinity + cross-refs), features/FEAT-*.md, build-manifest.json (JSON-schema validated, cycle-safe DAG, topo build order), bean feature: frontmatter, REQUIREMENTS.md feature index; byte-identical across runs; 1,951 tests. LLM refinement of clusters deferred to 5.1. | bean/BEAN-069-feature-clustering |

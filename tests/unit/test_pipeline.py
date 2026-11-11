@@ -372,7 +372,7 @@ class TestPipelineErrorHandling:
 
     @pytest.mark.parametrize(
         "failing_stage",
-        [s for s in STAGE_NAMES if s != "C2"],
+        [s for s in STAGE_NAMES if s not in ("C2", "C3")],
     )
     def test_error_in_stage_returns_failure(
         self, tmp_path: Path, failing_stage: str
@@ -517,15 +517,15 @@ class TestPipelineCallbacks:
             pipeline = HarvestPipeline(callback=events.append)
             pipeline.run(config)
 
-        # Expect stage_start and stage_complete for each of 8 stages
+        # Expect stage_start and stage_complete for each of 9 stages
         start_events = [
             e for e in events if e.event_type == PipelineEventType.STAGE_START
         ]
         complete_events = [
             e for e in events if e.event_type == PipelineEventType.STAGE_COMPLETE
         ]
-        assert len(start_events) == 8
-        assert len(complete_events) == 8
+        assert len(start_events) == 9
+        assert len(complete_events) == 9
 
         # Stages should be in order
         start_stages = [e.stage for e in start_events]
@@ -621,4 +621,4 @@ class TestStageNames:
     """Verify stage ordering constant."""
 
     def test_stage_names_order(self) -> None:
-        assert STAGE_NAMES == ["A", "B", "C", "C2", "D", "E", "F", "G"]
+        assert STAGE_NAMES == ["A", "B", "C", "C2", "C3", "D", "E", "F", "G"]

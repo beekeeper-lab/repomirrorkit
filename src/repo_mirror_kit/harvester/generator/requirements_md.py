@@ -10,6 +10,7 @@ built to recreate the analyzed project.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -124,7 +125,7 @@ def generate_requirements_md(
         The absolute path of the written ``REQUIREMENTS.md``.
     """
     bean_index = _index_beans_by_surface(beans)
-    text = _render(project_name, surfaces, profile, bean_index, len(beans))
+    text = _render(project_name, surfaces, profile, bean_index, len(beans), output_dir)
     path = output_dir / "REQUIREMENTS.md"
     path.write_text(text, encoding="utf-8")
     return path
@@ -143,12 +144,14 @@ def _render(
     profile: StackProfile,
     bean_index: dict[tuple[str, str], WrittenBean],
     bean_count: int,
+    output_dir: Path | None = None,
 ) -> str:
     """Render the full document to a string."""
     parts: list[str] = []
     parts.append(_render_header(project_name, profile, bean_count))
     parts.append(_render_gaps_rollup(surfaces))
     parts.append(_render_tech_stack(profile))
+    parts.append(_render_features_index(output_dir))
     parts.append("## Functional Requirements\n")
 
     for section_title, surface_type, attr_name, empty_hint in _SECTIONS:
@@ -159,6 +162,36 @@ def _render(
 
     parts.append(_render_reports_footer())
     return "\n".join(parts)
+
+
+def _render_features_index(output_dir: Path | None) -> str:
+    """List features (BEAN-069) in build order, linking to their files."""
+    if output_dir is None:
+        return ""
+    manifest = output_dir / "build-manifest.json"
+    if not manifest.is_file():
+        return ""
+    try:
+        data = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    by_id = {f["id"]: f for f in data.get("features", [])}
+    lines = [
+        "## Features (suggested build order)\n",
+        "Vertical slices clustered from the surfaces below; "
+        "machine-readable plan in [`build-manifest.json`](build-manifest.json).\n",
+    ]
+    for fid in data.get("build_order", {}).get("features", []):
+        f = by_id.get(fid)
+        if f is None:
+            continue
+        deps = ", ".join(f["depends_on"]) or "none"
+        lines.append(
+            f"1. [{f['id']} — {f['name']}]({f['path']}) "
+            f"({len(f['beans'])} beans; depends on: {deps})"
+        )
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _render_header(project_name: str, profile: StackProfile, bean_count: int) -> str:
