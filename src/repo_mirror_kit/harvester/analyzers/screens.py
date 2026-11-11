@@ -276,7 +276,7 @@ def _label_texts(ps: ParsedSource) -> tuple[dict[str, str], dict[int, str]]:
         if target:
             by_for[target] = text
         for inner in ps.walk(el):
-            if inner is not el and inner.type in (
+            if inner != el and inner.type in (
                 "jsx_self_closing_element",
                 "jsx_element",
             ):

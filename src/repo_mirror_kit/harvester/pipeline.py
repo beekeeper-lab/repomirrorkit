@@ -44,6 +44,7 @@ from repo_mirror_kit.harvester.analyzers import (
     analyze_uncovered_files,
     analyze_workflows,
     find_uncovered_files,
+    populate_dotnet_api_contracts,
     populate_js_api_contracts,
     populate_python_api_contracts,
 )
@@ -693,6 +694,9 @@ class HarvestPipeline:
         apis = analyze_api_endpoints(workdir, inventory, profile)
         contracts_populated = populate_python_api_contracts(apis, workdir)
         contracts_populated += populate_js_api_contracts(apis, workdir)
+        contracts_populated += populate_dotnet_api_contracts(
+            apis, workdir, [f.path for f in inventory.files]
+        )
         self._emit(
             PipelineEventType.PROGRESS_UPDATE,
             "C",

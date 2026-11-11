@@ -621,7 +621,7 @@ class _Handler:
                             inner = sig.child_by_field_name("type")
                             if inner is not None:
                                 for f in ps.find_all("property_signature", node=inner):
-                                    if f is sig:
+                                    if f == sig:
                                         continue
                                     nm = f.child_by_field_name("name")
                                     tp = f.child_by_field_name("type")
@@ -851,7 +851,7 @@ class _Handler:
                 if inner:
                     return inner, arr2
             value = decl.child_by_field_name("value")
-            if value is not None and value is not self.node:
+            if value is not None and value != self.node:
                 return self._payload_fields(value, depth + 1)
         return None, False
 
