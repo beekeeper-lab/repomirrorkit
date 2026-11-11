@@ -140,15 +140,22 @@ _FASTAPI_RESPONSE_RE: re.Pattern[str] = re.compile(
 # Flask patterns
 # ---------------------------------------------------------------------------
 
-# Matches: @app.route('/path'), @blueprint.route('/path', methods=['GET'])
+# Matches: @app.route('/path', ...), @blueprint.route('/path', methods=[...]),
+# and the Flask 2.0+ verb shorthand @app.get('/path'), @bp.post('/path').
+# The remaining call arguments are captured so ``methods=`` can appear in any
+# position and be written as a list or a tuple.
 _FLASK_ROUTE_RE: re.Pattern[str] = re.compile(
     r"""
     @\s*(?:\w+)
-    \.route\s*\(\s*
+    \.(?P<verb>route|get|post|put|delete|patch)\s*\(\s*
     (?P<quote>['"])(?P<path>[^'"]+)(?P=quote)
-    (?:\s*,\s*methods\s*=\s*\[(?P<methods>[^\]]+)\])?
+    (?P<args>(?:[^()\n]|\([^)\n]*\))*)
     """,
     re.VERBOSE,
+)
+
+_FLASK_METHODS_ARG_RE: re.Pattern[str] = re.compile(
+    r"methods\s*=\s*[\[(](?P<methods>[^\])]+)[\])]"
 )
 
 # Flask auth decorators
@@ -438,18 +445,22 @@ def _extract_flask_endpoints(
 
         for match in _FLASK_ROUTE_RE.finditer(content):
             path = match.group("path")
-            methods_str = match.group("methods")
+            verb = match.group("verb")
             line_num = content[: match.start()].count("\n") + 1
 
-            if methods_str:
-                # Parse methods list: 'GET', 'POST' etc.
-                methods = [
-                    m.strip().strip("'\"").upper()
-                    for m in methods_str.split(",")
-                    if m.strip().strip("'\"").upper() in _HTTP_METHODS
-                ]
+            if verb != "route":
+                methods = [verb.upper()]
             else:
-                methods = ["GET"]
+                margs = _FLASK_METHODS_ARG_RE.search(match.group("args") or "")
+                methods = (
+                    [
+                        m.strip().strip("'\"").upper()
+                        for m in margs.group("methods").split(",")
+                        if m.strip().strip("'\"").upper() in _HTTP_METHODS
+                    ]
+                    if margs
+                    else ["GET"]
+                )
 
             for method in methods:
                 surfaces.append(

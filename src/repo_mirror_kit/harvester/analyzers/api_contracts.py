@@ -247,6 +247,22 @@ def _endpoint_function(
 # ---------------------------------------------------------------------------
 
 
+def _module_is_flask(tree: ast.Module | None) -> bool:
+    """True when the module imports flask and not fastapi.
+
+    Disambiguates Flask 2.0 ``@app.get`` shorthand from FastAPI decorators.
+    """
+    if tree is None:
+        return False
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            names.add((node.module or "").split(".")[0])
+        elif isinstance(node, ast.Import):
+            names.update(a.name.split(".")[0] for a in node.names)
+    return "flask" in names and "fastapi" not in names
+
+
 def _fastapi_decorator_call(
     func: ast.FunctionDef | ast.AsyncFunctionDef,
 ) -> ast.Call | None:
@@ -549,7 +565,7 @@ def populate_python_api_contracts(
             _mark_unknown(surface)
             continue
 
-        if _fastapi_decorator_call(func) is not None:
+        if not _module_is_flask(tree) and _fastapi_decorator_call(func) is not None:
             request_fields = _extract_fastapi_request(func, module_path, index)
             response = _extract_fastapi_response(func, module_path, index)
             confidence = "declared"

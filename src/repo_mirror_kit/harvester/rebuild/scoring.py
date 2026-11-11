@@ -183,7 +183,9 @@ class ScoreReport:
                 "overall_f1": self.overall_f1,
             },
             "categories": [
-                c.to_dict() for c in self.categories if c.original_count or c.rebuilt_count
+                c.to_dict()
+                for c in self.categories
+                if c.original_count or c.rebuilt_count
             ],
         }
 

@@ -231,3 +231,33 @@ class TestNonPythonAndEdgeCases:
 
         assert surface.request_schema == {"unknown": True}
         assert surface.response_schema == {"unknown": True}
+
+
+FLASK_FACTORY = """\
+from flask import Flask, jsonify, request
+
+
+def create_app():
+    app = Flask(__name__)
+
+    @app.post("/api/users")
+    def create_user():
+        data = request.get_json()
+        name = data["name"]
+        return jsonify({"id": 1, "name": name}), 201
+
+    return app
+"""
+
+
+class TestFlaskShorthandContracts:
+    def test_shorthand_in_factory_is_flask_not_fastapi(self, tmp_path: Path) -> None:
+        _write(tmp_path, "src/app.py", FLASK_FACTORY)
+        surface = _surface("POST", "/api/users", "src/app.py", 7)
+
+        populated = populate_python_api_contracts([surface], tmp_path)
+
+        assert populated == 1
+        fields = {f["name"]: f for f in surface.request_schema["fields"]}
+        assert fields["name"]["required"] is True
+        assert surface.request_schema["confidence"] == "inferred"

@@ -396,10 +396,14 @@ def rebuild(
     write_score_reports(eval_dir, report)
     click.echo("")
     click.echo("Tier-1 surface re-extraction diff:")
-    click.echo(f"  Recall:    {_pct(report.overall_recall)} "
-               f"({report.total_matched}/{report.total_original})")
-    click.echo(f"  Precision: {_pct(report.overall_precision)} "
-               f"({report.total_matched}/{report.total_rebuilt})")
+    click.echo(
+        f"  Recall:    {_pct(report.overall_recall)} "
+        f"({report.total_matched}/{report.total_original})"
+    )
+    click.echo(
+        f"  Precision: {_pct(report.overall_precision)} "
+        f"({report.total_matched}/{report.total_rebuilt})"
+    )
     click.echo(f"  F1:        {_pct(report.overall_f1)}")
     click.echo(f"Score reports written to: {eval_dir}")
     sys.exit(EXIT_SUCCESS)
@@ -443,9 +447,13 @@ def score(original: Path, rebuilt: Path, out: Path | None) -> None:
 
     write_score_reports(out or rebuilt, report)
     click.echo("Tier-1 surface re-extraction diff:")
-    click.echo(f"  Recall:    {_pct(report.overall_recall)} "
-               f"({report.total_matched}/{report.total_original})")
-    click.echo(f"  Precision: {_pct(report.overall_precision)} "
-               f"({report.total_matched}/{report.total_rebuilt})")
+    click.echo(
+        f"  Recall:    {_pct(report.overall_recall)} "
+        f"({report.total_matched}/{report.total_original})"
+    )
+    click.echo(
+        f"  Precision: {_pct(report.overall_precision)} "
+        f"({report.total_matched}/{report.total_rebuilt})"
+    )
     click.echo(f"  F1:        {_pct(report.overall_f1)}")
     sys.exit(EXIT_SUCCESS)
