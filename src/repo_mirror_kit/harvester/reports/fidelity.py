@@ -14,8 +14,8 @@ output?
 - **Model fields** — model surfaces with a non-empty field list.
 - **Model relationships** — models carrying structured relationship
   details (BEAN-055). Only applicable when the repo has 2+ models.
-- **Screen field mappings** — placeholder until ``ScreenSurface`` lands
-  (BEAN-064); reported as N/A so the gap stays visible.
+- **Screen field mappings** — screen fields chained to a model column
+  (BEAN-064); N/A when the repo has no screen fields.
 - **Placeholder-free beans** — written beans containing no ``TODO:``
   placeholder text. Informational by default (threshold 0): structural-only
   runs legitimately contain placeholders until enrichment fills them.
@@ -168,6 +168,9 @@ def compute_fidelity(
             except OSError:
                 continue
 
+    screen_fields = [f for scr in surfaces.screens for f in scr.fields]
+    screen_mapped = sum(1 for f in screen_fields if f.bound_model_field)
+
     metrics = [
         FidelityMetric(
             name="api_request_contracts",
@@ -195,8 +198,8 @@ def compute_fidelity(
         ),
         FidelityMetric(
             name="screen_field_mappings",
-            covered=0,
-            total=0,  # ScreenSurface lands with BEAN-064
+            covered=screen_mapped,
+            total=len(screen_fields),
             threshold=limits["screen_field_mappings"],
         ),
         FidelityMetric(

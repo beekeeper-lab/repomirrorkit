@@ -13,6 +13,7 @@ Supported data technologies (one submodule per framework):
 - :mod:`typeorm`          — TypeORM / Sequelize decorators
 - :mod:`sql`              — Plain SQL ``CREATE TABLE`` statements
 - :mod:`alembic`          — ``op.create_table()`` / ``op.add_column()``
+- :mod:`ts_types`         — TS interfaces / zod schemas in model locations
 
 Adding a new framework:
 
@@ -41,6 +42,7 @@ from repo_mirror_kit.harvester.analyzers.models.entity_framework import (
 from repo_mirror_kit.harvester.analyzers.models.prisma import _extract_prisma
 from repo_mirror_kit.harvester.analyzers.models.sql import _extract_sql
 from repo_mirror_kit.harvester.analyzers.models.sqlalchemy import _extract_sqlalchemy
+from repo_mirror_kit.harvester.analyzers.models.ts_types import _extract_ts_types
 from repo_mirror_kit.harvester.analyzers.models.typeorm import _extract_typeorm
 from repo_mirror_kit.harvester.analyzers.surfaces import ModelSurface
 from repo_mirror_kit.harvester.detectors.base import StackProfile
@@ -49,6 +51,17 @@ from repo_mirror_kit.harvester.inventory import InventoryResult
 logger = structlog.get_logger()
 
 _Strategy = Callable[[Path, list[str]], list[ModelSurface]]
+
+_TS_STACKS = {
+    "nextjs",
+    "react",
+    "vue",
+    "svelte",
+    "express",
+    "nestjs",
+    "fastify",
+    "node-api",
+}
 
 
 def analyze_models(
@@ -82,6 +95,7 @@ def analyze_models(
         ({"sql-migrations"}, _extract_typeorm),
         ({"sql-migrations", "flyway", "liquibase"}, _extract_sql),
         ({"alembic"}, _extract_alembic),
+        (_TS_STACKS, _extract_ts_types),
     ]
 
     for trigger_stacks, strategy in strategies:

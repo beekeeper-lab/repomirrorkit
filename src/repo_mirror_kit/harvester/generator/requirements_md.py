@@ -76,6 +76,12 @@ _SECTIONS: tuple[tuple[str, str, str, str], ...] = (
         "No seed/reference datasets detected.",
     ),
     (
+        "Screens & Forms",
+        "screen",
+        "screens",
+        "No screens or forms detected.",
+    ),
+    (
         "Other Logic",
         "general_logic",
         "general_logic",
