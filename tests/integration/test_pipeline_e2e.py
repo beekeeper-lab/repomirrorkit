@@ -261,3 +261,21 @@ def test_pipeline_xstate_fixture(
     (wf,) = [w for w in wfs if w["source_library"] == "xstate"]
     assert wf["initial_state"] == "draft" and len(wf["transitions"]) == 5
     assert any(t["guard"] == "hasPaymentMethod" for t in wf["transitions"])
+
+
+@pytest.mark.integration
+def test_pipeline_dotnet_api_contracts(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    """ASP.NET controllers get DTO-derived contracts incl. DataAnnotations rules."""
+    out = tmp_path / "harvest-out"
+    assert _run_pipeline(local_git_repo("dotnet-api"), out).success
+    contract = json.loads((out / "api-contract.json").read_text())
+    post = contract["paths"]["/api/items"]["post"]
+    body = post["requestBody"]["content"]["application/json"]["schema"]
+    assert set(body["properties"]) == {"Name", "Qty"} and "Name" in body["required"]
+    assert "201" in post["responses"] and "400" in post["responses"]
+    rules = json.loads((out / "surfaces.json").read_text())["surfaces"]["business_rules"]
+    exprs = {r["expression"] for r in rules}
+    assert any("minimum length 2" in e for e in exprs)
+    assert any("minimum value 1" in e or "maximum value 100" in e for e in exprs)

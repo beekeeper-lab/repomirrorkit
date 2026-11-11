@@ -3,6 +3,9 @@ from __future__ import annotations
 from repo_mirror_kit.harvester.analyzers.api_contracts import (
     populate_python_api_contracts,
 )
+from repo_mirror_kit.harvester.analyzers.api_contracts_dotnet import (
+    populate_dotnet_api_contracts,
+)
 from repo_mirror_kit.harvester.analyzers.api_contracts_js import (
     populate_js_api_contracts,
 )
@@ -108,6 +111,7 @@ __all__ = [
     "analyze_uncovered_files",
     "analyze_workflows",
     "find_uncovered_files",
+    "populate_dotnet_api_contracts",
     "populate_js_api_contracts",
     "populate_python_api_contracts",
 ]
