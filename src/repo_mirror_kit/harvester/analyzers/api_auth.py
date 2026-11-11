@@ -46,9 +46,8 @@ _ENV_JS_RE = re.compile(
 
 
 def _display(header: str) -> str:
-    return "-".join(
-        p.capitalize() if p.lower() != "x" else "X" for p in re.split(r"[-_]", header)
-    )
+    """Header name exactly as the source spells it (casing is part of the contract)."""
+    return header
 
 
 # ---------------------------------------------------------------------------
@@ -274,8 +273,8 @@ def refine_api_auth(apis: list[ApiSurface], workdir: Path) -> list[AuthSurface]:
     def register(
         api: ApiSurface, header: str, config: str | None, ref: SourceRef
     ) -> None:
-        api.auth = "required"
         label = _display(header)
+        api.auth = f"required (header {label})"
         surface = mechanisms.get(label)
         if surface is None:
             rules = [

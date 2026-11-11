@@ -86,7 +86,28 @@ def _fields_to_object_schema(fields: list[dict[str, Any]]) -> dict[str, Any]:
         name = str(field.get("name", ""))
         if not name:
             continue
-        properties[name] = _openapi_type(str(field.get("type", "")))
+        prop = _openapi_type(str(field.get("type", "")))
+        for rule in field.get("rules", []) or []:
+            m = re.match(
+                r"^(min_length|max_length|min|max|references)=(.+)$", str(rule)
+            )
+            if not m:
+                continue
+            key, val = m.group(1), m.group(2).strip()
+            if key == "references":
+                prop["x-references"] = val
+                continue
+            mapped = {
+                "min_length": "minLength",
+                "max_length": "maxLength",
+                "min": "minimum",
+                "max": "maximum",
+            }[key]
+            try:
+                prop[mapped] = float(val) if "." in val else int(val)
+            except ValueError:
+                continue
+        properties[name] = prop
         if field.get("required"):
             required.append(name)
     schema: dict[str, Any] = {"type": "object", "properties": properties}
@@ -182,11 +203,17 @@ def _build_operation(surface: ApiSurface, path_template: str) -> dict[str, Any]:
         gap = True
         operation["responses"][success_code] = {"description": "Unknown (gap)"}
 
+    by_status: dict[str, list[str]] = {}
     for err in response.get("errors") or []:
         code = str(err.get("status"))
-        if code and code not in operation["responses"]:
+        if code:
+            msgs = by_status.setdefault(code, [])
+            if err.get("message") and err["message"] not in msgs:
+                msgs.append(err["message"])
+    for code, msgs in by_status.items():
+        if code not in operation["responses"]:
             operation["responses"][code] = {
-                "description": err.get("message") or "Error"
+                "description": " / ".join(msgs) if msgs else "Error"
             }
 
     if gap:
@@ -244,7 +271,27 @@ def generate_openapi_contract(
         },
         "paths": paths,
     }
-    if any_auth:
+    header_names = {
+        m.group(1)
+        for a in apis
+        if (m := re.search(r"\(header ([^)]+)\)", a.auth or ""))
+    }
+    if any_auth and len(header_names) == 1:
+        document["components"] = {
+            "securitySchemes": {
+                "harvestedAuth": {
+                    "type": "apiKey",
+                    "in": "header",
+                    "name": next(iter(header_names)),
+                    "description": (
+                        "Credential header required by the original app; the "
+                        "expected value comes from configuration (see the auth "
+                        "bean and .env.example)."
+                    ),
+                }
+            }
+        }
+    elif any_auth:
         document["components"] = {
             "securitySchemes": {
                 "harvestedAuth": {

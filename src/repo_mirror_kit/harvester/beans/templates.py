@@ -392,21 +392,46 @@ def _render_contract_schema(schema: dict[str, Any]) -> str:
         confidence = schema.get("confidence", "inferred")
         if not fields:
             return f"_No fields (empty contract, {confidence})._"
-        lines = [
-            "| Field | Type | Required | Source |",
-            "|-------|------|----------|--------|",
-        ]
+        has_rules = any(f.get("rules") for f in fields)
+        header = "| Field | Type | Required | Source |" + (
+            " Rules |" if has_rules else ""
+        )
+        divider = "|-------|------|----------|--------|" + (
+            "-------|" if has_rules else ""
+        )
+        lines = [header, divider]
         for field in fields:
-            lines.append(
+            row = (
                 f"| `{field.get('name', '?')}` "
                 f"| {field.get('type', 'unknown')} "
                 f"| {'yes' if field.get('required') else 'no'} "
                 f"| {field.get('source', '')} |"
             )
+            if has_rules:
+                row += f" {', '.join(str(r) for r in field.get('rules', [])) or '-'} |"
+            lines.append(row)
         lines.append("")
         lines.append(f"_Confidence: {confidence}._")
+        if schema.get("is_array"):
+            lines.append("_The response is a list; each item has these fields._")
+        if schema.get("status"):
+            lines.append(f"_Success status: {schema['status']}._")
         return "\n".join(lines)
+    if isinstance(schema.get("type"), str):
+        extra = f" Success status: {schema['status']}." if schema.get("status") else ""
+        return f"_Typed as `{schema['type']}` (body fields not resolved).{extra}_"
     return f"```json\n{json.dumps(schema, indent=2)}\n```"
+
+
+def _render_api_errors(surface: ApiSurface) -> str:
+    """Error responses (status + message) extracted from the handler."""
+    errors = (surface.response_schema or {}).get("errors")
+    if not isinstance(errors, list) or not errors:
+        return "- TODO: Define error responses for this endpoint."
+    lines = ["| Status | Message |", "|--------|---------|"]
+    for err in errors:
+        lines.append(f"| {err.get('status', '?')} | {err.get('message', '-')} |")
+    return "\n".join(lines)
 
 
 def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
@@ -453,7 +478,7 @@ def render_api_bean(surface: ApiSurface, bean_id: str) -> str:
 
 ## Errors
 
-- TODO: Define error responses for this endpoint.
+{_render_api_errors(surface)}
 
 ## Side effects
 

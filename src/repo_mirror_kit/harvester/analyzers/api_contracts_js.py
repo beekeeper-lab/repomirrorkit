@@ -29,6 +29,7 @@ relative import hop, mirroring the Python pass.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -580,6 +581,127 @@ class _Handler:
             elif n.type == "call_expression":
                 self._analyze_call(n)
 
+    # -- imperative validation inference ----------------------------------
+    def _rejects(self, node: Any) -> bool:
+        ps = self.ps
+        for call in ps.find_all("call_expression", node=node):
+            fn = call.child_by_field_name("function")
+            args = call.child_by_field_name("arguments")
+            if fn is None or args is None:
+                continue
+            if re.search(r"\.(status|code|sendStatus)$", ps.text(fn)):
+                nums = [a for a in args.children if a.type == "number"]
+                if nums and int(ps.text(nums[0])) >= 400:
+                    return True
+        return False
+
+    def _or_terms(self, node: Any) -> list[Any]:
+        ps = self.ps
+        if node.type == "parenthesized_expression":
+            inner = [c for c in node.children if c.type not in ("(", ")")]
+            return self._or_terms(inner[0]) if inner else []
+        if node.type == "binary_expression":
+            op = node.child_by_field_name("operator")
+            if op is not None and ps.text(op) == "||":
+                left = node.child_by_field_name("left")
+                right = node.child_by_field_name("right")
+                return [
+                    *(self._or_terms(left) if left is not None else []),
+                    *(self._or_terms(right) if right is not None else []),
+                ]
+        return [node]
+
+    def infer_validation(self) -> None:
+        """Mine ``if (bad) return res.status(4xx)`` guards for types/rules."""
+        ps = self.ps
+        body = self.node.child_by_field_name("body") or self.node
+        fields = {
+            f["name"]: f for key, f in self.request.items() if key.startswith("body:")
+        }
+        if not fields:
+            return
+
+        def note(
+            var: str,
+            *,
+            required: bool = False,
+            type_: str | None = None,
+            rule: str | None = None,
+        ) -> None:
+            f = fields.get(var)
+            if f is None:
+                return
+            if required:
+                f["required"] = True
+            if type_ and f.get("type") in (None, "unknown"):
+                f["type"] = type_
+            if rule:
+                f.setdefault("rules", [])
+                if rule not in f["rules"]:
+                    f["rules"].append(rule)
+
+        def var_in(text: str) -> str | None:
+            return next(
+                (v for v in fields if re.search(rf"\b{re.escape(v)}\b", text)), None
+            )
+
+        for if_node in ps.find_all("if_statement", node=body):
+            cond = if_node.child_by_field_name("condition")
+            cons = if_node.child_by_field_name("consequence")
+            if cond is None or cons is None or not self._rejects(cons):
+                continue
+            for term in self._or_terms(cond):
+                text = ps.text(term).strip()
+                m = re.match(r"^typeof\s+(\w+)\s*!==?\s*['\"](\w+)['\"]$", text)
+                if m and m.group(1) in fields:
+                    note(
+                        m.group(1),
+                        required=True,
+                        type_={
+                            "string": "string",
+                            "number": "number",
+                            "boolean": "boolean",
+                            "object": "object",
+                        }.get(m.group(2)),
+                    )
+                    continue
+                m = re.match(r"^!\s*Number\.isInteger\(\s*(\w+)\s*\)$", text)
+                if m and m.group(1) in fields:
+                    note(m.group(1), required=True, type_="integer")
+                    continue
+                m = re.match(r"^!\s*(\w+)$", text)
+                if m and m.group(1) in fields:
+                    note(m.group(1), required=True)
+                    continue
+                m = re.match(r"^(\w+)\s*(?:===?|==)\s*(?:undefined|null)$", text)
+                if m and m.group(1) in fields:
+                    note(m.group(1), required=True)
+                    continue
+                m = re.match(r"^!\s*(\w+)\.some\(.*\b(\w+)\s*\)$", text)
+                if m:
+                    var = var_in(text.rsplit("===", 1)[-1]) if "===" in text else None
+                    if var:
+                        note(var, required=True, rule=f"references={m.group(1)}")
+                    continue
+                m = re.match(r"^(.+?)\s*(<=|>=|<|>)\s*(-?\d+(?:\.\d+)?)$", text)
+                if m:
+                    lhs, op, num = m.group(1), m.group(2), m.group(3)
+                    var = var_in(lhs)
+                    if var is None:
+                        continue
+                    is_len = ".length" in lhs
+                    n = float(num) if "." in num else int(num)
+                    prefix = "length" if is_len else "value"
+                    if op == "<":
+                        note(var, rule=f"{'min_length' if is_len else 'min'}={n}")
+                    elif op == ">":
+                        note(var, rule=f"{'max_length' if is_len else 'max'}={n}")
+                    elif op == "<=":
+                        note(var, rule=f"{'min_length' if is_len else 'min'}={n + 1}")
+                    else:
+                        note(var, rule=f"{'max_length' if is_len else 'max'}={n - 1}")
+                    del prefix
+
     def _analyze_params(self, params: Any) -> None:
         ps = self.ps
         for p in params.children:
@@ -1025,6 +1147,7 @@ def populate_js_api_contracts(surfaces: list[ApiSurface], workdir: Path) -> int:
         handler = _Handler(mods, ps, path, handler_node, surface.method or "GET")
         try:
             handler.analyze()
+            handler.infer_validation()
             req = handler.request_schema()
             resp = handler.response_schema()
         except Exception:
@@ -1038,6 +1161,8 @@ def populate_js_api_contracts(surfaces: list[ApiSurface], workdir: Path) -> int:
         elif req.get("fields"):
             surface.request_schema = req
             got = True
+        elif surface.method in _BODY_METHODS and _body_less(ps, handler_node):
+            surface.request_schema = _schema([], req.get("confidence", "inferred"))
         elif surface.method in _BODY_METHODS:
             surface.request_schema = _unknown()
         else:
@@ -1053,6 +1178,22 @@ def populate_js_api_contracts(surfaces: list[ApiSurface], workdir: Path) -> int:
         "api_contracts_js", surfaces_total=len(surfaces), surfaces_populated=populated
     )
     return populated
+
+
+def _body_less(ps: ParsedSource, handler: Any) -> bool:
+    """True when the handler provably never reads the request body.
+
+    Conservative: any call that hands ``req``/``request`` to another function
+    could read it there, so that counts as "might read".
+    """
+    text = ps.text(handler)
+    if re.search(
+        r"\b(req|request)\.(body|json|formData|text|rawBody)\b|\.json\(\)", text
+    ):
+        return False
+    if re.search(r"\b(req|request)\.on\(", text):
+        return False
+    return not re.search(r"(?<![.\w])\w+\(\s*[^)]*\b(req|request)\b", text)
 
 
 def _mark_unknown(surface: ApiSurface) -> None:

@@ -309,3 +309,49 @@ class TestFlaskStatusAndErrors:
         assert pay.response_schema["status"] == 200
         errs = {e["status"]: e.get("message") for e in pay.response_schema["errors"]}
         assert errs == {401: "unauthorized", 404: "not found"}
+
+
+FLASK_VALIDATION_APP = """\
+from flask import jsonify, request
+
+
+@app.post("/orders")
+def create():
+    data = request.get_json(silent=True)
+    customer = data.get("customer")
+    if not isinstance(customer, str) or len(customer.strip()) < 2:
+        return jsonify({"error": "customer must be at least 2 characters"}), 400
+    qty = data.get("qty")
+    if not isinstance(qty, int) or qty < 1 or qty > 99:
+        return jsonify({"error": "bad qty"}), 400
+    category_id = data.get("category_id")
+    if db.session.get(Category, category_id) is None:
+        return jsonify({"error": "unknown category"}), 400
+    note = data.get("note")
+    return jsonify({"id": 1, "customer": customer}), 201
+"""
+
+
+class TestImperativeValidation:
+    def test_guards_become_types_required_and_rules(self, tmp_path: Path) -> None:
+        _write(tmp_path, "app.py", FLASK_VALIDATION_APP)
+        surface = _surface("POST", "/orders", "app.py", 5)
+
+        populate_python_api_contracts([surface], tmp_path)
+
+        f = {x["name"]: x for x in surface.request_schema["fields"]}
+        assert f["customer"]["type"] == "string" and f["customer"]["required"] is True
+        assert f["customer"]["rules"] == ["min_length=2"]
+        assert f["qty"]["type"] == "integer" and set(f["qty"]["rules"]) == {
+            "min=1",
+            "max=99",
+        }
+        assert f["category_id"]["required"] is True
+        assert f["category_id"]["rules"] == ["references=Category"]
+        assert f["note"]["required"] is False and "rules" not in f["note"]
+        # error payloads are not success-response fields
+        assert {x["name"] for x in surface.response_schema["fields"]} == {
+            "id",
+            "customer",
+        }
+        assert surface.response_schema["status"] == 201

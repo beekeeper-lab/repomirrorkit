@@ -238,3 +238,31 @@ def test_handler_factory_with_status_and_error_messages(tmp_path: Path) -> None:
     assert ("path", "id") in {
         (f["source"], f["name"]) for f in s.request_schema["fields"]
     }
+
+
+def test_imperative_validation_guards_in_express_handler(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "server.js",
+        "app.post('/orders', (req, res) => {\n"
+        "  const data = req.body;\n"
+        "  const { customer, category_id, qty } = data;\n"
+        "  if (typeof customer !== 'string' || customer.trim().length < 2) {\n"
+        "    return res.status(400).json({ error: 'customer must be at least 2 characters' });\n"
+        "  }\n"
+        "  if (!Number.isInteger(category_id) || !categories.some((c) => c.id === category_id)) {\n"
+        "    return res.status(400).json({ error: 'unknown category' });\n"
+        "  }\n"
+        "  if (qty < 1) return res.status(400).json({ error: 'qty' });\n"
+        "  res.status(201).json({ id: 1 });\n"
+        "});\n",
+    )
+    s = _surface("POST", "/orders", "server.js", 1)
+    populate_js_api_contracts([s], tmp_path)
+    f = _fields(s.request_schema, "body")
+    assert f["customer"]["type"] == "string" and f["customer"]["required"] is True
+    assert f["customer"]["rules"] == ["min_length=2"]
+    assert f["category_id"]["type"] == "integer"
+    assert f["category_id"]["rules"] == ["references=categories"]
+    assert f["qty"]["rules"] == ["min=1"]
+    assert s.response_schema["status"] == 201
