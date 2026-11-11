@@ -100,6 +100,9 @@ def _extract_sqlalchemy(repo_root: Path, file_paths: list[str]) -> list[ModelSur
                     constraints.append("not_null")
                 if _SA_UNIQUE_COLUMN_RE.search(col_full):
                     constraints.append("unique")
+                fk_match = _SA_FK_RE.search(col_full)
+                if fk_match:
+                    constraints.append(f"fk={fk_match.group(1)}")
                 length = _SA_LENGTH_RE.search(col_full)
                 if length:
                     constraints.append(f"max_length={length.group(1)}")

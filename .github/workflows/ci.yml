@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [main, test]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: uv sync --all-extras --dev
+      - name: Lint
+        run: uv run ruff check src tests
+      - name: Format check
+        run: uv run ruff format --check src tests
+      - name: Type check
+        run: uv run mypy src
+      - name: Tests (unit, integration, fidelity gates)
+        run: uv run pytest -q -m "not parity"
+      - name: Fidelity gates over all fixtures
+        run: scripts/fidelity-gate.sh
+      - name: Parity tests (boots the Flask and Express fixture apps)
+        run: uv run pytest -q -m parity

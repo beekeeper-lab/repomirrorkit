@@ -31,6 +31,7 @@ byte-identical for the same input.
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 import structlog
@@ -44,7 +45,7 @@ from repo_mirror_kit.harvester.analyzers.models.sql import _extract_sql
 from repo_mirror_kit.harvester.analyzers.models.sqlalchemy import _extract_sqlalchemy
 from repo_mirror_kit.harvester.analyzers.models.ts_types import _extract_ts_types
 from repo_mirror_kit.harvester.analyzers.models.typeorm import _extract_typeorm
-from repo_mirror_kit.harvester.analyzers.surfaces import ModelSurface
+from repo_mirror_kit.harvester.analyzers.surfaces import ModelRelationship, ModelSurface
 from repo_mirror_kit.harvester.detectors.base import StackProfile
 from repo_mirror_kit.harvester.inventory import InventoryResult
 
@@ -62,6 +63,49 @@ _TS_STACKS = {
     "fastify",
     "node-api",
 }
+
+
+def _link_foreign_keys(models: list[ModelSurface]) -> None:
+    """Turn ``fk=<table|Class>.<col>`` field constraints into structured edges.
+
+    Foreign-key-only designs (no ``relationship()`` objects) are the norm in
+    SQL-first apps; without this they have no relationship details and the ER
+    diagram / DDL lose their foreign keys.
+    """
+    by_table = {r.lower(): m for m in models for r in m.persistence_refs}
+    by_class = {(m.entity_name or m.name).lower(): m for m in models}
+    for model in models:
+        known = {(r.target_model, r.fk_column) for r in model.relationship_details}
+        for fld in model.fields:
+            ref = next((c[3:] for c in fld.constraints if c.startswith("fk=")), None)
+            if not ref:
+                continue
+            owner = ref.split(".")[0].lower()
+            target = by_table.get(owner) or by_class.get(owner)
+            if target is None or target is model:
+                continue
+            tname = target.entity_name or target.name
+            if (tname, fld.name) in known or any(
+                r.target_model == tname and r.fk_column is None
+                for r in model.relationship_details
+            ):
+                # An existing relationship() edge to the same target: fill its FK column.
+                model.relationship_details = [
+                    replace(r, fk_column=fld.name)
+                    if r.target_model == tname and r.fk_column is None
+                    else r
+                    for r in model.relationship_details
+                ]
+                continue
+            model.relationship_details.append(
+                ModelRelationship(
+                    source_model=model.entity_name or model.name,
+                    target_model=tname,
+                    kind="many_to_one",
+                    fk_column=fld.name,
+                )
+            )
+            known.add((tname, fld.name))
 
 
 def analyze_models(
@@ -125,6 +169,8 @@ def analyze_models(
         seen_names.add(name_key)
         seen_tables.update(table_keys)
         unique.append(surface)
+
+    _link_foreign_keys(unique)
 
     logger.info(
         "model_analysis_summary",
