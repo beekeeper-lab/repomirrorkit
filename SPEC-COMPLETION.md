@@ -63,7 +63,7 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 
 - [x] **6.1** BEAN-072 DB design bundle — BUILD (branch was empty) (SQL DDL, JSON Schema, seeds). *Verify:* DDL loads into SQLite for the Flask fixture.
 - [x] **6.2** BEAN-073 screen spec YAML + navigation map. *Verify:* YAML validates against its schema; Mermaid renders.
-- [ ] **6.3** BEAN-074 Gherkin `.feature` per feature cluster. *Verify:* files parse with a Gherkin parser; every API has at least one scenario.
+- [x] **6.3** BEAN-074 Gherkin `.feature` per feature cluster. *Verify:* files parse with a Gherkin parser; every API has at least one scenario.
 - [ ] **6.4** BEAN-075 sequence and state diagrams (low priority; defer if time-boxed).
 - [ ] **6.5** `REQUIREMENTS.md` becomes the index of all artifacts (contract, DB, screens, features, manifest). *Verify:* every generated artifact is linked and nothing is orphaned.
 
@@ -109,3 +109,4 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 | 2026-11-11 | 5.1 | BEAN-068: agentic enrichment — sandboxed read-only tools (read_file/grep/list_dir), tool-use loop with turn limit + forced final answer, neighbors context, confidence/gaps/traced_flow/contract_fill, never overwrites static contracts, budget cap, telemetry JSON, single-shot fallback; default model -> claude-sonnet-5-5; 1,972 tests. Live-model verification still blocked (Ollama generation hangs, no API key). | bean/BEAN-068-agentic-enrichment |
 | 2026-11-11 | 6.1 | BEAN-072: db-design bundle (schema.sql loads into SQLite with FK/CHECK/UNIQUE, JSON Schema per entity w/ enums, seed-data sql/json, README with gaps); REQUIREMENTS.md now written last with a Design artifacts index; data-model.md links bundle; 1,980 tests. | bean/BEAN-072-db-design-bundle2 |
 | 2026-11-11 | 6.2 | BEAN-073: screens/<screen>.yaml (versioned schema, docs/screen-spec-schema.md, jsonschema-validated, deterministic), navigation-map.md Mermaid with syntax test; ADR-002 (pyyaml runtime, jsonschema dev); 1,986 tests. | bean/BEAN-073-screen-specs |
+| 2026-11-11 | 6.3 | BEAN-074: gherkin/FEAT-*.feature per cluster (API success/negative/auth/errors, rules, invariants, workflow transitions + invalid-source outlines, screens, enrichment GWT); parsed with gherkin-official; @BEAN/@FEAT/@generated/@gap tags; implementation-neutrality test; 1,994 tests. | bean/BEAN-074-gherkin |

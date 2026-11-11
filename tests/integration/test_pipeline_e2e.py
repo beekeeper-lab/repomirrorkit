@@ -373,3 +373,33 @@ def test_screen_specs_for_ts_next(
         in (out / "screens" / "navigation-map.md").read_text()
     )
     assert "screens/README.md" in (out / "REQUIREMENTS.md").read_text()
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("fixture", ["ts-next", "python-flask-workflow", "dotnet-api"])
+def test_gherkin_for_fixtures_parses_and_traces(
+    local_git_repo: Callable[[str], Path], tmp_path: Path, fixture: str
+) -> None:
+    """BEAN-074: >=1 parseable .feature per feature cluster with scenarios."""
+    import re
+
+    from gherkin.parser import Parser
+
+    out = tmp_path / "harvest-out"
+    assert _run_pipeline(local_git_repo(fixture), out).success
+    manifest = json.loads((out / "build-manifest.json").read_text())
+    files = sorted((out / "gherkin").glob("*.feature"))
+    assert files
+    covered = {f.name.split("-")[0] + "-" + f.name.split("-")[1] for f in files}
+    with_behavior = {
+        b["feature"] for b in manifest["beans"] if b["type"] in ("api", "model")
+    }
+    assert with_behavior and with_behavior <= covered
+    parser = Parser()
+    for path in files:
+        doc = parser.parse(path.read_text())
+        for child in doc["feature"]["children"]:
+            sc = child.get("scenario")
+            if sc:
+                assert any(re.fullmatch(r"@BEAN-\d+", t["name"]) for t in sc["tags"])
+    assert "gherkin/" in (out / "REQUIREMENTS.md").read_text()
