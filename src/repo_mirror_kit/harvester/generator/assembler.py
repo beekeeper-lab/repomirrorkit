@@ -20,6 +20,7 @@ from repo_mirror_kit.harvester.generator.agents import GeneratedAgent, generate_
 from repo_mirror_kit.harvester.generator.claude_md import generate_claude_md
 from repo_mirror_kit.harvester.generator.db_design import generate_db_design
 from repo_mirror_kit.harvester.generator.env_example import generate_env_example
+from repo_mirror_kit.harvester.generator.gherkin import generate_gherkin
 from repo_mirror_kit.harvester.generator.openapi import generate_openapi_contract
 from repo_mirror_kit.harvester.generator.requirements_md import generate_requirements_md
 from repo_mirror_kit.harvester.generator.runbook_md import generate_runbook_md
@@ -196,6 +197,9 @@ def assemble_project_folder(
 
     # Step 8b (BEAN-073): screen specs (YAML) + navigation map.
     generated_files.extend(generate_screen_specs(surfaces, output_dir, project_name))
+
+    # Step 8c (BEAN-074): Gherkin scenarios per feature cluster.
+    generated_files.extend(generate_gherkin(surfaces, output_dir, beans))
 
     # Step 9 (BEAN-051): Top-level REQUIREMENTS.md aggregator, written last so it
     # can index every other artifact. It sits at the harvest

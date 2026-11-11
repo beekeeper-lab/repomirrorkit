@@ -71,6 +71,7 @@ markers = [
 
 [dependency-groups]
 dev = [
+    "gherkin-official>=42.0.1",
     "jsonschema>=4.26.0",
     "types-pyyaml>=6.0.12.20261111",
 ]

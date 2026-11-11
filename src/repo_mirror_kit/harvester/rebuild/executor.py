@@ -308,7 +308,7 @@ def _parse_forge_loop_state(task_dir: Path) -> dict[str, Any]:
     if not state_path.is_file():
         return result
     try:
-        import yaml  # type: ignore[import-untyped]  # forge-loop dep; guarded
+        import yaml  # forge-loop dep; guarded
 
         data = yaml.safe_load(state_path.read_text(encoding="utf-8"))
     except (ImportError, OSError, ValueError):
