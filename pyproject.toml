@@ -10,6 +10,7 @@ requires-python = ">=3.12"
 dependencies = [
     "PySide6>=6.7",
     "click>=8.1",
+    "pyyaml>=6.0.3",
     "structlog>=24.1",
     "tree-sitter>=0.26.1",
     "tree-sitter-c-sharp>=0.23.5",
@@ -66,4 +67,10 @@ testpaths = ["tests"]
 norecursedirs = ["fixtures"]
 markers = [
     "integration: end-to-end harvester pipeline tests against checked-in fixture projects (slower; opt-out with -m 'not integration')",
+]
+
+[dependency-groups]
+dev = [
+    "jsonschema>=4.26.0",
+    "types-pyyaml>=6.0.12.20261111",
 ]
