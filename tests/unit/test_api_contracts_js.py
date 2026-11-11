@@ -235,4 +235,6 @@ def test_handler_factory_with_status_and_error_messages(tmp_path: Path) -> None:
     populate_js_api_contracts([s], tmp_path)
     errs = {e["status"]: e.get("message") for e in s.response_schema["errors"]}
     assert errs == {401: "unauthorized", 404: "not found", 409: "invalid transition"}
-    assert ("path", "id") in {(f["source"], f["name"]) for f in s.request_schema["fields"]}
+    assert ("path", "id") in {
+        (f["source"], f["name"]) for f in s.request_schema["fields"]
+    }

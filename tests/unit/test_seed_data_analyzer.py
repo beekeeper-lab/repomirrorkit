@@ -143,15 +143,39 @@ class TestConstantCollections:
             "const statuses = ['draft', 'paid'];\n"
         )
         entries = [
-            FileEntry(path=p, size=1, extension="." + p.rsplit(".", 1)[-1], hash="h", category="source")
+            FileEntry(
+                path=p,
+                size=1,
+                extension="." + p.rsplit(".", 1)[-1],
+                hash="h",
+                category="source",
+            )
             for p in ("app.py", "server.js")
         ]
-        inv = InventoryResult(files=entries, skipped=[], total_files=2, total_size=1, total_skipped=0)
+        inv = InventoryResult(
+            files=entries, skipped=[], total_files=2, total_size=1, total_skipped=0
+        )
 
         found = {s.dataset_name: s for s in analyze_seed_data(tmp_path, inv)}
 
-        assert set(found) == {"SEED_CATEGORIES", "ROLE_LEVELS", "DEFAULT_TIERS", "categories", "statuses"}
-        assert [r["value"] for r in found["SEED_CATEGORIES"].values] == ["books", "games", "music"]
-        assert found["ROLE_LEVELS"].values == [{"key": "admin", "value": 3}, {"key": "user", "value": 1}]
-        assert found["categories"].values == [{"id": 1, "name": "books"}, {"id": 2, "name": "games"}]
+        assert set(found) == {
+            "SEED_CATEGORIES",
+            "ROLE_LEVELS",
+            "DEFAULT_TIERS",
+            "categories",
+            "statuses",
+        }
+        assert [r["value"] for r in found["SEED_CATEGORIES"].values] == [
+            "books",
+            "games",
+            "music",
+        ]
+        assert found["ROLE_LEVELS"].values == [
+            {"key": "admin", "value": 3},
+            {"key": "user", "value": 1},
+        ]
+        assert found["categories"].values == [
+            {"id": 1, "name": "books"},
+            {"id": 2, "name": "games"},
+        ]
         assert found["categories"].kind == "constant"

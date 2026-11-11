@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-exec python app.py
+exec "${PYTHON:-python3}" app.py

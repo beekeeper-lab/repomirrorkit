@@ -1,0 +1,383 @@
+{
+  "schema_version": "1.0",
+  "name": "shop-orders",
+  "captured_from": "parity-express",
+  "message_fields": [
+    "error",
+    "message",
+    "detail"
+  ],
+  "volatile_fields": [],
+  "interactions": [
+    {
+      "name": "health",
+      "request": {
+        "method": "GET",
+        "path": "/api/health",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "name": "categories (seeded lookup)",
+      "request": {
+        "method": "GET",
+        "path": "/api/categories",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "json": [
+          {
+            "id": 1,
+            "name": "books"
+          },
+          {
+            "id": 2,
+            "name": "games"
+          },
+          {
+            "id": 3,
+            "name": "music"
+          }
+        ]
+      }
+    },
+    {
+      "name": "create without auth",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders",
+        "headers": {},
+        "json": {
+          "customer": "Ada",
+          "category_id": 1
+        }
+      },
+      "response": {
+        "status": 401,
+        "json": {
+          "error": "unauthorized"
+        }
+      }
+    },
+    {
+      "name": "create ok",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders",
+        "headers": {
+          "X-API-Key": "demo-key"
+        },
+        "json": {
+          "customer": "Ada",
+          "category_id": 1
+        }
+      },
+      "response": {
+        "status": 201,
+        "json": {
+          "id": 1,
+          "customer": "Ada",
+          "category_id": 1,
+          "status": "draft"
+        }
+      }
+    },
+    {
+      "name": "create short customer",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders",
+        "headers": {
+          "X-API-Key": "demo-key"
+        },
+        "json": {
+          "customer": "A",
+          "category_id": 1
+        }
+      },
+      "response": {
+        "status": 400,
+        "json": {
+          "error": "customer must be at least 2 characters"
+        }
+      }
+    },
+    {
+      "name": "create unknown category",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders",
+        "headers": {
+          "X-API-Key": "demo-key"
+        },
+        "json": {
+          "customer": "Grace",
+          "category_id": 99
+        }
+      },
+      "response": {
+        "status": 400,
+        "json": {
+          "error": "unknown category"
+        }
+      }
+    },
+    {
+      "name": "create missing fields",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders",
+        "headers": {
+          "X-API-Key": "demo-key"
+        },
+        "json": {}
+      },
+      "response": {
+        "status": 400,
+        "json": {
+          "error": "customer must be at least 2 characters"
+        }
+      }
+    },
+    {
+      "name": "list orders",
+      "request": {
+        "method": "GET",
+        "path": "/api/orders",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "json": [
+          {
+            "id": 1,
+            "customer": "Ada",
+            "category_id": 1,
+            "status": "draft"
+          }
+        ]
+      }
+    },
+    {
+      "name": "get order",
+      "request": {
+        "method": "GET",
+        "path": "/api/orders/1",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "id": 1,
+          "customer": "Ada",
+          "category_id": 1,
+          "status": "draft"
+        }
+      }
+    },
+    {
+      "name": "get missing order",
+      "request": {
+        "method": "GET",
+        "path": "/api/orders/999",
+        "headers": {}
+      },
+      "response": {
+        "status": 404,
+        "json": {
+          "error": "not found"
+        }
+      }
+    },
+    {
+      "name": "pay a draft (invalid)",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders/1/pay",
+        "headers": {
+          "X-API-Key": "demo-key"
+        }
+      },
+      "response": {
+        "status": 409,
+        "json": {
+          "error": "invalid transition"
+        }
+      }
+    },
+    {
+      "name": "submit draft",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders/1/submit",
+        "headers": {
+          "X-API-Key": "demo-key"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "id": 1,
+          "customer": "Ada",
+          "category_id": 1,
+          "status": "submitted"
+        }
+      }
+    },
+    {
+      "name": "submit twice (invalid)",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders/1/submit",
+        "headers": {
+          "X-API-Key": "demo-key"
+        }
+      },
+      "response": {
+        "status": 409,
+        "json": {
+          "error": "invalid transition"
+        }
+      }
+    },
+    {
+      "name": "pay submitted",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders/1/pay",
+        "headers": {
+          "X-API-Key": "demo-key"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "id": 1,
+          "customer": "Ada",
+          "category_id": 1,
+          "status": "paid"
+        }
+      }
+    },
+    {
+      "name": "cancel paid (invalid)",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders/1/cancel",
+        "headers": {
+          "X-API-Key": "demo-key"
+        }
+      },
+      "response": {
+        "status": 409,
+        "json": {
+          "error": "invalid transition"
+        }
+      }
+    },
+    {
+      "name": "create second",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders",
+        "headers": {
+          "X-API-Key": "demo-key"
+        },
+        "json": {
+          "customer": "Linus",
+          "category_id": 3
+        }
+      },
+      "response": {
+        "status": 201,
+        "json": {
+          "id": 2,
+          "customer": "Linus",
+          "category_id": 3,
+          "status": "draft"
+        }
+      }
+    },
+    {
+      "name": "cancel draft",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders/2/cancel",
+        "headers": {
+          "X-API-Key": "demo-key"
+        }
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "id": 2,
+          "customer": "Linus",
+          "category_id": 3,
+          "status": "cancelled"
+        }
+      }
+    },
+    {
+      "name": "submit missing order",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders/999/submit",
+        "headers": {
+          "X-API-Key": "demo-key"
+        }
+      },
+      "response": {
+        "status": 404,
+        "json": {
+          "error": "not found"
+        }
+      }
+    },
+    {
+      "name": "pay without auth",
+      "request": {
+        "method": "POST",
+        "path": "/api/orders/1/pay",
+        "headers": {}
+      },
+      "response": {
+        "status": 401,
+        "json": {
+          "error": "unauthorized"
+        }
+      }
+    },
+    {
+      "name": "final order list",
+      "request": {
+        "method": "GET",
+        "path": "/api/orders",
+        "headers": {}
+      },
+      "response": {
+        "status": 200,
+        "json": [
+          {
+            "id": 1,
+            "customer": "Ada",
+            "category_id": 1,
+            "status": "paid"
+          },
+          {
+            "id": 2,
+            "customer": "Linus",
+            "category_id": 3,
+            "status": "cancelled"
+          }
+        ]
+      }
+    }
+  ]
+}
