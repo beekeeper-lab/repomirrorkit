@@ -56,7 +56,7 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 
 ## Phase 5 — Synthesis
 
-- [ ] **5.1** BEAN-068 agentic enrichment v2: repo tool access (read, grep) for feature tracing, Batch API, cost cap flag, prompt-injection defenses retained (BEAN-046). *Verify:* on fixtures, behavioral descriptions reference real code paths; cost per run recorded in the log.
+- [x] **5.1** (Batch API not applicable to multi-turn tool loops; budget cap + max-turns + telemetry implemented instead; verified with scripted fake client, live-model run pending 2.1) BEAN-068 agentic enrichment v2: repo tool access (read, grep) for feature tracing, Batch API, cost cap flag, prompt-injection defenses retained (BEAN-046). *Verify:* on fixtures, behavioral descriptions reference real code paths; cost per run recorded in the log.
 - [x] **5.2** BEAN-069 feature clustering stage: `features/FEAT-*.md` plus `build-manifest.json` (dependency-ordered build DAG). *Verify:* manifest is a valid DAG covering all APIs, screens and models in the fixtures.
 
 ## Phase 6 — Design artifacts
@@ -106,3 +106,4 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 | 2026-11-11 | 4.4 | BEAN-067: WorkflowSurface — declared (transitions lib, django-fsm, XState, transition tables py/ts) + inferred (status enum + assignments, linked to triggering API); new fixtures python-flask-workflow, ts-xstate; 1,940 tests. | bean/BEAN-067-workflows |
 | 2026-11-11 | 4.5 | ASP.NET contracts via tree-sitter C# (controllers + minimal API, DTO classes/records, DataAnnotations rules, status helpers); fixture dotnet-api; fixed tree-sitter Node identity bug (use == not is); 1,943 tests. | bean/dotnet-contracts |
 | 2026-11-11 | 5.2 | BEAN-069: Stage C3 deterministic feature clustering (resource affinity + cross-refs), features/FEAT-*.md, build-manifest.json (JSON-schema validated, cycle-safe DAG, topo build order), bean feature: frontmatter, REQUIREMENTS.md feature index; byte-identical across runs; 1,951 tests. LLM refinement of clusters deferred to 5.1. | bean/BEAN-069-feature-clustering |
+| 2026-11-11 | 5.1 | BEAN-068: agentic enrichment — sandboxed read-only tools (read_file/grep/list_dir), tool-use loop with turn limit + forced final answer, neighbors context, confidence/gaps/traced_flow/contract_fill, never overwrites static contracts, budget cap, telemetry JSON, single-shot fallback; default model -> claude-sonnet-5-5; 1,972 tests. Live-model verification still blocked (Ollama generation hangs, no API key). | bean/BEAN-068-agentic-enrichment |

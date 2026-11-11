@@ -9,9 +9,19 @@ from typing import Any
 
 import structlog
 
-from repo_mirror_kit.harvester.analyzers.surfaces import Surface, SurfaceCollection
+from repo_mirror_kit.harvester.analyzers.surfaces import (
+    ApiSurface,
+    Surface,
+    SurfaceCollection,
+)
 from repo_mirror_kit.harvester.config import HarvestConfig
-from repo_mirror_kit.harvester.llm.prompts import SYSTEM_PROMPT, build_enrichment_prompt
+from repo_mirror_kit.harvester.llm.agent import parse_agent_json, run_agent
+from repo_mirror_kit.harvester.llm.prompts import (
+    SYSTEM_PROMPT,
+    build_agent_prompt,
+    build_enrichment_prompt,
+)
+from repo_mirror_kit.harvester.llm.tools import RepoTools
 
 logger = structlog.get_logger()
 
@@ -60,15 +70,51 @@ def enrich_surfaces(
         model=config.llm_model,
         base_url=config.llm_base_url,
     )
+    return enrich_with_client(surfaces, config, workdir, client, callback)
 
-    total = len(surfaces)
-    enriched_count = 0
-    error_count = 0
 
-    for i, surface in enumerate(surfaces):
+def enrich_with_client(
+    surfaces: SurfaceCollection,
+    config: HarvestConfig,
+    workdir: Path,
+    client: Any,
+    callback: Callable[..., Any] | None = None,
+) -> SurfaceCollection:
+    """Enrichment loop over an already-built client (injectable for tests)."""
+    all_surfaces = list(surfaces)
+    total = len(all_surfaces)
+    telemetry = _Telemetry(model=getattr(client, "model", config.llm_model))
+    price = _price_for(client, config)
+    tools = RepoTools(workdir)
+    agentic = config.llm_agentic and hasattr(client, "create_message")
+    neighbors = _neighbor_index(all_surfaces) if agentic else {}
+    spent = 0.0
+
+    for i, surface in enumerate(all_surfaces):
+        record = telemetry.start(surface)
+        if config.llm_budget_usd > 0 and spent >= config.llm_budget_usd:
+            record["status"] = "skipped_budget"
+            telemetry.add(record)
+            continue
+        before_in, before_out = client.total_input_tokens, client.total_output_tokens
         try:
-            _enrich_single_surface(surface, client, workdir)
-            enriched_count += 1
+            if agentic:
+                try:
+                    _enrich_agentic(
+                        surface, client, workdir, tools, neighbors, config, record
+                    )
+                except Exception:
+                    logger.warning(
+                        "llm_agentic_failed_falling_back",
+                        surface_name=surface.name,
+                        exc_info=True,
+                    )
+                    record["fallback"] = "single_shot"
+                    _enrich_single_surface(surface, client, workdir)
+                    record["status"] = "ok_single_shot"
+            else:
+                _enrich_single_surface(surface, client, workdir)
+                record["status"] = "ok_single_shot"
         except Exception:
             logger.warning(
                 "llm_enrichment_failed",
@@ -76,7 +122,16 @@ def enrich_surfaces(
                 surface_type=surface.surface_type,
                 exc_info=True,
             )
-            error_count += 1
+            record["status"] = "failed"
+        used_in = client.total_input_tokens - before_in
+        used_out = client.total_output_tokens - before_out
+        record["input_tokens"] = used_in
+        record["output_tokens"] = used_out
+        record["est_cost_usd"] = round(
+            (used_in * price[0] + used_out * price[1]) / 1_000_000, 6
+        )
+        spent += float(record["est_cost_usd"])
+        telemetry.add(record)
 
         if callback is not None and (i + 1) % 5 == 0:
             from repo_mirror_kit.harvester.pipeline import (
@@ -92,16 +147,222 @@ def enrich_surfaces(
                 )
             )
 
-    logger.info(
-        "llm_enrichment_complete",
-        total=total,
-        enriched=enriched_count,
-        errors=error_count,
-        input_tokens=client.total_input_tokens,
-        output_tokens=client.total_output_tokens,
-    )
-
+    summary = telemetry.summary(spent, config.llm_budget_usd, price)
+    logger.info("llm_enrichment_complete", **summary)
+    # Pipeline layout is <out>/repo (the clone) beside <out>/reports.
+    if workdir.name == "repo":
+        telemetry.write(workdir.parent / "reports", summary)
     return surfaces
+
+
+# Estimated $/MTok (input, output) for budgeting only — assumptions, not a
+# billing source of truth. Local endpoints cost nothing.
+_ASSUMED_PRICE_PER_MTOK = (3.0, 15.0)
+
+
+def _price_for(client: Any, config: HarvestConfig) -> tuple[float, float]:
+    if getattr(client, "is_local", False) or config.llm_base_url:
+        return (0.0, 0.0)
+    return _ASSUMED_PRICE_PER_MTOK
+
+
+class _Telemetry:
+    """Per-surface and per-run enrichment telemetry (reports/enrichment-telemetry.json)."""
+
+    def __init__(self, model: str) -> None:
+        self.model = model
+        self.records: list[dict[str, Any]] = []
+
+    def start(self, surface: Surface) -> dict[str, Any]:
+        return {
+            "surface": surface.name,
+            "type": surface.surface_type,
+            "status": "pending",
+            "turns": 0,
+            "tool_calls": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "est_cost_usd": 0.0,
+        }
+
+    def add(self, record: dict[str, Any]) -> None:
+        self.records.append(record)
+
+    def summary(
+        self, spent: float, budget: float, price: tuple[float, float]
+    ) -> dict[str, Any]:
+        statuses: dict[str, int] = {}
+        for r in self.records:
+            statuses[r["status"]] = statuses.get(r["status"], 0) + 1
+        return {
+            "model": self.model,
+            "surfaces": len(self.records),
+            "statuses": statuses,
+            "input_tokens": sum(r["input_tokens"] for r in self.records),
+            "output_tokens": sum(r["output_tokens"] for r in self.records),
+            "tool_calls": sum(r["tool_calls"] for r in self.records),
+            "est_cost_usd": round(spent, 6),
+            "budget_usd": budget,
+            "budget_exhausted": budget > 0 and spent >= budget,
+            "pricing_assumption_usd_per_mtok": {"input": price[0], "output": price[1]},
+        }
+
+    def write(self, reports_dir: Path, summary: dict[str, Any]) -> None:
+        try:
+            reports_dir.mkdir(parents=True, exist_ok=True)
+            (reports_dir / "enrichment-telemetry.json").write_text(
+                json.dumps({"summary": summary, "surfaces": self.records}, indent=2)
+                + "\n",
+                encoding="utf-8",
+            )
+        except OSError:
+            logger.warning("enrichment_telemetry_write_failed", exc_info=True)
+
+
+def _neighbor_index(all_surfaces: list[Surface]) -> dict[int, str]:
+    """Compact "same resource" neighbor summaries keyed by surface identity."""
+    from repo_mirror_kit.harvester.features import resource_key
+
+    by_key: dict[str, list[Surface]] = {}
+    keyed: dict[int, str] = {}
+    for s in all_surfaces:
+        if s.surface_type in ("dependency", "config", "build_deploy", "test_pattern"):
+            continue
+        name = getattr(s, "entity_name", "") or getattr(s, "screen_name", "") or s.name
+        path = getattr(s, "path", "")
+        key = resource_key(
+            path.strip("/").split("/")[-1]
+            if path and s.surface_type == "route"
+            else name
+        )
+        if s.surface_type == "api" and path:
+            segs = [
+                p
+                for p in path.split("/")
+                if p and p != "api" and not p.startswith((":", "{", "<"))
+            ]
+            key = resource_key(segs[0]) if segs else key
+        keyed[id(s)] = key
+        by_key.setdefault(key, []).append(s)
+    out: dict[int, str] = {}
+    for s in all_surfaces:
+        found = keyed.get(id(s))
+        if not found:
+            continue
+        key = found
+        peers = [p for p in by_key.get(key, []) if p is not s][:12]
+        out[id(s)] = "\n".join(
+            f"- [{p.surface_type}] {p.name}"
+            + (f" ({p.source_refs[0].file_path})" if p.source_refs else "")
+            for p in peers
+        )
+    return out
+
+
+def _enrich_agentic(
+    surface: Surface,
+    client: Any,
+    workdir: Path,
+    tools: RepoTools,
+    neighbors: dict[int, str],
+    config: HarvestConfig,
+    record: dict[str, Any],
+) -> None:
+    """Agentic enrichment of one surface; fills *record* telemetry."""
+    prompt = build_agent_prompt(
+        surface_type=surface.surface_type,
+        surface_name=surface.name,
+        surface_data=surface.to_dict(),
+        source_code=_read_source_for_surface(surface, workdir),
+        neighbors=neighbors.get(id(surface), "") or "(none found)",
+    )
+    result = run_agent(client, prompt, tools, config.llm_max_turns)
+    record.update(
+        turns=result.turns,
+        tool_calls=result.tool_calls,
+        tools_used=sorted(set(result.tools_used)),
+    )
+    data = parse_agent_json(result.final_text)
+    if data is None:
+        raise ValueError("agent reply was not valid JSON")
+    enrichment = _parse_enrichment_response(json.dumps(data))
+    enrichment["confidence"] = str(data.get("confidence", "medium"))
+    enrichment["gaps"] = [str(g) for g in data.get("gaps", []) if g]
+    enrichment["traced_flow"] = _clean_flow(data.get("traced_flow"))
+    fill = data.get("contract_fill")
+    if isinstance(fill, dict):
+        enrichment["contract_fill"] = fill
+    if result.status == "turn_limit":
+        enrichment["gaps"].append(
+            "Agent hit the turn limit before finishing its trace."
+        )
+    surface.enrichment = enrichment
+    apply_contract_fill(surface)
+    record["status"] = "turn_limit" if result.status == "turn_limit" else "ok"
+
+
+def _clean_flow(raw: Any) -> list[dict[str, Any]]:
+    flow: list[dict[str, Any]] = []
+    if isinstance(raw, list):
+        for hop in raw[:20]:
+            if isinstance(hop, dict):
+                flow.append(
+                    {
+                        "hop": str(hop.get("hop", ""))[:200],
+                        "file": str(hop.get("file", ""))[:300],
+                        "line": hop.get("line")
+                        if isinstance(hop.get("line"), int)
+                        else None,
+                        "note": str(hop.get("note", ""))[:300],
+                    }
+                )
+    return flow
+
+
+def apply_contract_fill(surface: Surface) -> None:
+    """Merge LLM contract guesses into an API surface — never over static results.
+
+    Static extraction (``declared``/``inferred``) always wins; the LLM only
+    fills schemas that are missing or marked ``{"unknown": True}``, and what it
+    writes is stamped ``confidence: "llm"``.
+    """
+    if not isinstance(surface, ApiSurface):
+        return
+    fill = surface.enrichment.get("contract_fill")
+    if not isinstance(fill, dict):
+        return
+
+    def _fields(raw: Any, source: str) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for f in raw if isinstance(raw, list) else []:
+            if isinstance(f, dict) and f.get("name"):
+                out.append(
+                    {
+                        "name": str(f["name"]),
+                        "type": str(f.get("type", "unknown")),
+                        "required": bool(f.get("required", False)),
+                        "source": source,
+                    }
+                )
+        return out
+
+    def _is_open(schema: dict[str, Any]) -> bool:
+        return not schema or schema.get("unknown") is True
+
+    req = _fields(fill.get("request_fields"), "body")
+    if req and _is_open(surface.request_schema or {}):
+        surface.request_schema = {"fields": req, "confidence": "llm"}
+    resp = _fields(fill.get("response_fields"), "body")
+    errors = [
+        {"status": int(c)}
+        for c in fill.get("error_statuses", [])
+        if isinstance(c, int) and 400 <= c < 600
+    ]
+    if resp and _is_open(surface.response_schema or {}):
+        schema: dict[str, Any] = {"fields": resp, "confidence": "llm"}
+        if errors:
+            schema["errors"] = errors
+        surface.response_schema = schema
 
 
 def _enrich_single_surface(

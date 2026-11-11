@@ -49,6 +49,7 @@ def _make_config(
         llm_enabled=llm_enabled,
         llm_api_key=llm_api_key,
         llm_model="claude-test",
+        llm_agentic=False,
     )
 
 
@@ -144,6 +145,7 @@ class TestEnrichSurfacesSkipConditions:
             llm_api_key=None,
             llm_base_url="http://localhost:11434",
             llm_model="claude-test",
+            llm_agentic=False,
         )
         surfaces = _make_surfaces(count=1)
         mock_cls = _mock_llm_client_class()

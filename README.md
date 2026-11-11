@@ -30,6 +30,8 @@ uv run requirements-harvester harvest --help
 
 The harvester runs an 8-stage pipeline (clone → inventory + framework detection → 14 surface analyzers → optional LLM enrichment → traceability → bean generation → coverage gates → Claude Code project folder) and writes the results under `--out`. LLM enrichment is on by default (`--llm`): with an `ANTHROPIC_API_KEY` in the environment, beans are enriched with behavioral descriptions, acceptance criteria, and inferred intent. Without the key, the run falls back to structural-only output with a warning; pass `--no-llm` to skip enrichment silently.
 
+Enrichment is **agentic** by default: the model gets read-only `read_file` / `grep` / `list_dir` tools over the clone (sandboxed; secrets and `.git` are unreadable) and traces each surface end-to-end, recording `confidence`, `gaps` and a `traced_flow`. Caps: `--llm-max-turns` (default 8) and `--llm-budget-usd` (default 5.0, estimate; local endpoints cost $0). Use `--no-llm-agentic` for the single-shot prompt. Per-surface token/cost telemetry lands in `reports/enrichment-telemetry.json`. Static (`declared`/`inferred`) extraction is never overwritten by model output. Stages A, B, C and C2 are persisted under `<out>/state/`, so `--resume` and `--from-stage C2` do not re-pay for earlier work.
+
 ### GUI (interactive launcher)
 
 ```bash

@@ -151,11 +151,33 @@ def main() -> None:
 )
 @click.option(
     "--llm-model",
-    default="claude-sonnet-4-6",
+    default="claude-sonnet-5-5",
     help="Claude model to use for LLM enrichment. When --llm-base-url points "
     "at a local endpoint (e.g. Ollama), a local model tag such as "
     "'qwen2.5-coder:32b' can be used instead.",
     show_default=True,
+)
+@click.option(
+    "--llm-agentic/--no-llm-agentic",
+    default=True,
+    help="Let the model trace each surface through the repo with read-only "
+    "read_file/grep/list_dir tools (default). --no-llm-agentic uses the "
+    "single-shot snippet prompt.",
+)
+@click.option(
+    "--llm-max-turns",
+    default=8,
+    type=int,
+    show_default=True,
+    help="Max tool-use turns per surface in agentic mode.",
+)
+@click.option(
+    "--llm-budget-usd",
+    default=5.0,
+    type=float,
+    show_default=True,
+    help="Estimated-spend cap for enrichment. Remaining surfaces are skipped "
+    "(and recorded as skipped_budget) once reached. Local endpoints cost $0.",
 )
 @click.option(
     "--llm-base-url",
@@ -182,6 +204,9 @@ def harvest(
     log_level: str,
     llm_enabled: bool,
     llm_model: str,
+    llm_agentic: bool,
+    llm_max_turns: int,
+    llm_budget_usd: float,
     llm_base_url: str | None,
 ) -> None:
     """Run the requirements harvester against a repository."""
@@ -208,6 +233,9 @@ def harvest(
             llm_api_key=llm_api_key,
             llm_model=llm_model,
             llm_base_url=llm_base_url,
+            llm_agentic=llm_agentic,
+            llm_max_turns=llm_max_turns,
+            llm_budget_usd=llm_budget_usd,
         )
     except ConfigValidationError as exc:
         click.echo(f"Error: {exc}", err=True)
