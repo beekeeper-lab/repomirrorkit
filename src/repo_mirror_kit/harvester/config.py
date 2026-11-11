@@ -29,6 +29,9 @@ DEFAULT_LLM_ENABLED: bool = True
 VALID_LOG_LEVELS: frozenset[str] = frozenset({"debug", "info", "warn", "error"})
 
 
+VALID_STAGES: tuple[str, ...] = ("A", "B", "C", "C2", "D", "E", "F", "G")
+
+
 class ConfigValidationError(Exception):
     """Raised when harvest configuration fails validation."""
 
@@ -68,6 +71,8 @@ class HarvestConfig:
     max_file_bytes: int = DEFAULT_MAX_FILE_BYTES
     max_total_bytes: int = DEFAULT_MAX_TOTAL_BYTES
     resume: bool = False
+    # BEAN-060: force re-run from this stage onward (implies resume).
+    from_stage: str | None = None
     fail_on_gaps: bool = True
     # BEAN-076: exit non-zero when fidelity (recreation-readiness) gates
     # fail. Off by default while extraction depth is still growing.
@@ -93,6 +98,11 @@ class HarvestConfig:
             validate_clone_url(self.repo)
         except GitCloneError as exc:
             raise ConfigValidationError(str(exc)) from exc
+        if self.from_stage is not None and self.from_stage not in VALID_STAGES:
+            raise ConfigValidationError(
+                f"Invalid --from-stage '{self.from_stage}'. "
+                f"Must be one of: {', '.join(VALID_STAGES)}"
+            )
         normalized_level = self.log_level.lower()
         if normalized_level not in VALID_LOG_LEVELS:
             raise ConfigValidationError(
