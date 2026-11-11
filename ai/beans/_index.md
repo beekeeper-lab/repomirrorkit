@@ -96,7 +96,7 @@
 | BEAN-072 | DB Design Bundle — SQL DDL + JSON Schema + Seed Data | App | Medium | Done | team-lead |
 | BEAN-073 | Screen Spec YAML + Mermaid Navigation Map | App | High | Done | team-lead |
 | BEAN-074 | Gherkin `.feature` Generation per Feature Cluster | App | High | Done | team-lead |
-| BEAN-075 | Sequence + State Mermaid Diagrams | App | Low | Unapproved | team-lead |
+| BEAN-075 | Sequence + State Mermaid Diagrams | App | Low | Done | team-lead |
 | BEAN-076 | Fidelity Coverage Gates (Recreation-Readiness Metrics) | App | High | Done | team-lead |
 | BEAN-077 | Golden Parity Fixtures (Request/Response Captures) | App | Medium | Unapproved | team-lead |
 | BEAN-078 | Rebuild Eval Harness — Parity Scoring | App | Critical | Unapproved | team-lead |

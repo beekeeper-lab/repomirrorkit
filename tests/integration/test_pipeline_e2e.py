@@ -403,3 +403,38 @@ def test_gherkin_for_fixtures_parses_and_traces(
             if sc:
                 assert any(re.fullmatch(r"@BEAN-\d+", t["name"]) for t in sc["tags"])
     assert "gherkin/" in (out / "REQUIREMENTS.md").read_text()
+
+
+@pytest.mark.integration
+def test_diagrams_for_workflow_and_screen_fixtures(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    """BEAN-075: state diagram for the order workflow; sequence for the form."""
+    out = tmp_path / "wf"
+    assert _run_pipeline(local_git_repo("python-flask-workflow"), out).success
+    state_files = sorted((out / "diagrams").glob("state-*.md"))
+    assert state_files
+    text = "\n".join(p.read_text() for p in state_files)
+    assert "stateDiagram-v2" in text and "SUBMITTED" in text and "PAID" in text
+    out2 = tmp_path / "ui"
+    assert _run_pipeline(local_git_repo("ts-next"), out2).success
+    seq = list((out2 / "diagrams").glob("sequence-*.md"))
+    assert seq and "sequenceDiagram" in seq[0].read_text()
+    assert "diagrams/README.md" in (out2 / "REQUIREMENTS.md").read_text()
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("fixture", ["ts-next", "python-flask-workflow", "dotnet-api"])
+def test_requirements_md_indexes_every_artifact(
+    local_git_repo: Callable[[str], Path], tmp_path: Path, fixture: str
+) -> None:
+    """BEAN-075/6.5: nothing in the output root is orphaned from REQUIREMENTS.md."""
+    out = tmp_path / "harvest-out"
+    assert _run_pipeline(local_git_repo(fixture), out).success
+    text = (out / "REQUIREMENTS.md").read_text()
+    internal = {"repo", "state", "REQUIREMENTS.md", "reports", "surface-map.json"}
+    for entry in sorted(out.iterdir()):
+        if entry.name in internal:
+            continue
+        assert entry.name in text, f"{entry.name} is not linked from REQUIREMENTS.md"
+    assert "reports/coverage.md" in text and "reports/gaps.md" in text
