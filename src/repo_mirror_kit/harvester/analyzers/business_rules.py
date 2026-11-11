@@ -73,6 +73,7 @@ def neutral_rule(raw: str, field_type: str = "") -> str | None:
             "min_items": f"at least {val} items",
             "max_items": f"at most {val} items",
             "step": f"step {val}",
+            "references": f"must reference an existing {val}",
         }
         return table.get(key)
     if low in ("required", "isnotempty()", "nonempty()", "notnull", "not_null"):

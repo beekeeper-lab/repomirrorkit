@@ -1,0 +1,284 @@
+{
+  "report_version": "1.0",
+  "overall": 0.25,
+  "threshold": 0.9,
+  "passed": false,
+  "weights": {
+    "golden_replay": 0.5,
+    "gherkin": 0.3,
+    "schema": 0.2
+  },
+  "families": {
+    "golden_replay": {
+      "score": 0.1,
+      "interactions": 20,
+      "passed": 2,
+      "strict_passed": 2,
+      "pass_rate": 0.1,
+      "strict_rate": 0.1,
+      "field_match_rate": 0.03773584905660377,
+      "failures": [
+        {
+          "name": "health",
+          "status_expected": 200,
+          "status_actual": 401,
+          "notes": [
+            "status expected 200, got 401",
+            "/status: missing"
+          ]
+        },
+        {
+          "name": "categories (seeded lookup)",
+          "status_expected": 200,
+          "status_actual": 401,
+          "notes": [
+            "status expected 200, got 401",
+            ": expected list"
+          ]
+        },
+        {
+          "name": "create ok",
+          "status_expected": 201,
+          "status_actual": 404,
+          "notes": [
+            "status expected 201, got 404",
+            "/category_id: missing",
+            "/customer: missing",
+            "/id: missing",
+            "/status: missing"
+          ]
+        },
+        {
+          "name": "create short customer",
+          "status_expected": 400,
+          "status_actual": 404,
+          "notes": [
+            "status expected 400, got 404",
+            "/error: missing"
+          ]
+        },
+        {
+          "name": "create unknown category",
+          "status_expected": 400,
+          "status_actual": 404,
+          "notes": [
+            "status expected 400, got 404",
+            "/error: missing"
+          ]
+        },
+        {
+          "name": "create missing fields",
+          "status_expected": 400,
+          "status_actual": 404,
+          "notes": [
+            "status expected 400, got 404",
+            "/error: missing"
+          ]
+        },
+        {
+          "name": "list orders",
+          "status_expected": 200,
+          "status_actual": 401,
+          "notes": [
+            "status expected 200, got 401",
+            ": expected list"
+          ]
+        },
+        {
+          "name": "get order",
+          "status_expected": 200,
+          "status_actual": 401,
+          "notes": [
+            "status expected 200, got 401",
+            "/category_id: missing",
+            "/customer: missing",
+            "/id: missing",
+            "/status: missing"
+          ]
+        },
+        {
+          "name": "get missing order",
+          "status_expected": 404,
+          "status_actual": 401,
+          "notes": [
+            "status expected 404, got 401"
+          ]
+        },
+        {
+          "name": "pay a draft (invalid)",
+          "status_expected": 409,
+          "status_actual": 404,
+          "notes": [
+            "status expected 409, got 404",
+            "/error: missing"
+          ]
+        },
+        {
+          "name": "submit draft",
+          "status_expected": 200,
+          "status_actual": 404,
+          "notes": [
+            "status expected 200, got 404",
+            "/category_id: missing",
+            "/customer: missing",
+            "/id: missing",
+            "/status: missing"
+          ]
+        },
+        {
+          "name": "submit twice (invalid)",
+          "status_expected": 409,
+          "status_actual": 404,
+          "notes": [
+            "status expected 409, got 404",
+            "/error: missing"
+          ]
+        },
+        {
+          "name": "pay submitted",
+          "status_expected": 200,
+          "status_actual": 404,
+          "notes": [
+            "status expected 200, got 404",
+            "/category_id: missing",
+            "/customer: missing",
+            "/id: missing",
+            "/status: missing"
+          ]
+        },
+        {
+          "name": "cancel paid (invalid)",
+          "status_expected": 409,
+          "status_actual": 404,
+          "notes": [
+            "status expected 409, got 404",
+            "/error: missing"
+          ]
+        },
+        {
+          "name": "create second",
+          "status_expected": 201,
+          "status_actual": 404,
+          "notes": [
+            "status expected 201, got 404",
+            "/category_id: missing",
+            "/customer: missing",
+            "/id: missing",
+            "/status: missing"
+          ]
+        },
+        {
+          "name": "cancel draft",
+          "status_expected": 200,
+          "status_actual": 404,
+          "notes": [
+            "status expected 200, got 404",
+            "/category_id: missing",
+            "/customer: missing",
+            "/id: missing",
+            "/status: missing"
+          ]
+        },
+        {
+          "name": "submit missing order",
+          "status_expected": 404,
+          "status_actual": 404,
+          "notes": [
+            "/error: missing"
+          ]
+        },
+        {
+          "name": "final order list",
+          "status_expected": 200,
+          "status_actual": 401,
+          "notes": [
+            "status expected 200, got 401",
+            ": expected list"
+          ]
+        }
+      ]
+    },
+    "gherkin": {
+      "score": 0.5,
+      "original_pass_rate": 0.8571428571428571,
+      "relative_to_original": 0.5,
+      "scenarios": 47,
+      "bound": 14,
+      "unbound": 33,
+      "passed": 6,
+      "pass_rate": 0.42857142857142855,
+      "failures": [
+        {
+          "feature": "Category management",
+          "scenario": "GET /api/categories succeeds",
+          "detail": "status 404 != 200"
+        },
+        {
+          "feature": "Health management",
+          "scenario": "GET /api/health succeeds",
+          "detail": "status 404 != 200"
+        },
+        {
+          "feature": "Order management",
+          "scenario": "GET /api/orders succeeds",
+          "detail": "status 404 != 200"
+        },
+        {
+          "feature": "Order management",
+          "scenario": "POST /api/orders succeeds",
+          "detail": "status 404 != 201"
+        },
+        {
+          "feature": "Order management",
+          "scenario": "GET /api/orders/{order_id} succeeds",
+          "detail": "status 404 != 200"
+        },
+        {
+          "feature": "Order management",
+          "scenario": "POST /api/orders/{order_id}/submit succeeds",
+          "detail": "status 404 != 200"
+        },
+        {
+          "feature": "Order management",
+          "scenario": "POST /api/orders/{order_id}/pay succeeds",
+          "detail": "status 404 != 200"
+        },
+        {
+          "feature": "Order management",
+          "scenario": "POST /api/orders/{order_id}/cancel succeeds",
+          "detail": "status 404 != 200"
+        }
+      ]
+    },
+    "schema": {
+      "score": null
+    }
+  },
+  "telemetry": {
+    "lane": "cloud",
+    "model": "sonnet",
+    "workspace": "/tmp/claude-1000/-home-gregg-workspace-repomirrorkit/080c9172-ee93-41cc-94ef-1a5ed6ff36dc/scratchpad/evals/rebuilt-node-baseline",
+    "success": true,
+    "duration_seconds": 30.24,
+    "exit_code": 0,
+    "intervention_count": 0,
+    "turns": 7,
+    "retries": null,
+    "tokens_in": 14,
+    "tokens_out": 3804,
+    "cost_usd": 0.1882782,
+    "copied_inputs": [
+      "project-folder",
+      "beans",
+      "REQUIREMENTS.md",
+      "RUNBOOK.md",
+      ".env.example",
+      "data-model.md"
+    ],
+    "error": null
+  },
+  "notes": [
+    "Gherkin suite calibrated against the original: it passes 12/14 bound scenarios.",
+    "Schema family N/A: the rebuild exposes no relational database design (storage is an implementation choice); entity fields are covered by golden replay."
+  ]
+}

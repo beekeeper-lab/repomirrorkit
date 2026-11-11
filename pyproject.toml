@@ -49,6 +49,7 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "S108"]
 "tests/integration/conftest.py" = ["S101", "S108", "S603", "S607"]
+"tests/parity/test_parity_integration.py" = ["S101", "S108", "S603", "S607"]
 "src/repo_mirror_kit/services/clone_service.py" = ["S603", "S607"]
 "src/repo_mirror_kit/harvester/git_ops.py" = ["S603", "S607"]
 "src/repo_mirror_kit/harvester/rebuild/executor.py" = ["S603", "S607"]
@@ -67,10 +68,13 @@ testpaths = ["tests"]
 norecursedirs = ["fixtures"]
 markers = [
     "integration: end-to-end harvester pipeline tests against checked-in fixture projects (slower; opt-out with -m 'not integration')",
+    "parity: boots the runnable fixture apps (needs flask; node+npm for the express fixture); opt-out with -m 'not parity'",
 ]
 
 [dependency-groups]
 dev = [
+    "flask>=3.1.3",
+    "flask-sqlalchemy>=3.1.1",
     "gherkin-official>=42.0.1",
     "jsonschema>=4.26.0",
     "types-pyyaml>=6.0.12.20261111",

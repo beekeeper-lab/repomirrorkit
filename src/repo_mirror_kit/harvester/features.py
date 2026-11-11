@@ -211,7 +211,17 @@ def _surface_key(s: Surface, by_name: dict[tuple[str, str], Surface]) -> str:
     if isinstance(s, WorkflowSurface):
         return resource_key(s.entity_ref or s.name)
     if isinstance(s, SeedDataSurface):
-        return resource_key(s.target_model_ref or s.dataset_name or s.name)
+        if s.target_model_ref:
+            return resource_key(s.target_model_ref)
+        model_keys = {
+            resource_key(getattr(m, "entity_name", "") or m.name)
+            for (t, _), m in by_name.items()
+            if t == "model"
+        }
+        for word in _words(s.dataset_name or s.name):
+            if _singular(word) in model_keys:
+                return _singular(word)
+        return resource_key(s.dataset_name or s.name)
     if isinstance(s, BusinessRuleSurface):
         for target in s.applies_to:
             for (_, name), other in by_name.items():

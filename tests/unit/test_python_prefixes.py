@@ -73,3 +73,34 @@ def test_no_prefix_is_unchanged(tmp_path: Path) -> None:
         "app.py": "from flask import Flask\napp = Flask(__name__)\n@app.get('/x')\ndef x(): pass\n"
     }
     assert _paths(tmp_path, files, "flask") == {("GET", "/x")}
+
+
+def test_same_variable_name_in_different_modules_is_not_confused(
+    tmp_path: Path,
+) -> None:
+    """Every blueprint called ``bp`` (microblog): prefixes resolve per module."""
+    files = {
+        "app/__init__.py": (
+            "from flask import Flask\n"
+            "def create_app():\n"
+            "    app = Flask(__name__)\n"
+            "    from app.auth import bp as auth_bp\n"
+            "    app.register_blueprint(auth_bp, url_prefix='/auth')\n"
+            "    from app.main import bp as main_bp\n"
+            "    app.register_blueprint(main_bp)\n"
+            "    from app.api import bp as api_bp\n"
+            "    app.register_blueprint(api_bp, url_prefix='/api')\n"
+            "    return app\n"
+        ),
+        "app/auth/__init__.py": "from flask import Blueprint\nbp = Blueprint('auth', __name__)\nfrom app.auth import routes\n",
+        "app/auth/routes.py": "from app.auth import bp\n@bp.route('/login')\ndef login(): pass\n",
+        "app/main/__init__.py": "from flask import Blueprint\nbp = Blueprint('main', __name__)\nfrom app.main import routes\n",
+        "app/main/routes.py": "from app.main import bp\n@bp.route('/index')\ndef index(): pass\n",
+        "app/api/__init__.py": "from flask import Blueprint\nbp = Blueprint('api', __name__)\nfrom app.api import users\n",
+        "app/api/users.py": "from app.api import bp\n@bp.get('/users')\ndef users(): pass\n",
+    }
+    assert _paths(tmp_path, files, "flask") == {
+        ("GET", "/auth/login"),
+        ("GET", "/index"),
+        ("GET", "/api/users"),
+    }

@@ -212,3 +212,57 @@ def test_handler_without_inferable_body_is_unknown(tmp_path: Path) -> None:
     s = _surface("POST", "/r", "r.ts", 1)
     populate_js_api_contracts([s], tmp_path)
     assert s.request_schema == {"unknown": True}
+
+
+def test_handler_factory_with_status_and_error_messages(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "server.js",
+        "function transition(allowed, target) {\n"
+        "  return (req, res) => {\n"
+        "    if (!req.get('X-API-Key')) return res.status(401).json({ error: 'unauthorized' });\n"
+        "    const order = find(req.params.id);\n"
+        "    if (!order) return res.status(404).json({ error: 'not found' });\n"
+        "    if (!allowed.includes(order.status)) {\n"
+        "      return res.status(409).json({ error: 'invalid transition' });\n"
+        "    }\n"
+        "    res.json(order);\n"
+        "  };\n"
+        "}\n"
+        "app.post('/orders/:id/pay', transition(['submitted'], 'paid'));\n",
+    )
+    s = _surface("POST", "/orders/:id/pay", "server.js", 12)
+    populate_js_api_contracts([s], tmp_path)
+    errs = {e["status"]: e.get("message") for e in s.response_schema["errors"]}
+    assert errs == {401: "unauthorized", 404: "not found", 409: "invalid transition"}
+    assert ("path", "id") in {
+        (f["source"], f["name"]) for f in s.request_schema["fields"]
+    }
+
+
+def test_imperative_validation_guards_in_express_handler(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "server.js",
+        "app.post('/orders', (req, res) => {\n"
+        "  const data = req.body;\n"
+        "  const { customer, category_id, qty } = data;\n"
+        "  if (typeof customer !== 'string' || customer.trim().length < 2) {\n"
+        "    return res.status(400).json({ error: 'customer must be at least 2 characters' });\n"
+        "  }\n"
+        "  if (!Number.isInteger(category_id) || !categories.some((c) => c.id === category_id)) {\n"
+        "    return res.status(400).json({ error: 'unknown category' });\n"
+        "  }\n"
+        "  if (qty < 1) return res.status(400).json({ error: 'qty' });\n"
+        "  res.status(201).json({ id: 1 });\n"
+        "});\n",
+    )
+    s = _surface("POST", "/orders", "server.js", 1)
+    populate_js_api_contracts([s], tmp_path)
+    f = _fields(s.request_schema, "body")
+    assert f["customer"]["type"] == "string" and f["customer"]["required"] is True
+    assert f["customer"]["rules"] == ["min_length=2"]
+    assert f["category_id"]["type"] == "integer"
+    assert f["category_id"]["rules"] == ["references=categories"]
+    assert f["qty"]["rules"] == ["min=1"]
+    assert s.response_schema["status"] == 201

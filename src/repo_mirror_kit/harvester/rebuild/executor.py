@@ -33,11 +33,23 @@ from typing import Any
 # workspace. Allowlist, not denylist: anything not named here (notably the
 # original source clone `repo/`, `surfaces.json`, `reports/`, `traceability/`)
 # is never handed to the rebuild agent.
-REBUILD_INPUT_DIRS: tuple[str, ...] = ("project-folder", "beans")
+REBUILD_INPUT_DIRS: tuple[str, ...] = (
+    "project-folder",
+    "beans",
+    # Design artifacts (BEAN-071..075): executable specs a rebuilder can use.
+    "db-design",
+    "screens",
+    "gherkin",
+    "features",
+    "diagrams",
+)
 REBUILD_INPUT_FILES: tuple[str, ...] = (
     "REQUIREMENTS.md",
     "RUNBOOK.md",
     ".env.example",
+    "api-contract.json",
+    "build-manifest.json",
+    "data-model.md",
 )
 REBUILD_INPUT_GLOBS: tuple[str, ...] = ("openapi.*",)
 
@@ -165,8 +177,25 @@ def prepare_rebuild_workspace(harvest_dir: Path, workspace: Path) -> list[str]:
     return copied
 
 
-def build_rebuild_prompt(workspace: Path, copied_inputs: list[str]) -> str:
-    """Compose the standard rebuild instruction handed to the agent."""
+START_SCRIPT = "start.sh"
+
+
+def build_rebuild_prompt(
+    workspace: Path,
+    copied_inputs: list[str],
+    target_stack: str | None = None,
+    require_start_script: bool = False,
+) -> str:
+    """Compose the standard rebuild instruction handed to the agent.
+
+    Args:
+        workspace: the rebuild workspace (unused in the text; kept for API symmetry).
+        copied_inputs: names of the artifacts copied into the workspace.
+        target_stack: when set, the rebuild must use this technology stack
+            instead of the original's (cross-stack rebuild).
+        require_start_script: demand a ``start.sh`` that serves HTTP on
+            ``$PORT`` so behavioural parity scoring can run the rebuild.
+    """
     have_reqs = "REQUIREMENTS.md" in copied_inputs
     have_beans = "beans" in copied_inputs
     have_runbook = "RUNBOOK.md" in copied_inputs
@@ -183,6 +212,25 @@ def build_rebuild_prompt(workspace: Path, copied_inputs: list[str]) -> str:
         "; ".join(inputs_desc) if inputs_desc else "the files in this directory"
     )
 
+    extra = ""
+    if target_stack:
+        extra += (
+            f"\n\nTARGET STACK: build the application with {target_stack}. "
+            "The `project-folder/` scaffold and `RUNBOOK.md` describe the ORIGINAL "
+            "technology stack — treat them as background about behaviour and "
+            "conventions only; the implementation MUST use the target stack."
+        )
+    if require_start_script:
+        extra += (
+            f"\n\nRUN CONTRACT: provide an executable `{START_SCRIPT}` at the "
+            "workspace root that installs any dependencies it needs (if not "
+            "already installed), creates any database/state itself, and starts the "
+            "HTTP server in the FOREGROUND listening on the port given by the "
+            "`PORT` environment variable (bind 127.0.0.1). The app will be "
+            "scored by calling its HTTP API exactly as specified in the "
+            "requirements (paths, methods, status codes, JSON field names, "
+            "validation messages, authentication, seed data) — match them exactly."
+        )
     return (
         "You are rebuilding an application from its extracted requirements. "
         "This working directory contains ONLY requirement artifacts — there is "
@@ -195,7 +243,7 @@ def build_rebuild_prompt(workspace: Path, copied_inputs: list[str]) -> str:
         "behaviour described. You may choose an idiomatic project layout and "
         "framework consistent with the stack conventions. Write real, runnable "
         "code and tests. Do not stop until the app is buildable and its tests "
-        "pass. Commit nothing — leave the tree as files on disk."
+        "pass. Commit nothing — leave the tree as files on disk." + extra
     )
 
 
@@ -333,6 +381,8 @@ def run_rebuild(
     final_verify: str | None = None,
     git_init: bool = True,
     runner: Runner = _default_runner,
+    target_stack: str | None = None,
+    require_start_script: bool = False,
 ) -> RebuildResult:
     """Assemble a workspace, drive a rebuild, and record telemetry.
 
@@ -351,6 +401,9 @@ def run_rebuild(
             re-harvested. (The local lane always git-inits before running, as
             forge-loop commits per step.)
         runner: subprocess boundary (injectable for tests).
+        target_stack: cloud lane — build in this stack instead of the original's.
+        require_start_script: cloud lane — require ``start.sh`` serving on
+            ``$PORT`` (needed for behavioural parity scoring).
 
     Returns:
         A :class:`RebuildResult`. Non-zero exit or timeout yields
@@ -361,7 +414,15 @@ def run_rebuild(
 
     if lane is RebuildLane.CLOUD:
         return _rebuild_cloud(
-            workspace, model, timeout, permission_mode, copied, git_init, runner
+            workspace,
+            model,
+            timeout,
+            permission_mode,
+            copied,
+            git_init,
+            runner,
+            target_stack,
+            require_start_script,
         )
     if lane is RebuildLane.LOCAL:
         return _rebuild_local(
@@ -385,8 +446,10 @@ def _rebuild_cloud(
     copied: list[str],
     git_init: bool,
     runner: Runner,
+    target_stack: str | None = None,
+    require_start_script: bool = False,
 ) -> RebuildResult:
-    prompt = build_rebuild_prompt(workspace, copied)
+    prompt = build_rebuild_prompt(workspace, copied, target_stack, require_start_script)
     argv = [
         "claude",
         "-p",

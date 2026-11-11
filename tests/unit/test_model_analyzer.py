@@ -775,3 +775,50 @@ class TestEdgeCases:
         # Should create a surface even with no columns
         assert len(surfaces) == 1
         assert surfaces[0].fields == []
+
+
+class TestSqlAlchemy2Style:
+    """SQLAlchemy 2.0 ``Mapped[...] = mapped_column(...)`` (microblog eval gap)."""
+
+    CODE = """\
+import sqlalchemy as sa
+import sqlalchemy.orm as so
+from typing import Optional
+
+
+class User(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    username: so.Mapped[str] = so.mapped_column(sa.String(64), unique=True)
+    bio: so.Mapped[Optional[str]] = so.mapped_column(sa.String(140))
+    posts: so.WriteOnlyMapped["Post"] = so.relationship(back_populates="author")
+
+
+class Post(db.Model):
+    id: so.Mapped[int] = so.mapped_column(primary_key=True)
+    body: so.Mapped[str] = so.mapped_column(sa.String(140))
+    user_id: so.Mapped[int] = so.mapped_column(sa.ForeignKey(User.id), index=True)
+    author: so.Mapped[User] = so.relationship(back_populates="posts")
+"""
+
+    def test_fields_constraints_and_relationships(self, tmp_path: Path) -> None:
+        (tmp_path / "models.py").write_text(self.CODE)
+        surfaces = {
+            s.entity_name: s for s in _extract_sqlalchemy(tmp_path, ["models.py"])
+        }
+        user, post = surfaces["User"], surfaces["Post"]
+        uf = {f.name: f for f in user.fields}
+        assert "primary_key" in uf["id"].constraints
+        assert {"unique", "not_null", "max_length=64"} <= set(
+            uf["username"].constraints
+        )
+        assert "not_null" not in uf["bio"].constraints  # Optional → nullable
+        pf = {f.name: f for f in post.fields}
+        assert "fk=User.id" in pf["user_id"].constraints
+        rels = {
+            (r.kind, r.target_model, r.fk_column) for r in post.relationship_details
+        }
+        assert ("many_to_one", "User", "user_id") in rels
+        assert any(
+            r.kind == "one_to_many" and r.target_model == "Post"
+            for r in user.relationship_details
+        )

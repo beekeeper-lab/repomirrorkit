@@ -275,6 +275,158 @@ def _json_fixture(rel_path: str, source: str) -> SeedDataSurface | None:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Module-level constant collections (lookup data defined in code)
+# ---------------------------------------------------------------------------
+
+# Names that signal reference data rather than incidental lists.
+_SEED_NAME_RE = re.compile(
+    r"(seed|default|initial|fixture|lookup|categor|status|role|choice|option|"
+    r"type|kind|tier|level|priority|country|currenc|unit|sample)",
+    re.IGNORECASE,
+)
+
+
+def _const_value(node: ast.expr) -> tuple[bool, Any]:
+    if isinstance(node, ast.Constant) and isinstance(
+        node.value, (str, int, float, bool)
+    ):
+        return True, node.value
+    return False, None
+
+
+def _python_constants(rel_path: str, source: str) -> list[SeedDataSurface]:
+    try:
+        tree = ast.parse(source)
+    except (SyntaxError, ValueError):
+        return []
+    out: list[SeedDataSurface] = []
+    for node in tree.body:
+        name = ""
+        value: ast.expr | None = None
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+        ):
+            name, value = node.targets[0].id, node.value
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            name, value = node.target.id, node.value
+        if not name or value is None or not _SEED_NAME_RE.search(name):
+            continue
+        rows: list[dict[str, Any]] = []
+        if isinstance(value, (ast.List, ast.Tuple, ast.Set)) and len(value.elts) >= 2:
+            for elt in value.elts:
+                ok, v = _const_value(elt)
+                if ok:
+                    rows.append({"value": v})
+                elif isinstance(elt, ast.Dict):
+                    row: dict[str, Any] = {}
+                    for k, val in zip(elt.keys, elt.values, strict=False):
+                        kok, kv = _const_value(k) if k is not None else (False, None)
+                        vok, vv = _const_value(val)
+                        if kok and vok:
+                            row[str(kv)] = vv
+                    if row:
+                        rows.append(row)
+                else:
+                    rows = []
+                    break
+        elif isinstance(value, ast.Dict) and len(value.keys) >= 2:
+            for k, val in zip(value.keys, value.values, strict=False):
+                kok, kv = _const_value(k) if k is not None else (False, None)
+                vok, vv = _const_value(val)
+                if kok and vok:
+                    rows.append({"key": kv, "value": vv})
+        if len(rows) < 2:
+            continue
+        capped, truncated = _cap(rows)
+        out.append(
+            SeedDataSurface(
+                name=f"constant {name}",
+                dataset_name=name,
+                kind="constant",
+                values=capped,
+                truncated=truncated,
+                source_refs=[SourceRef(file_path=rel_path, start_line=node.lineno)],
+            )
+        )
+    return out
+
+
+def _js_constants(rel_path: str, source: str) -> list[SeedDataSurface]:
+    from repo_mirror_kit.harvester.parsing import parse_source
+
+    ps = parse_source(rel_path, source)
+    if ps is None:
+        return []
+    out: list[SeedDataSurface] = []
+    for decl in ps.root.children:
+        # top-level `const X = [...]` (optionally exported)
+        node = decl
+        if node.type == "export_statement":
+            node = next(
+                (c for c in node.children if c.type == "lexical_declaration"), node
+            )
+        if node.type != "lexical_declaration":
+            continue
+        for d in ps.find_all("variable_declarator", node=node):
+            name_n = d.child_by_field_name("name")
+            val = d.child_by_field_name("value")
+            if name_n is None or val is None or val.type != "array":
+                continue
+            name = ps.text(name_n)
+            if not _SEED_NAME_RE.search(name):
+                continue
+            rows: list[dict[str, Any]] = []
+            for el in val.children:
+                if el.type in ("string", "number", "true", "false"):
+                    lit = ps.string_value(el)
+                    txt = ps.text(el)
+                    if lit is not None:
+                        rows.append({"value": lit})
+                    elif el.type == "number":
+                        rows.append({"value": float(txt) if "." in txt else int(txt)})
+                    else:
+                        rows.append({"value": txt == "true"})
+                elif el.type == "object":
+                    row: dict[str, Any] = {}
+                    for pair in el.children:
+                        if pair.type != "pair":
+                            continue
+                        k = pair.child_by_field_name("key")
+                        v = pair.child_by_field_name("value")
+                        if k is None or v is None:
+                            continue
+                        key = ps.text(k).strip("\"'")
+                        lit = ps.string_value(v)
+                        if lit is not None:
+                            row[key] = lit
+                        elif v.type == "number":
+                            t = ps.text(v)
+                            row[key] = float(t) if "." in t else int(t)
+                        elif v.type in ("true", "false"):
+                            row[key] = v.type == "true"
+                    if row:
+                        rows.append(row)
+            if len(rows) < 2:
+                continue
+            capped, truncated = _cap(rows)
+            out.append(
+                SeedDataSurface(
+                    name=f"constant {name}",
+                    dataset_name=name,
+                    kind="constant",
+                    values=capped,
+                    truncated=truncated,
+                    source_refs=[
+                        SourceRef(file_path=rel_path, start_line=ps.line_of(d))
+                    ],
+                )
+            )
+    return out
+
+
 def analyze_seed_data(
     workdir: Path,
     inventory: InventoryResult,
@@ -296,10 +448,13 @@ def analyze_seed_data(
             source = _read_safe(workdir / entry.path)
             if "Enum" in source:
                 surfaces.extend(_python_enums(entry.path, source))
+            surfaces.extend(_python_constants(entry.path, source))
         elif ext in _TS_EXTENSIONS:
             source = _read_safe(workdir / entry.path)
             if "enum " in source:
                 surfaces.extend(_ts_enums(entry.path, source))
+            if "[" in source:
+                surfaces.extend(_js_constants(entry.path, source))
         elif ext in _SQL_EXTENSIONS:
             source = _read_safe(workdir / entry.path)
             if "INSERT" in source.upper():

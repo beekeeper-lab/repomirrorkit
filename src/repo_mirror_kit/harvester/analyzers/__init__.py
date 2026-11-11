@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from repo_mirror_kit.harvester.analyzers.api_auth import refine_api_auth
 from repo_mirror_kit.harvester.analyzers.api_contracts import (
     populate_python_api_contracts,
 )
@@ -114,4 +115,5 @@ __all__ = [
     "populate_dotnet_api_contracts",
     "populate_js_api_contracts",
     "populate_python_api_contracts",
+    "refine_api_auth",
 ]

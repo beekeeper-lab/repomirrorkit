@@ -32,6 +32,7 @@ is the agentic enrichment pass's job, BEAN-068).
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,8 @@ _SKIP_ANNOTATIONS: frozenset[str] = frozenset(
 _PRIMITIVE_TYPES: frozenset[str] = frozenset(
     {"str", "int", "float", "bool", "bytes", "UUID", "datetime", "date", "Decimal"}
 )
+
+_SERIALIZER_METHODS = frozenset({"to_dict", "as_dict", "serialize", "to_json", "dict"})
 
 _FASTAPI_HTTP_METHODS: frozenset[str] = frozenset(
     {"get", "post", "put", "delete", "patch", "head", "options"}
@@ -97,6 +100,30 @@ class _ModuleIndex:
     def __init__(self, workdir: Path) -> None:
         self._workdir = workdir
         self._trees: dict[Path, ast.Module | None] = {}
+
+    def serializer_dict(self, method: str) -> ast.Dict | None:
+        """First ``def <method>(...): return {...}`` dict literal anywhere in the repo."""
+        if not hasattr(self, "_serializers"):
+            self._serializers: dict[str, ast.Dict] = {}
+            skip = {".git", "node_modules", ".venv", "venv", "__pycache__", "tests"}
+            for path in sorted(self._workdir.rglob("*.py"))[:400]:
+                if any(part in skip for part in path.relative_to(self._workdir).parts):
+                    continue
+                tree = self.tree_for(path)
+                if tree is None:
+                    continue
+                for cls in (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)):
+                    for fn in cls.body:
+                        if (
+                            isinstance(fn, ast.FunctionDef)
+                            and fn.name in _SERIALIZER_METHODS
+                        ):
+                            for ret in (
+                                r for r in ast.walk(fn) if isinstance(r, ast.Return)
+                            ):
+                                if isinstance(ret.value, ast.Dict):
+                                    self._serializers.setdefault(fn.name, ret.value)
+        return self._serializers.get(method)
 
     def tree_for(self, path: Path) -> ast.Module | None:
         """Parse (and cache) the module at *path*; None on any failure."""
@@ -515,10 +542,49 @@ def _dict_fields(node: ast.Dict) -> list[dict[str, Any]]:
     return fields
 
 
-def _response_payload_fields(node: ast.expr) -> list[dict[str, Any]]:
+def _serializer_fields(
+    tree: ast.Module | None, node: ast.expr, index: _ModuleIndex | None = None
+) -> list[dict[str, Any]]:
+    """Fields of ``obj.to_dict()`` from a serializer method returning a dict literal.
+
+    Looks in the handler's module first, then anywhere in the repo (the model
+    usually lives in another module). Types are unknown; keys are the contract.
+    """
+    if not (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr in _SERIALIZER_METHODS
+    ):
+        return []
+    if tree is not None:
+        for cls in (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)):
+            for fn in cls.body:
+                if isinstance(fn, ast.FunctionDef) and fn.name == node.func.attr:
+                    for ret in (r for r in ast.walk(fn) if isinstance(r, ast.Return)):
+                        if isinstance(ret.value, ast.Dict):
+                            return _dict_fields(ret.value)
+    if index is not None:
+        found = index.serializer_dict(node.func.attr)
+        if found is not None:
+            return _dict_fields(found)
+    return []
+
+
+def _response_payload_fields(
+    node: ast.expr,
+    tree: ast.Module | None = None,
+    index: _ModuleIndex | None = None,
+) -> list[dict[str, Any]]:
     """Extract fields from a jsonify(...)/returned-literal payload node."""
+    serial = _serializer_fields(tree, node, index)
+    if serial:
+        return serial
     if isinstance(node, ast.Dict):
         return _dict_fields(node)
+    if isinstance(node, ast.ListComp):
+        inner = _serializer_fields(tree, node.elt, index)
+        if inner:
+            return inner
     if isinstance(node, ast.ListComp) and isinstance(node.elt, ast.Dict):
         return _dict_fields(node.elt)
     if isinstance(node, ast.List) and node.elts and isinstance(node.elts[0], ast.Dict):
@@ -528,8 +594,14 @@ def _response_payload_fields(node: ast.expr) -> list[dict[str, Any]]:
 
 def _extract_flask_response(
     func: ast.FunctionDef | ast.AsyncFunctionDef,
+    tree: ast.Module | None = None,
+    index: _ModuleIndex | None = None,
 ) -> list[dict[str, Any]]:
-    """Infer response fields from jsonify calls and returned literals."""
+    """Infer response fields from jsonify calls and returned literals.
+
+    Only success responses (status < 400) contribute fields; error payloads are
+    reported separately as ``errors``.
+    """
     fields: dict[str, dict[str, Any]] = {}
     for node in ast.walk(func):
         if not isinstance(node, ast.Return) or node.value is None:
@@ -537,6 +609,13 @@ def _extract_flask_response(
         value: ast.expr = node.value
         # `return jsonify(...), 201` tuples
         if isinstance(value, ast.Tuple) and value.elts:
+            if (
+                len(value.elts) > 1
+                and isinstance(value.elts[1], ast.Constant)
+                and isinstance(value.elts[1].value, int)
+                and value.elts[1].value >= 400
+            ):
+                continue
             value = value.elts[0]
         payload: ast.expr | None = None
         if (
@@ -561,9 +640,379 @@ def _extract_flask_response(
         elif isinstance(value, (ast.Dict, ast.List, ast.ListComp)):
             payload = value
         if payload is not None:
-            for field in _response_payload_fields(payload):
+            for field in _response_payload_fields(payload, tree, index):
                 fields.setdefault(field["name"], field)
     return list(fields.values())
+
+
+# ---------------------------------------------------------------------------
+# Imperative validation inference (Flask)
+# ---------------------------------------------------------------------------
+
+_PY_TYPE_NAMES = {
+    "str": "string",
+    "int": "integer",
+    "float": "number",
+    "bool": "boolean",
+    "list": "array",
+    "dict": "object",
+}
+
+
+def _name_in(node: ast.AST, names: set[str]) -> str | None:
+    for n in ast.walk(node):
+        if isinstance(n, ast.Name) and n.id in names:
+            return n.id
+    return None
+
+
+def _bool_terms(test: ast.expr) -> list[ast.expr]:
+    if isinstance(test, ast.BoolOp):
+        out: list[ast.expr] = []
+        for v in test.values:
+            out.extend(_bool_terms(v))
+        return out
+    return [test]
+
+
+def _rejects(body: list[ast.stmt], funcs: dict[str, Any]) -> bool:
+    """True when the block answers with a 4xx (return tuple / abort / helper)."""
+    holder = ast.Module(body=body, type_ignores=[])
+    return any(status >= 400 for status, _ in _collect_responses(holder, funcs))
+
+
+def _infer_validation(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+    tree: ast.Module,
+    fields: list[dict[str, Any]],
+) -> None:
+    """Mine ``if bad: return 4xx`` guards for type / required / constraints."""
+    aliases = _json_aliases(func)
+    var_to_field: dict[str, str] = {}
+    for node in ast.walk(func):
+        if not isinstance(node, ast.Assign) or len(node.targets) != 1:
+            continue
+        tgt, val = node.targets[0], node.value
+        if not isinstance(tgt, ast.Name):
+            continue
+        key: str | None = None
+        if (
+            isinstance(val, ast.Call)
+            and isinstance(val.func, ast.Attribute)
+            and val.func.attr == "get"
+            and val.args
+            and isinstance(val.args[0], ast.Constant)
+            and isinstance(val.args[0].value, str)
+            and isinstance(val.func.value, ast.Name)
+            and val.func.value.id in aliases
+        ):
+            key = val.args[0].value
+        elif (
+            isinstance(val, ast.Subscript)
+            and isinstance(val.value, ast.Name)
+            and val.value.id in aliases
+            and isinstance(val.slice, ast.Constant)
+            and isinstance(val.slice.value, str)
+        ):
+            key = val.slice.value
+        if key:
+            var_to_field[tgt.id] = key
+    if not var_to_field:
+        return
+    by_name = {f["name"]: f for f in fields if f["source"] == "body"}
+    funcs = _local_functions(tree)
+    names = set(var_to_field)
+
+    def note(
+        var: str,
+        *,
+        required: bool = False,
+        type_: str | None = None,
+        rule: str | None = None,
+    ) -> None:
+        field = by_name.get(var_to_field[var])
+        if field is None:
+            return
+        if required:
+            field["required"] = True
+        if type_ and field.get("type") in (None, "unknown"):
+            field["type"] = type_
+        if rule:
+            rules = field.setdefault("rules", [])
+            if rule not in rules:
+                rules.append(rule)
+
+    for node in ast.walk(func):
+        if not isinstance(node, ast.If) or not _rejects(node.body, funcs):
+            continue
+        for term in _bool_terms(node.test):
+            # not isinstance(v, T) → required, typed
+            if (
+                isinstance(term, ast.UnaryOp)
+                and isinstance(term.op, ast.Not)
+                and isinstance(term.operand, ast.Call)
+                and isinstance(term.operand.func, ast.Name)
+                and term.operand.func.id == "isinstance"
+                and len(term.operand.args) == 2
+                and isinstance(term.operand.args[0], ast.Name)
+                and term.operand.args[0].id in names
+            ):
+                tname = ast.unparse(term.operand.args[1])
+                note(
+                    term.operand.args[0].id,
+                    required=True,
+                    type_=_PY_TYPE_NAMES.get(tname),
+                )
+            # not v / v is None → required
+            elif (
+                isinstance(term, ast.UnaryOp)
+                and isinstance(term.op, ast.Not)
+                and isinstance(term.operand, ast.Name)
+                and term.operand.id in names
+            ):
+                note(term.operand.id, required=True)
+            elif (
+                isinstance(term, ast.Compare)
+                and len(term.ops) == 1
+                and isinstance(term.comparators[0], ast.Constant)
+            ):
+                op, rhs, left = term.ops[0], term.comparators[0].value, term.left
+                if isinstance(op, ast.Is) and rhs is None:
+                    if isinstance(left, ast.Name) and left.id in names:
+                        note(left.id, required=True)
+                    elif isinstance(left, ast.Call):
+                        # db.session.get(Model, v) is None → references Model
+                        args = left.args
+                        var = _name_in(left, names)
+                        model = next(
+                            (
+                                a.id
+                                for a in args
+                                if isinstance(a, ast.Name)
+                                and a.id not in names
+                                and a.id[:1].isupper()
+                            ),
+                            None,
+                        )
+                        if var and model:
+                            note(var, required=True, rule=f"references={model}")
+                elif isinstance(rhs, (int, float)) and isinstance(
+                    op, (ast.Lt, ast.Gt, ast.LtE, ast.GtE)
+                ):
+                    var = _name_in(left, names)
+                    if var is None:
+                        continue
+                    is_len = (
+                        isinstance(left, ast.Call)
+                        and isinstance(left.func, ast.Name)
+                        and left.func.id == "len"
+                    )
+                    if isinstance(op, ast.Lt):
+                        note(var, rule=f"{'min_length' if is_len else 'min'}={rhs}")
+                    elif isinstance(op, ast.Gt):
+                        note(var, rule=f"{'max_length' if is_len else 'max'}={rhs}")
+                    elif isinstance(op, ast.LtE):
+                        note(var, rule=f"{'min_length' if is_len else 'min'}={rhs + 1}")
+                    elif isinstance(op, ast.GtE):
+                        note(var, rule=f"{'max_length' if is_len else 'max'}={rhs - 1}")
+
+
+# ---------------------------------------------------------------------------
+# Response status codes and error responses (Flask)
+# ---------------------------------------------------------------------------
+
+_MAX_HELPER_DEPTH = 2
+
+
+def _local_functions(
+    tree: ast.Module,
+) -> dict[str, ast.FunctionDef | ast.AsyncFunctionDef]:
+    return {
+        n.name: n
+        for n in ast.walk(tree)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+
+
+def _dict_message(node: ast.expr | None) -> str | None:
+    """``"..."`` of ``{"error": "..."}`` / ``{"message": "..."}`` literals."""
+    if isinstance(node, ast.Dict):
+        for k, v in zip(node.keys, node.values, strict=False):
+            if (
+                isinstance(k, ast.Constant)
+                and k.value in ("error", "message", "detail")
+                and isinstance(v, ast.Constant)
+                and isinstance(v.value, str)
+            ):
+                return v.value
+    return None
+
+
+def _collect_responses(
+    func: ast.AST,
+    funcs: dict[str, ast.FunctionDef | ast.AsyncFunctionDef],
+    depth: int = 0,
+    seen: frozenset[str] = frozenset(),
+) -> list[tuple[int, ast.expr | None]]:
+    """(status, payload) for each way the handler can respond.
+
+    Follows ``return helper(...)`` into same-module helpers (bounded depth) and
+    treats ``abort(N)`` as an error response.
+    """
+    out: list[tuple[int, ast.expr | None]] = []
+    for node in ast.walk(func):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "abort"
+        ):
+            if (
+                node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(node.args[0].value, int)
+            ):
+                out.append((node.args[0].value, None))
+        if not isinstance(node, ast.Return) or node.value is None:
+            continue
+        value = node.value
+        status = 200
+        if isinstance(value, ast.Tuple) and value.elts:
+            if (
+                len(value.elts) > 1
+                and isinstance(value.elts[1], ast.Constant)
+                and isinstance(value.elts[1].value, int)
+            ):
+                status = value.elts[1].value
+            value = value.elts[0]
+        if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
+            name = value.func.id
+            if name in ("jsonify", "make_response"):
+                out.append((status, value.args[0] if value.args else None))
+            elif name in funcs and depth < _MAX_HELPER_DEPTH and name not in seen:
+                inner = _collect_responses(funcs[name], funcs, depth + 1, seen | {name})
+                # An explicit status on the outer tuple overrides the helper's.
+                if status != 200 and isinstance(node.value, ast.Tuple):
+                    inner = [(status, p) for _, p in inner]
+                out.extend(inner)
+        elif isinstance(value, (ast.Dict, ast.List)):
+            out.append((status, value))
+        elif isinstance(value, ast.Constant) and isinstance(value.value, str):
+            out.append((status, None))
+    return out
+
+
+def _success_payload_fields(
+    func: ast.FunctionDef | ast.AsyncFunctionDef,
+    tree: ast.Module,
+    index: _ModuleIndex | None,
+) -> list[dict[str, Any]]:
+    """Success-response fields found through helpers the handler returns from."""
+    for status, payload in _collect_responses(func, _local_functions(tree)):
+        if status < 400 and payload is not None:
+            fields = _response_payload_fields(payload, tree, index)
+            if fields:
+                return fields
+    return []
+
+
+_PATH_PARAM_RE = re.compile(r"<(?:(?P<conv>\w+)(?:\([^)]*\))?:)?(?P<name>\w+)>")
+_CONV_TYPES = {
+    "int": "integer",
+    "float": "number",
+    "uuid": "string",
+    "path": "string",
+    "string": "string",
+}
+
+
+def _path_param_fields(path: str) -> list[dict[str, Any]]:
+    """Flask ``<int:id>`` route parameters as required path fields."""
+    return [
+        {
+            "name": m.group("name"),
+            "type": _CONV_TYPES.get(m.group("conv") or "string", "string"),
+            "required": True,
+            "source": "path",
+        }
+        for m in _PATH_PARAM_RE.finditer(path)
+    ]
+
+
+_BODY_ATTRS = frozenset(
+    {"get_json", "json", "form", "data", "files", "values", "stream"}
+)
+
+
+# Calls that cannot read the request body; any OTHER unresolved call might, so
+# body-less is only concluded when every call is accounted for.
+_HARMLESS_CALLS = frozenset(
+    {
+        "jsonify",
+        "abort",
+        "make_response",
+        "len",
+        "int",
+        "str",
+        "float",
+        "bool",
+        "list",
+        "dict",
+        "set",
+        "isinstance",
+        "print",
+        "redirect",
+        "url_for",
+        "range",
+    }
+)
+
+
+def _reads_request_body(
+    func: ast.AST,
+    funcs: dict[str, ast.FunctionDef | ast.AsyncFunctionDef],
+    depth: int = 0,
+    seen: frozenset[str] = frozenset(),
+) -> bool:
+    """True when the handler (or a helper, 2 hops) touches the request body."""
+    for n in ast.walk(func):
+        if (
+            isinstance(n, ast.Attribute)
+            and n.attr in _BODY_ATTRS
+            and isinstance(n.value, ast.Name)
+            and n.value.id == "request"
+        ):
+            return True
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name):
+            name = n.func.id
+            if name in funcs:
+                if (
+                    depth < _MAX_HELPER_DEPTH
+                    and name not in seen
+                    and _reads_request_body(
+                        funcs[name], funcs, depth + 1, seen | {name}
+                    )
+                ):
+                    return True
+            elif name not in _HARMLESS_CALLS and name[:1].islower():
+                return True  # unresolved callee: it might read the body
+    return False
+
+
+def _status_and_errors(
+    func: ast.FunctionDef | ast.AsyncFunctionDef, tree: ast.Module
+) -> tuple[int | None, list[dict[str, Any]]]:
+    responses = _collect_responses(func, _local_functions(tree))
+    success = [s for s, _ in responses if s < 400]
+    errors: list[dict[str, Any]] = []
+    for status, payload in responses:
+        if status >= 400:
+            entry: dict[str, Any] = {"status": status}
+            message = _dict_message(payload)
+            if message:
+                entry["message"] = message
+            if entry not in errors:
+                errors.append(entry)
+    return (success[0] if success else None), errors
 
 
 # ---------------------------------------------------------------------------
@@ -608,13 +1057,32 @@ def populate_python_api_contracts(
             confidence = "declared"
         else:
             request_fields = _extract_flask_request(func)
-            response = _extract_flask_response(func)
+            response = _extract_flask_response(func, tree, index)
             confidence = "inferred"
+            body_less = False
+            flask_status, flask_errors = (
+                _status_and_errors(func, tree) if tree is not None else (None, [])
+            )
+            if tree is not None:
+                _infer_validation(func, tree, request_fields)
+                if not response:
+                    response = _success_payload_fields(func, tree, index)
+            request_fields = [
+                *_path_param_fields(surface.path),
+                *[f for f in request_fields if f.get("source") != "path"],
+            ]
+            body_less = (
+                tree is not None
+                and surface.method in _BODY_METHODS
+                and not _reads_request_body(func, _local_functions(tree))
+            )
 
         got_any = False
         if request_fields:
             surface.request_schema = _fields_schema(request_fields, confidence)
             got_any = True
+        elif confidence == "inferred" and body_less:
+            surface.request_schema = _fields_schema([], confidence)
         elif surface.method in _BODY_METHODS:
             surface.request_schema = unknown_schema()
         else:
@@ -629,6 +1097,14 @@ def populate_python_api_contracts(
             got_any = True
         elif not surface.response_schema:
             surface.response_schema = unknown_schema()
+
+        if confidence == "inferred" and tree is not None:
+            if flask_status is not None:
+                surface.response_schema["status"] = flask_status
+                got_any = True
+            if flask_errors:
+                surface.response_schema["errors"] = flask_errors
+                got_any = True
 
         if got_any:
             populated += 1

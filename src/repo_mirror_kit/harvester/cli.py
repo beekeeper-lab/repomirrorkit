@@ -342,7 +342,21 @@ def _pct(value: float | None) -> str:
     help="Re-harvest the rebuild and score it (tier-1 surface diff) "
     "against the original.",
 )
+@click.option(
+    "--target-stack",
+    default=None,
+    help="Cloud lane: rebuild in this technology stack instead of the "
+    "original's (e.g. 'Node.js with Express').",
+)
+@click.option(
+    "--start-script/--no-start-script",
+    default=False,
+    help="Cloud lane: require a start.sh serving HTTP on $PORT so the rebuild "
+    "can be behaviour-scored with `parity-score`.",
+)
 def rebuild(
+    target_stack: str | None,
+    start_script: bool,
     from_dir: Path,
     workspace: Path,
     lane: str,
@@ -378,6 +392,8 @@ def rebuild(
             permission_mode=permission_mode,
             data_class=data_class,
             allowed_commands=allowed_commands or None,
+            target_stack=target_stack,
+            require_start_script=start_script,
         )
     except RebuildError as exc:
         click.echo(f"Error: {exc}", err=True)
@@ -495,3 +511,227 @@ def score(original: Path, rebuilt: Path, out: Path | None) -> None:
     )
     click.echo(f"  F1:        {_pct(report.overall_f1)}")
     sys.exit(EXIT_SUCCESS)
+
+
+def _parse_kv(pairs: tuple[str, ...], sep: str) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for item in pairs:
+        key, found, value = item.partition(sep)
+        if not found or not key.strip():
+            raise click.BadParameter(f"expected KEY{sep}VALUE, got {item!r}")
+        out[key.strip()] = value.strip()
+    return out
+
+
+@main.command("parity-capture")
+@click.option(
+    "--app-dir",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Directory of the app to record.",
+)
+@click.option(
+    "--script",
+    "script_path",
+    required=True,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Request script (JSON).",
+)
+@click.option(
+    "--out",
+    "out_file",
+    required=True,
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Golden file to write.",
+)
+@click.option(
+    "--start-command",
+    default="bash start.sh",
+    show_default=True,
+    help="Shell command that starts the app on $PORT.",
+)
+@click.option(
+    "--env",
+    "env_pairs",
+    multiple=True,
+    help="Environment variable KEY=VALUE for the app (repeatable).",
+)
+@click.option(
+    "--auth-header",
+    "auth_pairs",
+    multiple=True,
+    help="Header 'Name: value' added to requests marked auth:true (repeatable).",
+)
+@click.option("--captured-from", default="", help="Label recorded in the golden file.")
+def parity_capture(
+    app_dir: Path,
+    script_path: Path,
+    out_file: Path,
+    start_command: str,
+    env_pairs: tuple[str, ...],
+    auth_pairs: tuple[str, ...],
+    captured_from: str,
+) -> None:
+    """Record golden request/response pairs from a running app (BEAN-077)."""
+    from repo_mirror_kit.harvester.parity.goldens import capture, load_script
+    from repo_mirror_kit.harvester.parity.server import AppProcess, AppStartError
+
+    script = load_script(script_path)
+    try:
+        with AppProcess(app_dir, start_command, _parse_kv(env_pairs, "=")) as app:
+            golden = capture(
+                app.base_url,
+                script,
+                _parse_kv(auth_pairs, ":"),
+                captured_from or app_dir.name,
+            )
+    except AppStartError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(EXIT_UNEXPECTED)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    out_file.write_text(json.dumps(golden, indent=2) + "\n", encoding="utf-8")
+    click.echo(f"Recorded {len(golden['interactions'])} interactions -> {out_file}")
+
+
+@main.command("parity-score")
+@click.option(
+    "--harvest-dir",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Harvest output of the ORIGINAL app.",
+)
+@click.option(
+    "--rebuild-dir",
+    required=True,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="The rebuilt app (must provide the start command).",
+)
+@click.option(
+    "--out",
+    "out_dir",
+    required=True,
+    type=click.Path(file_okay=False, path_type=Path),
+    help="Directory for parity-report.{json,md}.",
+)
+@click.option(
+    "--golden",
+    "golden_file",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Golden file from parity-capture.",
+)
+@click.option(
+    "--original-dir",
+    default=None,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Original app directory (enables Gherkin calibration).",
+)
+@click.option("--original-start-command", default="bash start.sh", show_default=True)
+@click.option(
+    "--start-command",
+    default="bash start.sh",
+    show_default=True,
+    help="Start command for the rebuild.",
+)
+@click.option(
+    "--env",
+    "env_pairs",
+    multiple=True,
+    help="Environment KEY=VALUE for both apps (repeatable).",
+)
+@click.option(
+    "--auth-header",
+    "auth_pairs",
+    multiple=True,
+    help="Header 'Name: value' for authenticated scenarios (repeatable).",
+)
+@click.option(
+    "--rebuild-harvest",
+    default=None,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    help="Existing harvest of the rebuild (else it is harvested, LLM off).",
+)
+@click.option(
+    "--rebuild-result",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="rebuild-result.json whose telemetry is embedded.",
+)
+@click.option(
+    "--threshold",
+    default=0.90,
+    type=float,
+    show_default=True,
+    help="Overall parity required to pass.",
+)
+def parity_score(
+    harvest_dir: Path,
+    rebuild_dir: Path,
+    out_dir: Path,
+    golden_file: Path | None,
+    original_dir: Path | None,
+    original_start_command: str,
+    start_command: str,
+    env_pairs: tuple[str, ...],
+    auth_pairs: tuple[str, ...],
+    rebuild_harvest: Path | None,
+    rebuild_result: Path | None,
+    threshold: float,
+) -> None:
+    """Score a rebuild's behavioural parity against the original (BEAN-078)."""
+    from repo_mirror_kit.harvester.parity.score import score_rebuild, write_report
+    from repo_mirror_kit.harvester.parity.server import AppStartError
+    from repo_mirror_kit.harvester.pipeline import HarvestPipeline
+
+    golden = (
+        json.loads(golden_file.read_text(encoding="utf-8")) if golden_file else None
+    )
+    telemetry = (
+        json.loads(rebuild_result.read_text(encoding="utf-8"))
+        if rebuild_result
+        else None
+    )
+    if rebuild_harvest is None:
+        rebuild_harvest = out_dir / "rebuild-harvest"
+        click.echo("Harvesting the rebuild (LLM off) for the schema diff...")
+        result = HarvestPipeline().run(
+            HarvestConfig(
+                repo=str(rebuild_dir),
+                out=rebuild_harvest,
+                llm_enabled=False,
+                fail_on_gaps=False,
+                log_level="warn",
+            )
+        )
+        if not result.success:
+            click.echo(
+                f"Warning: re-harvest failed at stage {result.error_stage}; "
+                "schema family will be scored as missing.",
+                err=True,
+            )
+    try:
+        report = score_rebuild(
+            golden=golden,
+            original_harvest=harvest_dir,
+            rebuild_dir=rebuild_dir,
+            rebuild_harvest=rebuild_harvest,
+            auth_headers=_parse_kv(auth_pairs, ":"),
+            env=_parse_kv(env_pairs, "="),
+            start_command=start_command,
+            original_dir=original_dir,
+            original_start_command=original_start_command,
+            telemetry=telemetry,
+            threshold=threshold,
+        )
+    except AppStartError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(EXIT_UNEXPECTED)
+    _jpath, mpath = write_report(out_dir, report)
+    overall = report.overall
+    click.echo(
+        f"Overall parity: {'N/A' if overall is None else f'{100 * overall:.1f}%'}"
+    )
+    for family, score in report.family_scores().items():
+        click.echo(f"  {family}: {'N/A' if score is None else f'{100 * score:.1f}%'}")
+    click.echo(f"Report: {mpath}")
+    sys.exit(EXIT_SUCCESS if report.passed else EXIT_FIDELITY_FAILED)

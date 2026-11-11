@@ -1,0 +1,75 @@
+{
+  "report_version": "1.0",
+  "overall": 1.0,
+  "threshold": 0.9,
+  "passed": true,
+  "weights": {
+    "golden_replay": 0.5,
+    "gherkin": 0.3,
+    "schema": 0.2
+  },
+  "families": {
+    "golden_replay": {
+      "score": 1.0,
+      "interactions": 20,
+      "passed": 20,
+      "strict_passed": 20,
+      "pass_rate": 1.0,
+      "strict_rate": 1.0,
+      "field_match_rate": 1.0,
+      "failures": []
+    },
+    "gherkin": {
+      "score": 1.0,
+      "original_pass_rate": 0.8571428571428571,
+      "relative_to_original": 1.0,
+      "scenarios": 47,
+      "bound": 14,
+      "unbound": 33,
+      "passed": 13,
+      "pass_rate": 0.9285714285714286,
+      "failures": [
+        {
+          "feature": "Order management",
+          "scenario": "POST /api/orders/{order_id}/cancel succeeds",
+          "detail": "status 409 != 200"
+        }
+      ]
+    },
+    "schema": {
+      "score": null
+    }
+  },
+  "telemetry": {
+    "lane": "cloud",
+    "model": "sonnet",
+    "workspace": "/tmp/claude-1000/-home-gregg-workspace-repomirrorkit/080c9172-ee93-41cc-94ef-1a5ed6ff36dc/scratchpad/evals/rebuilt-node",
+    "success": true,
+    "duration_seconds": 35.15,
+    "exit_code": 0,
+    "intervention_count": 0,
+    "turns": 7,
+    "retries": null,
+    "tokens_in": 14,
+    "tokens_out": 3868,
+    "cost_usd": 0.2275849,
+    "copied_inputs": [
+      "project-folder",
+      "beans",
+      "db-design",
+      "gherkin",
+      "features",
+      "REQUIREMENTS.md",
+      "RUNBOOK.md",
+      ".env.example",
+      "api-contract.json",
+      "build-manifest.json",
+      "data-model.md"
+    ],
+    "error": null
+  },
+  "notes": [
+    "Gherkin suite calibrated against the original: it passes 12/14 bound scenarios.",
+    "Schema family N/A: the rebuild exposes no relational database design (storage is an implementation choice); entity fields are covered by golden replay."
+  ]
+}

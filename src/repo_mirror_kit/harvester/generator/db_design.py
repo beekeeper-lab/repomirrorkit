@@ -26,6 +26,7 @@ import structlog
 from repo_mirror_kit.harvester.analyzers.surfaces import (
     ModelField,
     ModelSurface,
+    SeedDataSurface,
     SurfaceCollection,
 )
 
@@ -384,6 +385,45 @@ class _Bundle:
         return schema
 
     # -- seed data ----------------------------------------------------------
+    def _seed_target(
+        self, seed: SeedDataSurface
+    ) -> tuple[ModelSurface | None, list[dict[str, Any]]]:
+        """Resolve the model a dataset feeds and normalize its rows to columns."""
+        from repo_mirror_kit.harvester.features import _singular, _words, resource_key
+
+        target = (
+            self.by_name.get(seed.target_model_ref) if seed.target_model_ref else None
+        )
+        if target is None and seed.kind == "constant":
+            words = {_singular(w) for w in _words(seed.dataset_name or seed.name)}
+            for model in self.models:
+                if resource_key(model.entity_name or model.name) in words:
+                    target = model
+                    break
+        if target is None:
+            return None, []
+        rows: list[dict[str, Any]] = []
+        for row in seed.values:
+            if not isinstance(row, dict):
+                continue
+            if set(row) == {"value"}:
+                # Scalar list → first non-key text column of the target table.
+                col = next(
+                    (
+                        f.name
+                        for f in target.fields
+                        if "primary_key" not in f.constraints
+                        and _map_type(f.field_type, f.constraints)[1] == "string"
+                    ),
+                    None,
+                )
+                if col is None:
+                    continue
+                rows.append({col: row["value"]})
+            else:
+                rows.append(row)
+        return target, rows
+
     def seed_sql(self) -> tuple[str, list[str]]:
         lines = ["-- Seed / reference data (BEAN-066 surfaces). Run after schema.sql."]
         notes: list[str] = []
@@ -391,17 +431,15 @@ class _Bundle:
         for seed in self.seeds:
             if seed.kind == "enum":
                 continue  # code-level enumeration: documented in seed-data.json
-            target = self.by_name.get(seed.target_model_ref)
-            if target is None or not seed.values:
+            target, seed_rows = self._seed_target(seed)
+            if target is None or not seed_rows:
                 notes.append(
                     f"{seed.dataset_name}: no resolvable target table; see seed-data.json."
                 )
                 continue
             table = self.tables[target.entity_name or target.name]
             known = {f.name for f in target.fields}
-            for row in seed.values:
-                if not isinstance(row, dict):
-                    continue
+            for row in seed_rows:
                 cols = [c for c in row if c in known]
                 if not cols:
                     continue

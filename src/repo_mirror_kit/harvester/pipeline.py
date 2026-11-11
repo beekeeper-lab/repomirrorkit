@@ -47,6 +47,7 @@ from repo_mirror_kit.harvester.analyzers import (
     populate_dotnet_api_contracts,
     populate_js_api_contracts,
     populate_python_api_contracts,
+    refine_api_auth,
 )
 from repo_mirror_kit.harvester.beans.writer import WrittenBean, write_beans
 from repo_mirror_kit.harvester.config import HarvestConfig
@@ -715,6 +716,7 @@ class HarvestPipeline:
         apis = analyze_api_endpoints(workdir, inventory, profile)
         contracts_populated = populate_python_api_contracts(apis, workdir)
         contracts_populated += populate_js_api_contracts(apis, workdir)
+        handler_auth = refine_api_auth(apis, workdir)
         contracts_populated += populate_dotnet_api_contracts(
             apis, workdir, [f.path for f in inventory.files]
         )
@@ -820,7 +822,7 @@ class HarvestPipeline:
             components=components,
             apis=apis,
             models=models,
-            auth=auth,
+            auth=[*auth, *handler_auth],
             config=config_surfaces,
             crosscutting=crosscutting,
             state_mgmt=state_mgmt,
