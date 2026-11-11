@@ -102,11 +102,11 @@
 | BEAN-078 | Rebuild Eval Harness — Parity Scoring | App | Critical | Unapproved | team-lead |
 | BEAN-079 | Stage G Orchestration-Policy Parameterization + Telemetry | App | Medium | In Progress | team-lead |
 | BEAN-080 | Rebuild-and-Score Executor — Tier-1 Surface Diff | App | High | Done | forge |
-| BEAN-082 | HTML Page Routes as First-Class Surfaces (render_template/redirect responses) | App | High | Unapproved | team-lead |
-| BEAN-083 | SQLAlchemy Association Tables and Core `Table(...)` Definitions | App | Medium | Unapproved | team-lead |
-| BEAN-084 | Feature Clustering for Action-Named Routes (Blueprint / Module Affinity) | App | Medium | Unapproved | team-lead |
-| BEAN-085 | JS/TS ORM Model Extraction (Mongoose, Drizzle, Sequelize define, Knex) | App | High | Unapproved | team-lead |
-| BEAN-086 | Jinja/Template Form Binding and Context Tracing | App | Medium | Unapproved | team-lead |
+| BEAN-090 | HTML Page Routes as First-Class Surfaces (render_template/redirect responses) | App | High | Unapproved | team-lead |
+| BEAN-091 | SQLAlchemy Association Tables and Core `Table(...)` Definitions | App | Medium | Unapproved | team-lead |
+| BEAN-092 | Feature Clustering for Action-Named Routes (Blueprint / Module Affinity) | App | Medium | Unapproved | team-lead |
+| BEAN-093 | JS/TS ORM Model Extraction (Mongoose, Drizzle, Sequelize define, Knex) | App | High | Unapproved | team-lead |
+| BEAN-094 | Jinja/Template Form Binding and Context Tracing | App | Medium | Unapproved | team-lead |
 
 > BEAN-059–079 originate from the recreation-grade audit (2026-07-03).
 > BEAN-080 is the buildable-now first slice of BEAN-078, from the Forge

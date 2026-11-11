@@ -1,8 +1,8 @@
-# BEAN-083: SQLAlchemy Association Tables and Core `Table(...)` Definitions
+# BEAN-091: SQLAlchemy Association Tables and Core `Table(...)` Definitions
 
 | Field | Value |
 |-------|-------|
-| **Bean ID** | BEAN-083 |
+| **Bean ID** | BEAN-091 |
 | **Status** | Unapproved |
 | **Priority** | Medium |
 | **Created** | 2026-11-11 |

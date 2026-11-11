@@ -38,3 +38,4 @@ projects/
 
 # AEP: activity logs live outside the repo; this is a safety net
 .agentic/*.jsonl
+.agentic/project.yaml

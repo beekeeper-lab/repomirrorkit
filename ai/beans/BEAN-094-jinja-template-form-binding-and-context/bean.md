@@ -1,8 +1,8 @@
-# BEAN-086: Jinja/Template Form Binding and Context Tracing
+# BEAN-094: Jinja/Template Form Binding and Context Tracing
 
 | Field | Value |
 |-------|-------|
-| **Bean ID** | BEAN-086 |
+| **Bean ID** | BEAN-094 |
 | **Status** | Unapproved |
 | **Priority** | Medium |
 | **Created** | 2026-11-11 |

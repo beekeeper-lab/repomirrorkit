@@ -1,8 +1,8 @@
-# BEAN-082: HTML Page Routes as First-Class Surfaces (render_template/redirect responses)
+# BEAN-090: HTML Page Routes as First-Class Surfaces (render_template/redirect responses)
 
 | Field | Value |
 |-------|-------|
-| **Bean ID** | BEAN-082 |
+| **Bean ID** | BEAN-090 |
 | **Status** | Unapproved |
 | **Priority** | High |
 | **Created** | 2026-11-11 |

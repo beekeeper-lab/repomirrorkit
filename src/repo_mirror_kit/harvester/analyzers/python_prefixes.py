@@ -1,4 +1,4 @@
-"""Resolve Flask Blueprint / FastAPI APIRouter URL prefixes (BEAN-081).
+"""Resolve Flask Blueprint / FastAPI APIRouter URL prefixes (BEAN-089).
 
 Route decorators only show the path relative to their router. The full public
 path is the router's constructor prefix plus any prefix supplied where the

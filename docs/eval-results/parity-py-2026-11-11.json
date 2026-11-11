@@ -43,7 +43,7 @@
   "telemetry": {
     "lane": "cloud",
     "model": "sonnet",
-    "workspace": "/tmp/claude-1000/-home-gregg-workspace-repomirrorkit/080c9172-ee93-41cc-94ef-1a5ed6ff36dc/scratchpad/evals/rebuilt-py",
+    "workspace": "<scratch>/rebuilt-py",
     "success": true,
     "duration_seconds": 86.13,
     "exit_code": 0,
