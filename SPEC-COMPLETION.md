@@ -44,7 +44,7 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 ## Phase 3 — Foundations
 
 - [x] **3.1** BEAN-060 merged and verified: kill a harvest mid-run, `--resume` continues from the next stage using persisted outputs. *Verify:* integration test + manual kill/resume.
-- [ ] **3.2** BEAN-061 tree-sitter foundation: parser loader for TS/TSX/JS/Python/C#, query helpers, graceful fallback to regex when grammar missing. Evaluate deps per the dependency-discipline rule (license, maintenance); record an ADR in `ai/context/decisions/`. *Verify:* parses all fixture sources; unit tests; ADR committed.
+- [x] **3.2** BEAN-061 tree-sitter foundation: parser loader for TS/TSX/JS/Python/C#, query helpers, graceful fallback to regex when grammar missing. Evaluate deps per the dependency-discipline rule (license, maintenance); record an ADR in `ai/context/decisions/`. *Verify:* parses all fixture sources; unit tests; ADR committed.
 
 ## Phase 4 — Extraction depth (parallel-ok after 3.2 where noted)
 
@@ -99,3 +99,4 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 | 2026-11-11 | 1.1-1.4 | Flask verb shorthand, tuple methods, factory routes, Blueprint/APIRouter prefix resolution, python-flask-factory fixture + e2e test. 1,880 tests green. 1.5 folded into 7.3. | bean/BEAN-081 |
 | 2026-11-11 | 2.1/2.2 | 2.1 blocked (Ollama not responding; no key). 2.2: placeholder gate enforced at 80% when enrichment active; LLM client 120s timeout added. | test |
 | 2026-11-11 | 3.1 | BEAN-060 done: stage B/C/C2 persisted + rehydrated with hash/fingerprint guards, --from-stage, beans always regenerate; 6 integration tests. | bean/BEAN-060-resume-v2 |
+| 2026-11-11 | 3.2 | BEAN-061: tree-sitter (js/ts/tsx/c#) loader + helpers in harvester/parsing, ADR-001, 12 tests. | bean/BEAN-061-tree-sitter |
