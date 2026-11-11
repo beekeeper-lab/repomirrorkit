@@ -43,6 +43,9 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ModelRelationship,
     ModelSurface,
     RouteSurface,
+    ScreenAction,
+    ScreenField,
+    ScreenSurface,
     SeedDataSurface,
     SourceRef,
     StateMgmtSurface,
@@ -83,6 +86,7 @@ _SURFACE_TYPES: dict[str, type[Surface]] = {
     "dependency": DependencySurface,
     "test_pattern": TestPatternSurface,
     "seed_data": SeedDataSurface,
+    "screen": ScreenSurface,
     "general_logic": GeneralLogicSurface,
 }
 
@@ -103,6 +107,7 @@ _COLLECTION_FIELDS: dict[str, str] = {
     "dependencies": "dependency",
     "test_patterns": "test_pattern",
     "seed_data": "seed_data",
+    "screens": "screen",
     "general_logic": "general_logic",
 }
 
@@ -166,6 +171,20 @@ def surface_from_dict(data: dict[str, Any]) -> Surface:
                 source_file=r.get("source_file"),
             )
             for r in data.get("relationship_details", [])
+        ]
+
+    if cls is ScreenSurface:
+        kwargs["fields"] = [
+            ScreenField(
+                **{k: v for k, v in f.items() if k in ScreenField.__dataclass_fields__}
+            )
+            for f in data.get("fields", [])
+        ]
+        kwargs["actions"] = [
+            ScreenAction(
+                **{k: v for k, v in a.items() if k in ScreenAction.__dataclass_fields__}
+            )
+            for a in data.get("actions", [])
         ]
 
     surface = cls(

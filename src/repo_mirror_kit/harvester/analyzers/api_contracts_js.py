@@ -314,7 +314,7 @@ def _zod_object_fields(ps: ParsedSource, obj_call: Any) -> list[dict[str, Any]] 
     return fields
 
 
-def _zod_schemas(ps: ParsedSource) -> dict[str, list[dict[str, Any]]]:
+def zod_schemas(ps: ParsedSource) -> dict[str, list[dict[str, Any]]]:
     schemas: dict[str, list[dict[str, Any]]] = {}
     for decl in ps.find_all("variable_declarator"):
         name = decl.child_by_field_name("name")
@@ -419,7 +419,7 @@ class _Handler:
         self.body_aliases: set[str] = set()
         self.request: dict[str, dict[str, Any]] = {}
         self.confidence = "inferred"
-        self.zod = _zod_schemas(ps)
+        self.zod = zod_schemas(ps)
         self.declared_body: list[dict[str, Any]] | None = None
         self.responses: list[dict[str, Any]] = []
 

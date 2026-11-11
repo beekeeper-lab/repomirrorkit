@@ -172,9 +172,38 @@ def test_pipeline_ts_next_contracts_and_fidelity(
     get = contract["paths"]["/api/users"]["get"]
     schema = get["responses"]["200"]["content"]["application/json"]["schema"]
     assert schema["type"] == "array"
-    assert set(schema["items"]["properties"]) == {"id", "name"}
+    assert set(schema["items"]["properties"]) == {"id", "name", "email"}
     post = contract["paths"]["/api/users"]["post"]
     assert "201" in post["responses"]
     assert "x-harvester-gap" not in get and "x-harvester-gap" not in post
     coverage = json.loads((out / "reports" / "coverage.json").read_text())
     assert coverage["fidelity"]["all_passed"] is True
+
+
+@pytest.mark.integration
+def test_pipeline_ts_next_screen_with_field_mapping(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    """BEAN-064: the UserForm screen lists its fields mapped to API + model."""
+    repo = local_git_repo("ts-next")
+    out = tmp_path / "harvest-out"
+    assert _run_pipeline(repo, out).success
+
+    surfaces = json.loads((out / "surfaces.json").read_text())["surfaces"]
+    form = next(s for s in surfaces["screens"] if s["screen_name"] == "UserForm")
+    fields = {f["name"]: f for f in form["fields"]}
+    assert set(fields) == {"name", "email"}
+    assert fields["name"]["required"] is True
+    assert "minLength=2" in fields["name"]["validation"]
+    assert fields["name"]["bound_model_field"] == "User.name"
+    assert fields["name"]["bound_api_field"].startswith("POST /api/users#name")
+    assert fields["email"]["bound_model_field"] == "User.email"
+    assert any(a["api_ref"] == "POST /api/users" for a in form["actions"])
+    assert "/" in form["navigation_targets"]
+    coverage = json.loads((out / "reports" / "coverage.json").read_text())
+    metric = next(
+        m
+        for m in coverage["fidelity"]["metrics"]
+        if m["name"] == "screen_field_mappings"
+    )
+    assert metric["applicable"] and metric["percentage"] == 100.0

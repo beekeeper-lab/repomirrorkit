@@ -24,6 +24,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     MiddlewareSurface,
     ModelSurface,
     RouteSurface,
+    ScreenSurface,
     SeedDataSurface,
     SourceRef,
     StateMgmtSurface,
@@ -1102,6 +1103,100 @@ def render_seed_data_bean(surface: SeedDataSurface, bean_id: str) -> str:
     return fm + "\n" + body.lstrip("\n")
 
 
+def render_screen_bean(surface: ScreenSurface, bean_id: str) -> str:
+    """Render a screen bean: field inventory, actions, navigation (BEAN-064).
+
+    Args:
+        surface: A ScreenSurface instance.
+        bean_id: Unique bean identifier.
+
+    Returns:
+        Complete markdown string with frontmatter and body.
+    """
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="screen",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+        surface=surface,
+    )
+
+    if surface.fields:
+        rows = [
+            "| Field | Input | Label | Required | Validation | API field | Model column |",
+            "|-------|-------|-------|----------|------------|-----------|--------------|",
+        ]
+        for f in surface.fields:
+            model = f.bound_model_field or (
+                f"_unmapped_ {f.gap}".strip() if f.gap else "_unmapped_"
+            )
+            rows.append(
+                f"| `{f.name}` | {f.input_type} | {f.label or '-'} | "
+                f"{'yes' if f.required else 'no'} | "
+                f"{', '.join(f.validation) or '-'} | "
+                f"{f.bound_api_field or '-'} | {model} |"
+            )
+        fields_block = "\n".join(rows)
+    else:
+        fields_block = "_No input fields on this screen._"
+
+    actions_block = (
+        "\n".join(
+            f"- **{a.trigger}**"
+            + (f" -> `{a.api_ref}`" if a.api_ref else "")
+            + (
+                f" -> navigates to `{a.navigation_target}`"
+                if a.navigation_target
+                else ""
+            )
+            for a in surface.actions
+        )
+        or "- No user actions detected."
+    )
+    nav_block = (
+        "\n".join(f"- `{t}`" for t in surface.navigation_targets)
+        or "- No navigation targets detected."
+    )
+    comps = ", ".join(f"`{c}`" for c in surface.uses_components) or "none"
+    route = (
+        f"`{surface.route_ref}`"
+        if surface.route_ref
+        else "not routable (shared component)"
+    )
+
+    body = f"""
+# {surface.name}
+
+## Screen
+
+- Name: `{surface.screen_name}`
+- Route: {route}
+- Framework: {surface.framework or "unknown"}
+- Composes components: {comps}
+
+{_render_enrichment_sections(surface)}
+## Fields
+
+{fields_block}
+
+## Actions
+
+{actions_block}
+
+## Navigation
+
+{nav_block}
+
+## Structural acceptance criteria
+
+- [ ] The rebuilt screen presents exactly these fields with the same input types, required flags and validation.
+- [ ] Each action calls the listed API operation and shows the same outcome.
+- [ ] Navigation targets resolve to equivalent screens.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
 _RENDERERS: dict[str, Any] = {
     "route": render_route_bean,
     "component": render_component_bean,
@@ -1118,6 +1213,7 @@ _RENDERERS: dict[str, Any] = {
     "dependency": render_dependency_bean,
     "test_pattern": render_test_pattern_bean,
     "seed_data": render_seed_data_bean,
+    "screen": render_screen_bean,
     "general_logic": render_general_logic_bean,
 }
 

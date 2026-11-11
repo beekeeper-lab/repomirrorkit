@@ -9,7 +9,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const user: User = { id: users.length + 1, name: body.name };
+  const user: User = { id: users.length + 1, name: body.name, email: body.email };
   users.push(user);
   return NextResponse.json(user, { status: 201 });
 }

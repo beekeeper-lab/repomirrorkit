@@ -22,6 +22,7 @@ from repo_mirror_kit.harvester.analyzers.integrations import analyze_integration
 from repo_mirror_kit.harvester.analyzers.middleware import analyze_middleware
 from repo_mirror_kit.harvester.analyzers.models import analyze_models
 from repo_mirror_kit.harvester.analyzers.routes import analyze_routes
+from repo_mirror_kit.harvester.analyzers.screens import analyze_screens
 from repo_mirror_kit.harvester.analyzers.seed_data import analyze_seed_data
 from repo_mirror_kit.harvester.analyzers.state_mgmt import analyze_state_management
 from repo_mirror_kit.harvester.analyzers.surfaces import (
@@ -39,6 +40,9 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ModelRelationship,
     ModelSurface,
     RouteSurface,
+    ScreenAction,
+    ScreenField,
+    ScreenSurface,
     SeedDataSurface,
     SourceRef,
     StateMgmtSurface,
@@ -65,6 +69,9 @@ __all__ = [
     "ModelRelationship",
     "ModelSurface",
     "RouteSurface",
+    "ScreenAction",
+    "ScreenField",
+    "ScreenSurface",
     "SeedDataSurface",
     "SourceRef",
     "StateMgmtSurface",
@@ -84,6 +91,7 @@ __all__ = [
     "analyze_middleware",
     "analyze_models",
     "analyze_routes",
+    "analyze_screens",
     "analyze_seed_data",
     "analyze_state_management",
     "analyze_test_patterns",

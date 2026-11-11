@@ -515,6 +515,89 @@ class GeneralLogicSurface(Surface):
 
 
 @dataclass
+class ScreenField:
+    """One input field on a screen (BEAN-064).
+
+    ``bound_api_field`` / ``bound_model_field`` chain the screen field to the
+    API request field and model column it ultimately feeds. Unmappable fields
+    keep ``bound_model_field=None`` plus a ``gap`` note — never dropped.
+    """
+
+    name: str
+    input_type: str = "text"
+    label: str = ""
+    required: bool = False
+    validation: list[str] = field(default_factory=list)
+    bound_api_field: str | None = None
+    bound_model_field: str | None = None
+    mapping_confidence: str = ""  # "" | "declared" | "name-match"
+    gap: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        return {
+            "name": self.name,
+            "input_type": self.input_type,
+            "label": self.label,
+            "required": self.required,
+            "validation": list(self.validation),
+            "bound_api_field": self.bound_api_field,
+            "bound_model_field": self.bound_model_field,
+            "mapping_confidence": self.mapping_confidence,
+            "gap": self.gap,
+        }
+
+
+@dataclass
+class ScreenAction:
+    """A user-triggered action on a screen (submit, delete, load, ...)."""
+
+    trigger: str
+    api_ref: str = ""  # e.g. "POST /api/users"
+    navigation_target: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        return {
+            "trigger": self.trigger,
+            "api_ref": self.api_ref,
+            "navigation_target": self.navigation_target,
+        }
+
+
+@dataclass
+class ScreenSurface(Surface):
+    """A user-facing screen: fields, actions, navigation (BEAN-064)."""
+
+    screen_name: str = ""
+    route_ref: str = ""
+    framework: str = ""
+    fields: list[ScreenField] = field(default_factory=list)
+    actions: list[ScreenAction] = field(default_factory=list)
+    navigation_targets: list[str] = field(default_factory=list)
+    uses_components: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.surface_type = "screen"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "screen_name": self.screen_name,
+                "route_ref": self.route_ref,
+                "framework": self.framework,
+                "fields": [f.to_dict() for f in self.fields],
+                "actions": [a.to_dict() for a in self.actions],
+                "navigation_targets": list(self.navigation_targets),
+                "uses_components": list(self.uses_components),
+            }
+        )
+        return result
+
+
+@dataclass
 class SeedDataSurface(Surface):
     """Seed/reference data required for the application to function (BEAN-066).
 
@@ -570,6 +653,7 @@ class SurfaceCollection:
     dependencies: list[DependencySurface] = field(default_factory=list)
     test_patterns: list[TestPatternSurface] = field(default_factory=list)
     seed_data: list[SeedDataSurface] = field(default_factory=list)
+    screens: list[ScreenSurface] = field(default_factory=list)
     general_logic: list[GeneralLogicSurface] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[Surface]:
@@ -589,6 +673,7 @@ class SurfaceCollection:
         yield from self.dependencies
         yield from self.test_patterns
         yield from self.seed_data
+        yield from self.screens
         yield from self.general_logic
 
     def __len__(self) -> int:
@@ -609,6 +694,7 @@ class SurfaceCollection:
             + len(self.dependencies)
             + len(self.test_patterns)
             + len(self.seed_data)
+            + len(self.screens)
             + len(self.general_logic)
         )
 
@@ -630,6 +716,7 @@ class SurfaceCollection:
             "dependencies": [s.to_dict() for s in self.dependencies],
             "test_patterns": [s.to_dict() for s in self.test_patterns],
             "seed_data": [s.to_dict() for s in self.seed_data],
+            "screens": [s.to_dict() for s in self.screens],
             "general_logic": [s.to_dict() for s in self.general_logic],
         }
 

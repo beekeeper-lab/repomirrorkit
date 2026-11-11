@@ -85,7 +85,7 @@
 | BEAN-061 | Tree-sitter Extraction Foundation | App | High | Done | team-lead |
 | BEAN-062 | API Contract Extraction — Python (Tracer Bullet) | App | Critical | Done | team-lead |
 | BEAN-063 | API Contract Extraction — JS/TS Stacks | App | High | Done | team-lead |
-| BEAN-064 | `ScreenSurface` + Form/Field Extraction + Field→Model Mapping | App | Critical | Unapproved | team-lead |
+| BEAN-064 | `ScreenSurface` + Form/Field Extraction + Field→Model Mapping | App | Critical | Done | team-lead |
 | BEAN-065 | `BusinessRuleSurface` — Validation & Constraint Mining | App | High | Unapproved | team-lead |
 | BEAN-066 | `SeedDataSurface` — Enums, Lookups, Fixtures, Migration Seeds | App | Medium | Done | team-lead |
 | BEAN-067 | `WorkflowSurface` — Entity State Machines | App | Medium | Unapproved | team-lead |
