@@ -1,7 +1,14 @@
-"""SQLAlchemy model extractor."""
+"""SQLAlchemy model extractor.
+
+Supports the classic ``db.Column(...)`` style (regex) and SQLAlchemy 2.0
+declarative style — ``id: Mapped[int] = mapped_column(primary_key=True)`` with
+``relationship(...)`` — via ``ast`` (found missing by the microblog real-world
+eval: 5 models, 0 fields).
+"""
 
 from __future__ import annotations
 
+import ast
 import re
 from pathlib import Path
 
@@ -11,6 +18,7 @@ from repo_mirror_kit.harvester.analyzers.models._common import (
 )
 from repo_mirror_kit.harvester.analyzers.surfaces import (
     ModelField,
+    ModelRelationship,
     ModelSurface,
     SourceRef,
 )
@@ -56,6 +64,7 @@ def _extract_sqlalchemy(repo_root: Path, file_paths: list[str]) -> list[ModelSur
         if content is None:
             continue
 
+        file_start = len(surfaces)
         for class_match in _SA_CLASS_RE.finditer(content):
             class_name = class_match.group(1)
             start_pos = class_match.start()
@@ -131,8 +140,157 @@ def _extract_sqlalchemy(repo_root: Path, file_paths: list[str]) -> list[ModelSur
                     ],
                 )
             )
+        _fill_sa2(content, surfaces[file_start:])
 
     return surfaces
+
+
+def _ann_inner(node: ast.expr | None) -> tuple[str, bool]:
+    """(inner type text, optional?) of ``Mapped[...]`` / ``WriteOnlyMapped[...]``."""
+    if isinstance(node, ast.Subscript):
+        outer = ast.unparse(node.value)
+        inner = node.slice
+        if outer.rsplit(".", 1)[-1] in ("Mapped", "WriteOnlyMapped", "DynamicMapped"):
+            text = ast.unparse(inner)
+            optional = (
+                text.startswith("Optional[") or "| None" in text or "None |" in text
+            )
+            if text.startswith("Optional["):
+                text = text[len("Optional[") : -1]
+            text = text.replace(" | None", "").replace("None | ", "")
+            return text.strip("'\""), optional
+    return "", False
+
+
+def _kw_true(node: ast.expr | None) -> bool:
+    return isinstance(node, ast.Constant) and node.value is True
+
+
+def _kw_false(node: ast.expr | None) -> bool:
+    return isinstance(node, ast.Constant) and node.value is False
+
+
+def _sa2_class_fields(
+    cls: ast.ClassDef,
+) -> tuple[list[ModelField], list[str], list[ModelRelationship], str | None]:
+    fields: list[ModelField] = []
+    relationships: list[str] = []
+    details: list[ModelRelationship] = []
+    table: str | None = None
+    pending: list[tuple[str, str, bool]] = []
+    for stmt in cls.body:
+        if isinstance(stmt, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == "__tablename__" for t in stmt.targets
+        ):
+            if isinstance(stmt.value, ast.Constant) and isinstance(
+                stmt.value.value, str
+            ):
+                table = stmt.value.value
+            continue
+        if not (isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name)):
+            continue
+        name = stmt.target.id
+        inner, optional = _ann_inner(stmt.annotation)
+        call = stmt.value if isinstance(stmt.value, ast.Call) else None
+        callee = ast.unparse(call.func).rsplit(".", 1)[-1] if call else ""
+        if callee == "mapped_column":
+            constraints: list[str] = []
+            kws = {k.arg: k.value for k in call.keywords if k.arg} if call else {}
+            col_type = inner or "unknown"
+            fk: str | None = None
+            for arg in call.args if call else []:
+                text = ast.unparse(arg)
+                if isinstance(arg, ast.Call) and ast.unparse(arg.func).endswith(
+                    "ForeignKey"
+                ):
+                    if arg.args and isinstance(arg.args[0], ast.Constant):
+                        fk = str(arg.args[0].value)
+                    elif arg.args:
+                        fk = ast.unparse(arg.args[0])  # e.g. User.id
+                elif isinstance(
+                    arg, (ast.Call, ast.Attribute, ast.Name)
+                ) and not text.startswith(("'", '"')):
+                    col_type = text
+                    length = re.search(r"\(\s*(\d+)\s*\)", text)
+                    if length:
+                        constraints.append(f"max_length={length.group(1)}")
+            if _kw_true(kws.get("primary_key")):
+                constraints.append("primary_key")
+            elif _kw_false(kws.get("nullable")) or (
+                not optional and "nullable" not in kws
+            ):
+                constraints.append("not_null")
+            if _kw_true(kws.get("unique")):
+                constraints.append("unique")
+            if fk:
+                constraints.append(f"fk={fk}")
+                relationships.append(f"FK -> {fk}")
+            fields.append(
+                ModelField(name=name, field_type=col_type, constraints=constraints)
+            )
+        elif callee == "relationship":
+            target = inner
+            is_list = target.startswith(("list[", "List[", "set["))
+            if is_list:
+                target = target[target.index("[") + 1 : -1].strip("'\"")
+            if (
+                not target
+                and call
+                and call.args
+                and isinstance(call.args[0], ast.Constant)
+            ):
+                target = str(call.args[0].value)
+            if target:
+                relationships.append(f"{name} -> {target}")
+                outer = (
+                    ast.unparse(stmt.annotation.value).rsplit(".", 1)[-1]
+                    if isinstance(stmt.annotation, ast.Subscript)
+                    else ""
+                )
+                many = is_list or outer in ("WriteOnlyMapped", "DynamicMapped")
+                pending.append((name, target, many))
+    # Resolve FK columns for many-to-one relationships from mapped_column FKs.
+    for _rel_name, target, many in pending:
+        fk_col: str | None = None
+        if not many:
+            for f in fields:
+                fk = next((c[3:] for c in f.constraints if c.startswith("fk=")), None)
+                if fk and fk.split(".")[0].lower().rstrip("s") == target.lower().rstrip(
+                    "s"
+                ):
+                    fk_col = f.name
+                    break
+        details.append(
+            ModelRelationship(
+                source_model=cls.name,
+                target_model=target,
+                kind="one_to_many" if many else "many_to_one",
+                fk_column=fk_col,
+            )
+        )
+    return fields, relationships, details, table
+
+
+def _fill_sa2(content: str, surfaces: list[ModelSurface]) -> None:
+    """Populate fields/relationships of empty surfaces from SA 2.0 declarations."""
+    empty = {s.entity_name: s for s in surfaces if not s.fields}
+    if not empty or "mapped_column" not in content:
+        return
+    try:
+        tree = ast.parse(content)
+    except (SyntaxError, ValueError):
+        return
+    for cls in (n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)):
+        surface = empty.get(cls.name)
+        if surface is None:
+            continue
+        fields, rels, details, table = _sa2_class_fields(cls)
+        if fields:
+            surface.fields = fields
+            surface.relationships = rels
+            surface.relationship_details = details
+            if table:
+                surface.persistence_refs = [table]
 
 
 __all__ = ["_extract_sqlalchemy"]

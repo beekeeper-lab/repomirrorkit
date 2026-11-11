@@ -12,6 +12,8 @@ Three families, each reported separately so a regression is attributable:
 
 Overall = weighted mean over the **applicable** families (weights below,
 re-normalised); a family with nothing to measure is N/A, never a free 100%.
+The schema family applies only when the rebuild itself has a relational
+database design — a rebuild may legitimately store data some other way.
 The north-star gate is ``DEFAULT_THRESHOLD`` (0.90).
 """
 
@@ -210,7 +212,18 @@ def score_rebuild(
                 )
 
     if rebuild_harvest is not None:
-        report.schema = diff_schemas(original_harvest, rebuild_harvest)
+        if (rebuild_harvest / "db-design" / "schema.sql").is_file():
+            report.schema = diff_schemas(original_harvest, rebuild_harvest)
+        elif (original_harvest / "db-design" / "schema.sql").is_file():
+            # Storage is an implementation choice: a rebuild that keeps its
+            # data elsewhere (in memory, a document store, ...) is not scored
+            # on tables it never claimed to have. Its data *shape* is still
+            # verified through the golden replay and Gherkin families.
+            report.notes.append(
+                "Schema family N/A: the rebuild exposes no relational database "
+                "design (storage is an implementation choice); entity fields are "
+                "covered by golden replay."
+            )
     return report
 
 

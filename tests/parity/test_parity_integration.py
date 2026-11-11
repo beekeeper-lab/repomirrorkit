@@ -164,7 +164,7 @@ def test_full_score_with_gherkin_calibration_and_schema(tmp_path: Path) -> None:
     assert data["families"]["golden_replay"]["score"] == 1.0
     gh = data["families"]["gherkin"]
     assert gh["bound"] >= 5 and gh["relative_to_original"] == 1.0, gh
-    assert (
-        data["families"]["schema"]["score"] == 0.0
-    )  # no rebuild harvest supplied → missing tables
-    assert data["overall"] is not None and data["overall"] > 0.7
+    # The rebuild has no DB design → schema is N/A (storage is a free choice).
+    assert data["families"]["schema"]["score"] is None
+    assert any("Schema family N/A" in n for n in data["notes"])
+    assert data["overall"] == 1.0 and data["passed"]
