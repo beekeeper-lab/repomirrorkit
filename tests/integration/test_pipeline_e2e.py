@@ -344,3 +344,32 @@ def test_db_design_bundle_for_fixtures(
     for name in models:
         assert (db / "entities" / f"{name}.schema.json").is_file()
     assert (db / "README.md").is_file()
+
+
+@pytest.mark.integration
+def test_screen_specs_for_ts_next(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    """BEAN-073: one YAML per detected screen, schema-valid, bindings present."""
+    import jsonschema
+    import yaml
+
+    from repo_mirror_kit.harvester.generator.screen_specs import SCREEN_SCHEMA
+
+    out = tmp_path / "harvest-out"
+    assert _run_pipeline(local_git_repo("ts-next"), out).success
+    screens = json.loads((out / "surfaces.json").read_text())["surfaces"]["screens"]
+    yamls = sorted((out / "screens").glob("*.yaml"))
+    assert len(yamls) == len(screens) >= 1
+    for path in yamls:
+        jsonschema.validate(yaml.safe_load(path.read_text()), SCREEN_SCHEMA)
+    form = yaml.safe_load((out / "screens" / "userform.yaml").read_text())
+    assert {f["binds_to"]["model"] for f in form["fields"]} == {
+        "User.name",
+        "User.email",
+    }
+    assert (
+        "```mermaid\nflowchart TD"
+        in (out / "screens" / "navigation-map.md").read_text()
+    )
+    assert "screens/README.md" in (out / "REQUIREMENTS.md").read_text()

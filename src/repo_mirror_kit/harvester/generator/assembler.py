@@ -23,6 +23,7 @@ from repo_mirror_kit.harvester.generator.env_example import generate_env_example
 from repo_mirror_kit.harvester.generator.openapi import generate_openapi_contract
 from repo_mirror_kit.harvester.generator.requirements_md import generate_requirements_md
 from repo_mirror_kit.harvester.generator.runbook_md import generate_runbook_md
+from repo_mirror_kit.harvester.generator.screen_specs import generate_screen_specs
 from repo_mirror_kit.harvester.generator.stacks import generate_stacks
 
 logger = structlog.get_logger()
@@ -192,6 +193,9 @@ def assemble_project_folder(
 
     # Step 8 (BEAN-072): DB design bundle (DDL + JSON Schema + seed data).
     generated_files.extend(generate_db_design(surfaces, output_dir, project_name))
+
+    # Step 8b (BEAN-073): screen specs (YAML) + navigation map.
+    generated_files.extend(generate_screen_specs(surfaces, output_dir, project_name))
 
     # Step 9 (BEAN-051): Top-level REQUIREMENTS.md aggregator, written last so it
     # can index every other artifact. It sits at the harvest
