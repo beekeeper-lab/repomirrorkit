@@ -598,6 +598,39 @@ class ScreenSurface(Surface):
 
 
 @dataclass
+class BusinessRuleSurface(Surface):
+    """A framework-neutral business rule (BEAN-065).
+
+    ``rule_kind``: ``validation`` (input constraints), ``invariant`` (data /
+    persistence constraints), ``permission`` (who may do it), or
+    ``calculation``. ``applies_to`` names the surfaces the rule protects.
+    """
+
+    rule_kind: str = ""
+    expression: str = ""
+    applies_to: list[str] = field(default_factory=list)
+    source_library: str = ""
+    confidence: str = "inferred"  # "declared" | "inferred"
+
+    def __post_init__(self) -> None:
+        self.surface_type = "business_rule"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a JSON-compatible dictionary."""
+        result = super().to_dict()
+        result.update(
+            {
+                "rule_kind": self.rule_kind,
+                "expression": self.expression,
+                "applies_to": list(self.applies_to),
+                "source_library": self.source_library,
+                "confidence": self.confidence,
+            }
+        )
+        return result
+
+
+@dataclass
 class SeedDataSurface(Surface):
     """Seed/reference data required for the application to function (BEAN-066).
 
@@ -654,6 +687,7 @@ class SurfaceCollection:
     test_patterns: list[TestPatternSurface] = field(default_factory=list)
     seed_data: list[SeedDataSurface] = field(default_factory=list)
     screens: list[ScreenSurface] = field(default_factory=list)
+    business_rules: list[BusinessRuleSurface] = field(default_factory=list)
     general_logic: list[GeneralLogicSurface] = field(default_factory=list)
 
     def __iter__(self) -> Iterator[Surface]:
@@ -674,6 +708,7 @@ class SurfaceCollection:
         yield from self.test_patterns
         yield from self.seed_data
         yield from self.screens
+        yield from self.business_rules
         yield from self.general_logic
 
     def __len__(self) -> int:
@@ -695,6 +730,7 @@ class SurfaceCollection:
             + len(self.test_patterns)
             + len(self.seed_data)
             + len(self.screens)
+            + len(self.business_rules)
             + len(self.general_logic)
         )
 
@@ -717,6 +753,7 @@ class SurfaceCollection:
             "test_patterns": [s.to_dict() for s in self.test_patterns],
             "seed_data": [s.to_dict() for s in self.seed_data],
             "screens": [s.to_dict() for s in self.screens],
+            "business_rules": [s.to_dict() for s in self.business_rules],
             "general_logic": [s.to_dict() for s in self.general_logic],
         }
 

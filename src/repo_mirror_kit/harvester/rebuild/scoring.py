@@ -49,6 +49,7 @@ SURFACE_CATEGORIES: tuple[str, ...] = (
     "test_patterns",
     "seed_data",
     "screens",
+    "business_rules",
     "general_logic",
 )
 

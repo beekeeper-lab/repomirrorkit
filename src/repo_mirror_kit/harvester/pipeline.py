@@ -27,6 +27,7 @@ from repo_mirror_kit.harvester.analyzers import (
     analyze_auth,
     analyze_behavioral_spec,
     analyze_build_deploy,
+    analyze_business_rules,
     analyze_components,
     analyze_config,
     analyze_crosscutting,
@@ -805,6 +806,14 @@ class HarvestPipeline:
             test_patterns=test_patterns,
             seed_data=seed_data,
             screens=screens,
+        )
+
+        # BEAN-065: business rules are mined from the surfaces above.
+        surfaces.business_rules = analyze_business_rules(surfaces)
+        self._emit(
+            PipelineEventType.PROGRESS_UPDATE,
+            "C",
+            f"Business rules: {len(surfaces.business_rules)} found",
         )
 
         # File coverage: find uncovered files and generate catch-all surfaces

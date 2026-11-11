@@ -15,6 +15,7 @@ from repo_mirror_kit.harvester.analyzers.surfaces import (
     ApiSurface,
     AuthSurface,
     BuildDeploySurface,
+    BusinessRuleSurface,
     ComponentSurface,
     ConfigSurface,
     CrosscuttingSurface,
@@ -1197,6 +1198,39 @@ def render_screen_bean(surface: ScreenSurface, bean_id: str) -> str:
     return fm + "\n" + body.lstrip("\n")
 
 
+def render_business_rule_bean(surface: BusinessRuleSurface, bean_id: str) -> str:
+    """Render a business-rule bean (BEAN-065)."""
+    fm = _render_frontmatter(
+        bean_id=bean_id,
+        bean_type="business_rule",
+        title=surface.name,
+        source_refs=surface.source_refs,
+        enrichment=surface.enrichment,
+        surface=surface,
+    )
+    applies = "\n".join(f"- `{a}`" for a in surface.applies_to) or "- (none resolved)"
+    body = f"""
+# {surface.name}
+
+## Rule
+
+- Kind: {surface.rule_kind}
+- Statement: **{surface.expression}**
+- Evidence: {surface.confidence} ({surface.source_library or "unknown source"})
+
+{_render_enrichment_sections(surface)}
+## Applies to
+
+{applies}
+
+## Structural acceptance criteria
+
+- [ ] The rebuilt application enforces: {surface.expression}.
+- [ ] Violating input is rejected with an error, never silently accepted.
+"""
+    return fm + "\n" + body.lstrip("\n")
+
+
 _RENDERERS: dict[str, Any] = {
     "route": render_route_bean,
     "component": render_component_bean,
@@ -1214,6 +1248,7 @@ _RENDERERS: dict[str, Any] = {
     "test_pattern": render_test_pattern_bean,
     "seed_data": render_seed_data_bean,
     "screen": render_screen_bean,
+    "business_rule": render_business_rule_bean,
     "general_logic": render_general_logic_bean,
 }
 

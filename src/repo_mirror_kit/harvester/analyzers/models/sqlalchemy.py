@@ -31,6 +31,7 @@ _SA_FK_RE = re.compile(r"ForeignKey\s*\(\s*['\"]([^'\"]+)['\"]")
 _SA_PK_RE = re.compile(r"primary_key\s*=\s*True")
 _SA_NULLABLE_RE = re.compile(r"nullable\s*=\s*False")
 _SA_UNIQUE_COLUMN_RE = re.compile(r"unique\s*=\s*True")
+_SA_LENGTH_RE = re.compile(r"String\s*\(\s*(\d+)\s*\)")
 
 
 def _extract_sqlalchemy(repo_root: Path, file_paths: list[str]) -> list[ModelSurface]:
@@ -90,6 +91,9 @@ def _extract_sqlalchemy(repo_root: Path, file_paths: list[str]) -> list[ModelSur
                     constraints.append("not_null")
                 if _SA_UNIQUE_COLUMN_RE.search(col_full):
                     constraints.append("unique")
+                length = _SA_LENGTH_RE.search(col_full)
+                if length:
+                    constraints.append(f"max_length={length.group(1)}")
 
                 fields.append(
                     ModelField(
