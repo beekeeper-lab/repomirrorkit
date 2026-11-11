@@ -78,7 +78,9 @@ class TestLLMClientInit:
             assert client._model == "claude-test"
             assert client._rpm == 60
             assert client._min_interval == pytest.approx(1.0)
-            mock_mod.Anthropic.assert_called_once_with(api_key="sk-test")
+            mock_mod.Anthropic.assert_called_once_with(
+                api_key="sk-test", timeout=client_mod.REQUEST_TIMEOUT_S
+            )
 
     def test_init_default_model(self) -> None:
         mock_mod = _mock_anthropic_module()
@@ -105,7 +107,9 @@ class TestLLMClientInit:
 
             client_mod.LLMClient(api_key="sk-test")
 
-            mock_mod.Anthropic.assert_called_once_with(api_key="sk-test")
+            mock_mod.Anthropic.assert_called_once_with(
+                api_key="sk-test", timeout=client_mod.REQUEST_TIMEOUT_S
+            )
 
     def test_init_with_base_url_passes_it_to_sdk(self) -> None:
         mock_mod = _mock_anthropic_module()
@@ -122,7 +126,9 @@ class TestLLMClientInit:
             )
 
             mock_mod.Anthropic.assert_called_once_with(
-                api_key="sk-test", base_url="http://localhost:11434"
+                api_key="sk-test",
+                base_url="http://localhost:11434",
+                timeout=client_mod.REQUEST_TIMEOUT_S,
             )
 
     def test_init_with_base_url_defaults_dummy_key_when_missing(self) -> None:
@@ -138,7 +144,9 @@ class TestLLMClientInit:
             client_mod.LLMClient(base_url="http://localhost:11434")
 
             mock_mod.Anthropic.assert_called_once_with(
-                api_key="ollama", base_url="http://localhost:11434"
+                api_key="ollama",
+                base_url="http://localhost:11434",
+                timeout=client_mod.REQUEST_TIMEOUT_S,
             )
 
     def test_init_without_base_url_does_not_default_dummy_key(self) -> None:
@@ -153,7 +161,9 @@ class TestLLMClientInit:
 
             client_mod.LLMClient(api_key=None)
 
-            mock_mod.Anthropic.assert_called_once_with(api_key=None)
+            mock_mod.Anthropic.assert_called_once_with(
+                api_key=None, timeout=client_mod.REQUEST_TIMEOUT_S
+            )
 
 
 # ---------------------------------------------------------------------------
