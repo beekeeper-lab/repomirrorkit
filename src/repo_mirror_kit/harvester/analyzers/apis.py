@@ -24,6 +24,7 @@ from typing import Any
 
 import structlog
 
+from repo_mirror_kit.harvester.analyzers.python_prefixes import apply_python_prefixes
 from repo_mirror_kit.harvester.analyzers.surfaces import ApiSurface, SourceRef
 from repo_mirror_kit.harvester.detectors.base import StackProfile
 from repo_mirror_kit.harvester.inventory import InventoryResult
@@ -788,6 +789,9 @@ def analyze_api_endpoints(
         found = _extract_nextjs_api_endpoints(workdir, inventory)
         logger.info("api_analysis_nextjs", endpoints_found=len(found))
         surfaces.extend(found)
+
+    if detected_stacks & (_FASTAPI_STACKS | _FLASK_STACKS):
+        apply_python_prefixes(surfaces, workdir)
 
     logger.info(
         "api_analysis_complete",
