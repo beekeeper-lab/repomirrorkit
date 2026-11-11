@@ -317,3 +317,30 @@ def test_features_and_build_manifest(
     assert len(assigned) == len(set(assigned)) == len(manifest["beans"])
     req = (out / "REQUIREMENTS.md").read_text()
     assert "## Features (suggested build order)" in req and "features/FEAT-001" in req
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "fixture", ["python-flask", "python-flask-workflow", "ts-next"]
+)
+def test_db_design_bundle_for_fixtures(
+    local_git_repo: Callable[[str], Path], tmp_path: Path, fixture: str
+) -> None:
+    """BEAN-072: every detected model appears in executable DDL and JSON Schema."""
+    import sqlite3
+
+    out = tmp_path / "harvest-out"
+    assert _run_pipeline(local_git_repo(fixture), out).success
+    surfaces = json.loads((out / "surfaces.json").read_text())["surfaces"]
+    models = [m["entity_name"] or m["name"] for m in surfaces["models"]]
+    assert models
+    db = out / "db-design"
+    con = sqlite3.connect(":memory:")
+    con.executescript((db / "schema.sql").read_text())
+    tables = {
+        r[0] for r in con.execute("select name from sqlite_master where type='table'")
+    }
+    assert len(tables) == len(models)
+    for name in models:
+        assert (db / "entities" / f"{name}.schema.json").is_file()
+    assert (db / "README.md").is_file()

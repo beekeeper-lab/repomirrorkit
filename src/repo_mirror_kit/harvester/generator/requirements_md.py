@@ -151,6 +151,7 @@ def _render(
     parts.append(_render_header(project_name, profile, bean_count))
     parts.append(_render_gaps_rollup(surfaces))
     parts.append(_render_tech_stack(profile))
+    parts.append(_render_design_artifacts(output_dir))
     parts.append(_render_features_index(output_dir))
     parts.append("## Functional Requirements\n")
 
@@ -162,6 +163,44 @@ def _render(
 
     parts.append(_render_reports_footer())
     return "\n".join(parts)
+
+
+# (relative path, description) — listed only when the artifact exists.
+_DESIGN_ARTIFACTS: tuple[tuple[str, str], ...] = (
+    ("build-manifest.json", "Machine-readable feature/bean build DAG and order"),
+    ("api-contract.json", "OpenAPI 3.1 contract for every API surface"),
+    (
+        "db-design/README.md",
+        "Executable data design: DDL, JSON Schema per entity, seed data",
+    ),
+    (
+        "screens/README.md",
+        "Screen specs (fields, actions, navigation) as YAML + navigation map",
+    ),
+    ("features/", "Feature-level specs (vertical slices) linking member beans"),
+    ("gherkin/", "Behavior scenarios (.feature) per feature"),
+    ("diagrams/README.md", "Sequence and state diagrams rendered from the specs"),
+    ("data-model.md", "Human-readable ER diagram and relationships"),
+    ("surface-map.md", "Every extracted surface in one table"),
+    ("reports/coverage.md", "Coverage and fidelity (recreation-readiness) gates"),
+    ("reports/gaps.md", "What the harvest could not determine"),
+    (".env.example", "Environment variables the application reads"),
+    ("RUNBOOK.md", "Build, run and deploy notes"),
+)
+
+
+def _render_design_artifacts(output_dir: Path | None) -> str:
+    """Index of design artifacts present in the output (BEAN-072/073/074/075)."""
+    if output_dir is None:
+        return ""
+    rows = [
+        f"- [`{rel}`]({rel}) — {desc}"
+        for rel, desc in _DESIGN_ARTIFACTS
+        if (output_dir / rel).exists()
+    ]
+    if not rows:
+        return ""
+    return "\n".join(["## Design artifacts\n", *rows, ""])
 
 
 def _render_features_index(output_dir: Path | None) -> str:
