@@ -229,3 +229,28 @@ def test_report_weights_and_na_are_not_free_passes() -> None:
         report = ParityReport(golden=replay(url, golden))
     assert report.overall == 1.0 and report.passed
     assert "N/A" in report.to_markdown()
+
+
+def test_app_under_test_never_inherits_host_secrets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The rebuilt app is untrusted: host API keys must not reach it."""
+    import sys
+
+    from repo_mirror_kit.harvester.parity.server import AppProcess
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-should-not-leak")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "also-secret")
+    (tmp_path / "start.sh").write_text(
+        f'#!/usr/bin/env bash\nenv > "{tmp_path}/env.txt"\nexec {sys.executable} -m http.server "$PORT" --bind 127.0.0.1\n'
+    )
+    with AppProcess(tmp_path, "bash start.sh", {"API_KEY": "demo-key"}):
+        pass
+    seen = (tmp_path / "env.txt").read_text()
+    names = {line.split("=", 1)[0] for line in seen.splitlines() if "=" in line}
+    # Compare names/booleans only: a failure message must never echo env values.
+    assert "API_KEY=demo-key" in seen and "PORT" in names
+    assert "ANTHROPIC_API_KEY" not in names and "AWS_SECRET_ACCESS_KEY" not in names
+    assert not any(
+        n.endswith(("_API_KEY", "_TOKEN", "_SECRET")) for n in names - {"API_KEY"}
+    )

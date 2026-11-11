@@ -1,6 +1,6 @@
 # RepoMirrorKit
 
-A **requirements harvester**: given a Git repository, run an 8-stage pipeline (clone → inventory/detection → 14 surface analyzers → optional LLM enrichment → traceability → bean generation → coverage gates → Claude Code project folder generation) and emit structured requirement artifacts ("beans"), coverage reports, and a Claude Code project scaffold derived from the source.
+A **requirements harvester**: given a Git repository, run a 9-stage pipeline (clone → inventory/detection → surface analyzers → optional agentic LLM enrichment → feature clustering → traceability → beans/features/build manifest → coverage + fidelity gates → design artifacts + Claude Code project folder) and emit requirement artifacts rich enough to **recreate the application in a different stack** (beans, OpenAPI contract, DB design, screen specs, Gherkin, build manifest, diagrams), plus coverage/fidelity reports. Success is measured behaviourally with `parity-score` (see `docs/parity-eval-runbook.md`).
 
 **Tech stack:** clean-code, devops, python, python-qt-pyside6, security
 
@@ -25,7 +25,8 @@ Output (under `--out`):
 | `surface-map.{md,json}` | C | All extracted surfaces (routes, models, APIs, auth, etc.) |
 | `traceability/*.md` | D | Cross-surface link maps |
 | `beans/BEAN-*.md` | E | Per-surface requirement files |
-| `reports/{coverage,gaps,file-coverage}.{md,json}` | F | Coverage gates |
+| `reports/{coverage,gaps,file-coverage}.{md,json}` | F | Coverage + fidelity gates |
+| `features/`, `build-manifest.json`, `api-contract.json`, `db-design/`, `screens/`, `gherkin/`, `diagrams/` | C3/E/G | Recreation design artifacts (indexed by `REQUIREMENTS.md`) |
 | `project-folder/` | G | Generated Claude Code project scaffold |
 
 Detectors live in `harvester/detectors/`, surface analyzers in `harvester/analyzers/`, generators in `harvester/generator/`, reports in `harvester/reports/`. LLM enrichment (`harvester/llm/`) is on by default (`--llm/--no-llm`) and augments surfaces with behavioral descriptions when `ANTHROPIC_API_KEY` is in the environment; without the key the run downgrades to structural-only output with a warning.
