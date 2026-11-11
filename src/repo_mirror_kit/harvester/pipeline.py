@@ -51,6 +51,11 @@ from repo_mirror_kit.harvester.analyzers import (
 from repo_mirror_kit.harvester.beans.writer import WrittenBean, write_beans
 from repo_mirror_kit.harvester.config import HarvestConfig
 from repo_mirror_kit.harvester.detectors.base import StackProfile, run_detection
+from repo_mirror_kit.harvester.features import (
+    Feature,
+    cluster_surfaces,
+    write_features_and_manifest,
+)
 from repo_mirror_kit.harvester.generator.assembler import (
     GeneratorResult,
     assemble_project_folder,
@@ -91,7 +96,7 @@ from repo_mirror_kit.harvester.state import StateManager
 logger = structlog.get_logger()
 
 # Ordered stage names matching the spec
-STAGE_NAMES: list[str] = ["A", "B", "C", "C2", "D", "E", "F", "G"]
+STAGE_NAMES: list[str] = ["A", "B", "C", "C2", "C3", "D", "E", "F", "G"]
 
 # Per-stage domain exception tuples (BEAN-048).
 #
@@ -455,6 +460,22 @@ class HarvestPipeline:
                 PipelineEventType.STAGE_COMPLETE,
                 "C2",
                 "LLM enrichment complete",
+            )
+
+            # --- Stage C3: Feature clustering (deterministic, always runs) ---
+            self._emit(
+                PipelineEventType.STAGE_START,
+                "C3",
+                "Clustering surfaces into features",
+            )
+            self._features = cluster_surfaces(surfaces)
+            self._project_name = _derive_project_name(config.repo)
+            state.complete_stage("C3")
+            self._emit(
+                PipelineEventType.STAGE_COMPLETE,
+                "C3",
+                "Feature clustering complete",
+                {"features": len(self._features)},
             )
 
             # --- Stage D: Traceability ---
@@ -885,7 +906,17 @@ class HarvestPipeline:
         # Beans always regenerate (cheap, deterministic) — never trust stale
         # per-bean checkpoints from a prior run.
         state.reset_beans()
-        return write_beans(surfaces, output_dir, state)
+        written = write_beans(surfaces, output_dir, state)
+        features: list[Feature] = getattr(self, "_features", [])
+        if features:
+            write_features_and_manifest(
+                output_dir,
+                getattr(self, "_project_name", "project"),
+                surfaces,
+                features,
+                written,
+            )
+        return written
 
     def _run_stage_f(
         self,

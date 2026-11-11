@@ -115,7 +115,7 @@ def main() -> None:
 )
 @click.option(
     "--from-stage",
-    type=click.Choice(["A", "B", "C", "C2", "D", "E", "F", "G"]),
+    type=click.Choice(["A", "B", "C", "C2", "C3", "D", "E", "F", "G"]),
     default=None,
     help="Re-run from this stage onward, reusing persisted earlier stages "
     "(implies --resume). E.g. --from-stage C2 re-runs LLM enrichment only.",

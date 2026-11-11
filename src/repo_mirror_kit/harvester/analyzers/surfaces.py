@@ -42,6 +42,8 @@ class Surface:
     surface_type: str = ""
     source_refs: list[SourceRef] = field(default_factory=list)
     enrichment: dict[str, Any] = field(default_factory=dict)
+    # BEAN-069: feature the surface was clustered into (e.g. "FEAT-002").
+    feature_id: str = ""
     # Keys when populated: behavioral_description, inferred_intent,
     # given_when_then (list of {given, when, then}), data_flow, priority, dependencies
 
@@ -54,6 +56,8 @@ class Surface:
         }
         if self.enrichment:
             result["enrichment"] = self.enrichment
+        if self.feature_id:
+            result["feature_id"] = self.feature_id
         return result
 
 

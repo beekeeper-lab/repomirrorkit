@@ -64,6 +64,18 @@ def derive_confidence_and_gaps(surface: Surface) -> tuple[str, list[str]]:
         if response.get("unknown") is True:
             gaps.append("Response contract could not be inferred from source.")
 
+    elif isinstance(surface, (BusinessRuleSurface, WorkflowSurface)):
+        confidence = surface.confidence
+    elif isinstance(surface, ScreenSurface):
+        confidence = "declared" if surface.fields or surface.actions else confidence
+        for f in surface.fields:
+            if f.gap:
+                gaps.append(f"Field '{f.name}': {f.gap}.")
+    elif isinstance(surface, ModelSurface):
+        confidence = "declared" if surface.fields else confidence
+        if not surface.fields:
+            gaps.append("Model fields could not be extracted.")
+
     extra = enrichment.get("gaps")
     if isinstance(extra, list):
         gaps.extend(str(g) for g in extra)
@@ -126,9 +138,10 @@ def _render_frontmatter(
         f"dependencies: {json.dumps(dependencies)}",
         f"confidence: {confidence}",
         f"gaps: {json.dumps(gaps)}",
-        "status: draft",
-        "---",
     ]
+    if surface is not None and surface.feature_id:
+        lines.append(f"feature: {surface.feature_id}")
+    lines.extend(["status: draft", "---"])
     return "\n".join(lines)
 
 

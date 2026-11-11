@@ -275,7 +275,45 @@ def test_pipeline_dotnet_api_contracts(
     body = post["requestBody"]["content"]["application/json"]["schema"]
     assert set(body["properties"]) == {"Name", "Qty"} and "Name" in body["required"]
     assert "201" in post["responses"] and "400" in post["responses"]
-    rules = json.loads((out / "surfaces.json").read_text())["surfaces"]["business_rules"]
+    rules = json.loads((out / "surfaces.json").read_text())["surfaces"][
+        "business_rules"
+    ]
     exprs = {r["expression"] for r in rules}
     assert any("minimum length 2" in e for e in exprs)
     assert any("minimum value 1" in e or "maximum value 100" in e for e in exprs)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("fixture", ["ts-next", "python-flask-workflow"])
+def test_features_and_build_manifest(
+    local_git_repo: Callable[[str], Path], tmp_path: Path, fixture: str
+) -> None:
+    """BEAN-069: features/, build-manifest.json, bean `feature:` keys, determinism."""
+    import jsonschema
+
+    from repo_mirror_kit.harvester.features import MANIFEST_SCHEMA
+
+    repo = local_git_repo(fixture)
+    manifests = []
+    for run in ("one", "two"):
+        out = tmp_path / run
+        assert _run_pipeline(repo, out).success
+        manifests.append((out / "build-manifest.json").read_text())
+    assert manifests[0] == manifests[1], "manifest must be byte-identical across runs"
+
+    manifest = json.loads(manifests[0])
+    jsonschema.validate(manifest, MANIFEST_SCHEMA)
+    out = tmp_path / "one"
+    assert len(manifest["features"]) >= 2
+    assert sorted(manifest["build_order"]["beans"]) == sorted(
+        b["id"] for b in manifest["beans"]
+    )
+    for feat in manifest["features"]:
+        assert (out / feat["path"]).is_file()
+    for bean in manifest["beans"]:
+        text = (out / bean["path"]).read_text()
+        assert f"\nfeature: {bean['feature']}\n" in text
+    assigned = [b for f in manifest["features"] for b in f["beans"]]
+    assert len(assigned) == len(set(assigned)) == len(manifest["beans"])
+    req = (out / "REQUIREMENTS.md").read_text()
+    assert "## Features (suggested build order)" in req and "features/FEAT-001" in req
