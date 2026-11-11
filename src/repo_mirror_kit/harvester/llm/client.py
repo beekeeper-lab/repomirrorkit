@@ -19,6 +19,10 @@ except ImportError:
     HAS_ANTHROPIC = False
 
 
+# Per-request timeout so an unresponsive endpoint cannot stall a harvest.
+REQUEST_TIMEOUT_S = 120.0
+
+
 class LLMClient:
     """Wrapper around the Anthropic SDK with rate limiting.
 
@@ -48,10 +52,12 @@ class LLMClient:
         if base_url:
             resolved_key = api_key or "ollama"
             self._client: Any = anthropic.Anthropic(
-                api_key=resolved_key, base_url=base_url
+                api_key=resolved_key, base_url=base_url, timeout=REQUEST_TIMEOUT_S
             )
         else:
-            self._client = anthropic.Anthropic(api_key=api_key)
+            self._client = anthropic.Anthropic(
+                api_key=api_key, timeout=REQUEST_TIMEOUT_S
+            )
         self._model = model
         self._rpm = requests_per_minute
         self._min_interval = 60.0 / requests_per_minute

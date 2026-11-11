@@ -38,8 +38,8 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 
 ## Phase 2 — Enrichment baseline (no API key here; use the local Ollama endpoint, e.g. gpt-oss:120b or qwen3.8:27b, via the cherry-picked local-llm-endpoint support)
 
-- [ ] **2.1** Run `harvest` with LLM on both fixtures. Inspect beans for remaining `TODO:` placeholders and hallucinated content. Save outputs under `docs/samples/`. *Verify:* written assessment in `docs/enrichment-baseline-<date>.md` listing placeholder counts per fixture.
-- [ ] **2.2** Add a gate: with LLM enabled, count of `TODO:` placeholders in beans is reported in `reports/fidelity.*` and fails above a threshold (start at 0 for fixtures). *Verify:* unit test + fixture run.
+- [!] **2.1** (BLOCKED 2026-11-11: local Ollama unresponsive, no API key; retry when available) Run `harvest` with LLM on both fixtures. Inspect beans for remaining `TODO:` placeholders and hallucinated content. Save outputs under `docs/samples/`. *Verify:* written assessment in `docs/enrichment-baseline-<date>.md` listing placeholder counts per fixture.
+- [x] **2.2** Add a gate: with LLM enabled, count of `TODO:` placeholders in beans is reported in `reports/fidelity.*` and fails above a threshold (start at 0 for fixtures). *Verify:* unit test + fixture run.
 
 ## Phase 3 — Foundations
 
@@ -97,3 +97,4 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 | 2026-11-11 | — | Spec created. Baseline: 1,863 tests green; ts-next fidelity gate failing. | — |
 | 2026-11-11 | 0.1-0.3 | Merged BEAN-080 + local-llm-endpoint into `test`; suite 1,872 green. 0.4 deferred (not on critical path). 0.5/0.6 pending final merge to main. | test |
 | 2026-11-11 | 1.1-1.4 | Flask verb shorthand, tuple methods, factory routes, Blueprint/APIRouter prefix resolution, python-flask-factory fixture + e2e test. 1,880 tests green. 1.5 folded into 7.3. | bean/BEAN-081 |
+| 2026-11-11 | 2.1/2.2 | 2.1 blocked (Ollama not responding; no key). 2.2: placeholder gate enforced at 80% when enrichment active; LLM client 120s timeout added. | test |

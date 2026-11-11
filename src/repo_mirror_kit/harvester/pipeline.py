@@ -8,6 +8,7 @@ for progress reporting. Both the CLI and GUI entry points delegate to
 
 from __future__ import annotations
 
+import os
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -176,6 +177,10 @@ class HarvestResult:
     output_dir: Path | None = None
 
 
+# Minimum % of beans free of TODO placeholders when LLM enrichment ran.
+ENRICHED_PLACEHOLDER_THRESHOLD = 80.0
+
+
 class HarvestPipeline:
     """Orchestrates the harvester pipeline stages A through G.
 
@@ -330,6 +335,10 @@ class HarvestPipeline:
                 PipelineEventType.STAGE_START,
                 "C2",
                 "Enriching surfaces with LLM",
+            )
+            self._llm_active = bool(
+                config.llm_enabled
+                and (config.llm_base_url or os.environ.get("ANTHROPIC_API_KEY"))
             )
             try:
                 surfaces = self._run_stage_c2(surfaces, config, workdir)
@@ -717,7 +726,16 @@ class HarvestPipeline:
         evaluation = evaluate_thresholds(metrics)
         # BEAN-076: fidelity (recreation-readiness) metrics ride along in
         # the same coverage reports.
-        fidelity = compute_fidelity(surfaces, beans_dir=output_dir / "beans")
+        # With enrichment active, TODO placeholders in beans are a real
+        # defect, so the placeholder gate is enforced instead of informational.
+        thresholds = (
+            {"placeholder_free_beans": ENRICHED_PLACEHOLDER_THRESHOLD}
+            if getattr(self, "_llm_active", False)
+            else None
+        )
+        fidelity = compute_fidelity(
+            surfaces, beans_dir=output_dir / "beans", thresholds=thresholds
+        )
         write_coverage_reports(output_dir, evaluation, fidelity=fidelity)
         self._emit(
             PipelineEventType.PROGRESS_UPDATE,
