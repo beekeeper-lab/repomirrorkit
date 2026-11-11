@@ -89,3 +89,7 @@ uv run pytest -m integration        # end-to-end pipeline tests against fixtures
 uv run pytest -m parity             # boots the runnable Flask/Express fixtures (needs node+npm)
 scripts/fidelity-gate.sh            # harvest every fixture; fail if a fidelity gate is missed (CI)
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
