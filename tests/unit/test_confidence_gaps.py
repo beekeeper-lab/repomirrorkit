@@ -36,14 +36,16 @@ class TestDerivation:
         )
         confidence, gaps = derive_confidence_and_gaps(surface)
         assert confidence == "declared"
-        assert gaps == []
+        # Contracts are determined, so no contract-level gaps. (Behavioral
+        # gaps still fire without enrichment — BEAN-081.)
+        assert not any("contract could not be inferred" in g for g in gaps)
 
     def test_unknown_markers_become_gaps(self) -> None:
         surface = _api({"unknown": True}, {"unknown": True})
         confidence, gaps = derive_confidence_and_gaps(surface)
         assert confidence == "structural"
-        assert len(gaps) == 2
         assert any("Request contract" in g for g in gaps)
+        assert any("Response contract" in g for g in gaps)
 
     def test_enrichment_gaps_appended(self) -> None:
         surface = _api({"unknown": True}, {"fields": [{"name": "id"}]})
@@ -75,9 +77,19 @@ class TestRendering:
         assert "resolve" in bean
 
     def test_no_gaps_section_when_clean(self) -> None:
+        # BEAN-081: "clean" now requires behavioral enrichment + error
+        # contract too, not just determined request/response schemas.
         surface = _api(
             {"fields": [{"name": "a"}], "confidence": "declared"},
             {"fields": [{"name": "b"}], "confidence": "declared"},
+        )
+        surface.enrichment.update(
+            {
+                "behavioral_description": "Creates a widget.",
+                "given_when_then": [{"given": "g", "when": "w", "then": "t"}],
+                "data_flow": "request -> service -> db",
+                "error_contract": [{"condition": "invalid", "status": 400}],
+            }
         )
         bean = render_bean(surface, "BEAN-001")
         assert "## Gaps & unknowns" not in bean
@@ -92,7 +104,11 @@ class TestRendering:
         )
         bean = render_bean(route, "BEAN-002")
         assert "confidence: structural" in bean
-        assert "gaps: []" in bean
+        # BEAN-081: an unenriched route declares its unknowns as gaps
+        # (never TODO), so the frontmatter gaps list is non-empty.
+        assert "gaps: []" not in bean
+        assert "TODO:" not in bean
+        assert "## Gaps & unknowns" in bean
 
 
 class TestRequirementsRollup:
@@ -104,7 +120,9 @@ class TestRequirementsRollup:
             ]
         )
         rollup = _render_gaps_rollup(surfaces)
-        assert "2 unresolved unknown(s) across 1 surface(s)" in rollup
+        # BEAN-081: both surfaces now carry behavioral/data-flow gaps in
+        # addition to any contract gaps, so both are affected.
+        assert "across 2 surface(s)" in rollup
 
     def test_rollup_clean_message(self) -> None:
         rollup = _render_gaps_rollup(SurfaceCollection())

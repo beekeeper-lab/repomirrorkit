@@ -346,12 +346,14 @@ class TestRefCheckout:
 
         clone_repository("https://example.com/repo.git", "v1.0.0", workdir)
 
-        # First call is clone, second call is checkout
-        assert mock_run.call_count == 2
+        # Clone, checkout, then rev-parse HEAD (BEAN-080 provenance)
+        assert mock_run.call_count == 3
         checkout_call = mock_run.call_args_list[1]
         cmd = checkout_call[0][0]
         assert cmd == ["git", "checkout", "v1.0.0"]
         assert checkout_call[1]["cwd"] == str(workdir)
+        head_call = mock_run.call_args_list[2]
+        assert head_call[0][0] == ["git", "rev-parse", "HEAD"]
 
     @patch(
         "repo_mirror_kit.harvester.git_ops.shutil.which", return_value="/usr/bin/git"
@@ -371,8 +373,9 @@ class TestRefCheckout:
 
         clone_repository("https://example.com/repo.git", None, workdir)
 
-        # Only clone, no checkout
-        assert mock_run.call_count == 1
+        # Clone plus rev-parse HEAD (BEAN-080 provenance) — no checkout
+        assert mock_run.call_count == 2
+        assert mock_run.call_args_list[1][0][0] == ["git", "rev-parse", "HEAD"]
 
     @patch(
         "repo_mirror_kit.harvester.git_ops.shutil.which", return_value="/usr/bin/git"
@@ -662,8 +665,8 @@ class TestIntegrationWithState:
         )
         assert result.repo_dir == workdir
 
-        # Verify checkout was called
-        assert mock_run.call_count == 2
+        # Clone, checkout, rev-parse HEAD (BEAN-080 provenance)
+        assert mock_run.call_count == 3
 
         # Checkpoint
         mgr = StateManager(output_dir)

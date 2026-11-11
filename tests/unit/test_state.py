@@ -431,3 +431,61 @@ class TestPipelineState:
         assert state.bean_count == 0
         assert state.last_checkpoint is None
         assert state.started_at is None
+
+
+class TestProvenanceAndCleanupRecords:
+    """Provenance + cleanup persistence (BEAN-080)."""
+
+    def test_provenance_round_trip(self, tmp_path: Path) -> None:
+        mgr = StateManager(tmp_path)
+        mgr.initialize(["A"])
+        mgr.record_provenance(
+            {"repo_url": "https://example.com/r.git", "ref": None, "head_sha": "abc123"}
+        )
+
+        loaded = StateManager(tmp_path)
+        assert loaded.load() is True
+        prov = loaded.get_provenance()
+        assert prov is not None
+        assert prov["repo_url"] == "https://example.com/r.git"
+        assert prov["head_sha"] == "abc123"
+        # harvested_at is stamped automatically when absent.
+        assert isinstance(prov["harvested_at"], str)
+
+    def test_cleanup_record_round_trip(self, tmp_path: Path) -> None:
+        mgr = StateManager(tmp_path)
+        mgr.initialize(["A", "H"])
+        mgr.record_cleanup({"removed": True, "files_removed": 12, "bytes_freed": 3456})
+
+        loaded = StateManager(tmp_path)
+        assert loaded.load() is True
+        assert loaded.state.cleanup is not None
+        assert loaded.state.cleanup["removed"] is True
+        assert loaded.state.cleanup["files_removed"] == 12
+        assert isinstance(loaded.state.cleanup["completed_at"], str)
+
+    def test_state_without_new_keys_loads_cleanly(self, tmp_path: Path) -> None:
+        # Back-compat: state.json written before BEAN-080 lacks the keys.
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        (state_dir / "state.json").write_text(
+            '{"stages": [{"name": "A", "status": "done", "completed_at": null}],'
+            ' "bean_count": 0, "last_checkpoint": null, "started_at": null}\n'
+        )
+        mgr = StateManager(tmp_path)
+        assert mgr.load() is True
+        assert mgr.get_provenance() is None
+        assert mgr.state.cleanup is None
+        assert mgr.is_stage_done("A")
+
+    def test_non_dict_provenance_discarded(self, tmp_path: Path) -> None:
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        (state_dir / "state.json").write_text(
+            '{"stages": [], "bean_count": 0, "last_checkpoint": null,'
+            ' "started_at": null, "provenance": "bogus", "cleanup": 7}\n'
+        )
+        mgr = StateManager(tmp_path)
+        assert mgr.load() is True
+        assert mgr.get_provenance() is None
+        assert mgr.state.cleanup is None

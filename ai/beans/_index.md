@@ -101,13 +101,18 @@
 | BEAN-077 | Golden Parity Fixtures (Request/Response Captures) | App | Medium | Unapproved | team-lead |
 | BEAN-078 | Rebuild Eval Harness — Parity Scoring | App | Critical | Unapproved | team-lead |
 | BEAN-079 | Stage G Orchestration-Policy Parameterization + Telemetry | App | Medium | In Progress | team-lead |
-| BEAN-080 | Rebuild-and-Score Executor — Tier-1 Surface Diff | App | High | Done | forge |
+| BEAN-080 | `--mirror` Mode + Stage H Cleanup (Delete Source & Git History) | App | High | Done | team-lead |
+| BEAN-081 | Verbatim-Rule Bean Templates + Zero-`TODO:` Placeholder Policy | App | High | Done | team-lead |
+| BEAN-082 | Exact-Value Extraction — Analyzer Depth + LLM `exact_rules` Contract | App | High | Done | team-lead |
+| BEAN-083 | Sensitive Findings — Redact Secrets/PII and Surface to Operator | App | High | Done | team-lead |
+| BEAN-084 | Redaction Detector Follow-ups (SSN + base64 False Positive) | App | Low | Unapproved | team-lead |
+| BEAN-088 | Rebuild-and-Score Executor — Tier-1 Surface Diff (renumbered from 080) | App | High | Done | forge |
 | BEAN-090 | HTML Page Routes as First-Class Surfaces (render_template/redirect responses) | App | High | Unapproved | team-lead |
 | BEAN-091 | SQLAlchemy Association Tables and Core `Table(...)` Definitions | App | Medium | Unapproved | team-lead |
 | BEAN-092 | Feature Clustering for Action-Named Routes (Blueprint / Module Affinity) | App | Medium | Unapproved | team-lead |
 | BEAN-093 | JS/TS ORM Model Extraction (Mongoose, Drizzle, Sequelize define, Knex) | App | High | Unapproved | team-lead |
 | BEAN-094 | Jinja/Template Form Binding and Context Tracing | App | Medium | Unapproved | team-lead |
 
-> BEAN-059–079 originate from the recreation-grade audit (2026-07-03).
-> BEAN-080 is the buildable-now first slice of BEAN-078, from the Forge
-> improvements program (forgeSetup IMP-09 / WP-3.4). Sequencing, dependency graph, and parallelism analysis: see `ROADMAP-RECREATION.md` at the repo root.
+> BEAN-059–079 originate from the recreation-grade audit (2026-07-03). Sequencing, dependency graph, and parallelism analysis: see `ROADMAP-RECREATION.md` at the repo root.
+> BEAN-080–083 originate from the mirror-mode spec (2026-07-11). Phasing, decisions, and mirror acceptance criteria for existing beans: see `SPEC-MIRROR-MODE.md` at the repo root.
+> BEAN-088 is the buildable-now first slice of BEAN-078 (from the Forge improvements program, WP-3.4); BEAN-089–094 come from the 2026-11 recreation completion run and real-world triage (`SPEC-COMPLETION.md`, `docs/real-world-triage-microblog.md`).

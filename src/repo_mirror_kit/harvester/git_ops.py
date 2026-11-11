@@ -98,11 +98,14 @@ class CloneResult:
         repo_dir: Path to the cloned repository.
         skipped_symlinks: Symlinks that pointed outside the repo.
         normalized_files: Number of files with line endings normalized.
+        head_sha: Resolved HEAD commit SHA after checkout (BEAN-080
+            provenance); None when it could not be determined.
     """
 
     repo_dir: Path
     skipped_symlinks: list[str]
     normalized_files: int
+    head_sha: str | None = None
 
 
 def check_git_available() -> None:
@@ -196,19 +199,57 @@ def clone_repository(
 
     skipped = _check_symlinks(workdir)
     normalized = _normalize_line_endings(workdir)
+    head_sha = get_head_sha(workdir)
 
     logger.info(
         "clone_complete",
         repo_dir=str(workdir),
         skipped_symlinks=len(skipped),
         normalized_files=normalized,
+        head_sha=head_sha,
     )
 
     return CloneResult(
         repo_dir=workdir,
         skipped_symlinks=skipped,
         normalized_files=normalized,
+        head_sha=head_sha,
     )
+
+
+def get_head_sha(workdir: Path) -> str | None:
+    """Resolve the HEAD commit SHA of the repository at *workdir*.
+
+    Used for provenance capture (BEAN-080): after Stage H cleanup deletes
+    the working copy, the recorded SHA is what keeps every ``source_refs``
+    entry meaningful against the original repository.
+
+    Args:
+        workdir: Path to a git working copy.
+
+    Returns:
+        The full HEAD SHA, or None if it could not be determined (missing
+        ``.git``, git failure, etc.). Never raises — provenance is
+        best-effort metadata, not a pipeline gate.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=str(workdir),
+        )
+    except (FileNotFoundError, OSError):
+        return None
+    if result.returncode != 0:
+        logger.warning(
+            "head_sha_unresolved",
+            workdir=str(workdir),
+            stderr=(result.stderr or "").strip(),
+        )
+        return None
+    return (result.stdout or "").strip() or None
 
 
 def _run_clone(url: str, workdir: Path) -> None:

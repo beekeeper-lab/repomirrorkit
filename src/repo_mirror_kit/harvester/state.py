@@ -76,6 +76,11 @@ class PipelineState:
         bean_count: Number of beans generated so far.
         last_checkpoint: ISO-format timestamp of the last checkpoint.
         started_at: ISO-format timestamp when the pipeline run started.
+        provenance: Source-repo provenance (BEAN-080): repo_url, ref,
+            head_sha, harvested_at. Keeps ``source_refs`` meaningful after
+            Stage H removes the working copy.
+        cleanup: Stage H cleanup record (BEAN-080): removed, files_removed,
+            bytes_freed, completed_at.
     """
 
     stages: list[StageState] = field(default_factory=list)
@@ -88,6 +93,8 @@ class PipelineState:
     # BEAN-060: fingerprint of the config inputs that shape stage outputs;
     # a mismatch on resume invalidates all persisted artifacts.
     fingerprint: str | None = None
+    provenance: dict[str, object] | None = None
+    cleanup: dict[str, object] | None = None
 
     def to_dict(self) -> dict[str, object]:
         """Serialize to a plain dict for JSON output."""
@@ -98,6 +105,8 @@ class PipelineState:
             "started_at": self.started_at,
             "artifacts": self.artifacts,
             "fingerprint": self.fingerprint,
+            "provenance": self.provenance,
+            "cleanup": self.cleanup,
         }
 
     @classmethod
@@ -138,6 +147,12 @@ class PipelineState:
                     }
 
         raw_fingerprint = data.get("fingerprint")
+        # BEAN-080: tolerant reads — state files written before these keys
+        # existed load cleanly, and non-dict values are discarded.
+        raw_provenance = data.get("provenance")
+        provenance = raw_provenance if isinstance(raw_provenance, dict) else None
+        raw_cleanup = data.get("cleanup")
+        cleanup = raw_cleanup if isinstance(raw_cleanup, dict) else None
 
         return cls(
             stages=stages,
@@ -146,6 +161,8 @@ class PipelineState:
             started_at=str(started) if started is not None else None,
             artifacts=artifacts,
             fingerprint=str(raw_fingerprint) if raw_fingerprint is not None else None,
+            provenance=provenance,
+            cleanup=cleanup,
         )
 
 
@@ -334,6 +351,37 @@ class StateManager:
     def get_artifacts(self, stage_name: str) -> dict[str, str]:
         """Return ``{filename: sha256}`` recorded for a stage (maybe empty)."""
         return dict(self._state.artifacts.get(stage_name, {}))
+
+    def record_provenance(self, provenance: dict[str, object]) -> None:
+        """Persist source-repo provenance (BEAN-080).
+
+        Stamps ``harvested_at`` if the caller did not provide it, then
+        saves immediately — provenance must survive even if the run dies
+        before the next checkpoint.
+
+        Args:
+            provenance: Provenance fields (repo_url, ref, head_sha, ...).
+        """
+        stamped = dict(provenance)
+        stamped.setdefault("harvested_at", _now_iso())
+        self._state.provenance = stamped
+        self.save()
+
+    def get_provenance(self) -> dict[str, object] | None:
+        """Return the recorded source-repo provenance, if any."""
+        return self._state.provenance
+
+    def record_cleanup(self, cleanup: dict[str, object]) -> None:
+        """Persist the Stage H cleanup record (BEAN-080) and save.
+
+        Args:
+            cleanup: Cleanup outcome fields (removed, files_removed,
+                bytes_freed, completed_at).
+        """
+        stamped = dict(cleanup)
+        stamped.setdefault("completed_at", _now_iso())
+        self._state.cleanup = stamped
+        self.save()
 
     def finalize(self) -> None:
         """Save final state after the pipeline completes."""

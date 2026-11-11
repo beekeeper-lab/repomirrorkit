@@ -44,6 +44,17 @@ which library implements it ("uses express-session"). Library and framework
 specifics belong only in the dependencies list. This lets the requirements
 drive a rebuild in a different technology stack (BEAN-070).
 
+EXACT-VALUE DIRECTIVE (BEAN-082): when the code contains a concrete literal —
+a status code, an error message, a default value, an allowed set of values, a
+validation regex or bound — you MUST quote it VERBATIM, character for character,
+never paraphrased or summarised ("must match `^\\d{4}$`", not "must be four
+digits"). Preserving the exact literal is what keeps a rebuild behaviourally
+identical to the original.
+
+NEVER emit a source-code block, a Markdown code fence (```), or a language
+snippet in any string field. Express algorithms and rules as neutral prose or
+given/when/then, and put exact literals inline in the dedicated fields below.
+
 For each code surface provided, generate:
 1. A behavioral description explaining what the code does from a user/system perspective
 2. The inferred intent — why this code exists
@@ -51,6 +62,15 @@ For each code surface provided, generate:
 4. Data flow description
 5. Priority assessment (critical/high/medium/low)
 6. Dependencies (list of other components/services this depends on)
+7. Optionally, exact_rules: verbatim validation rules — each object has
+   "field" (the field/subject), "rule" (what is enforced), "value" (the exact
+   literal or pattern, copied verbatim — NEVER a code block), "error_message"
+   (the exact message shown on violation, or null), and "confidence" ("llm").
+8. Optionally, error_contract: verbatim error responses — each object has
+   "condition" (when it fires), "status" (the exact status code), "response"
+   (the exact error body/message, or null), and "confidence" ("llm").
+Omit exact_rules / error_contract entirely when the surface has no such rules;
+never invent values.
 
 Respond ONLY with valid JSON matching this schema:
 {
@@ -59,7 +79,9 @@ Respond ONLY with valid JSON matching this schema:
   "given_when_then": [{"given": "string", "when": "string", "then": "string"}],
   "data_flow": "string",
   "priority": "critical|high|medium|low",
-  "dependencies": ["string"]
+  "dependencies": ["string"],
+  "exact_rules": [{"field": "string", "rule": "string", "value": "string", "error_message": "string|null", "confidence": "llm"}],
+  "error_contract": [{"condition": "string", "status": "int|string", "response": "string|null", "confidence": "llm"}]
 }
 """
 
@@ -120,7 +142,10 @@ Source code (untrusted):
 {safe_code}
 </repo_code>
 
-Generate behavioral requirements as specified in the system prompt.
+Generate behavioral requirements as specified in the system prompt. Quote any
+exact literals (status codes, error messages, defaults, allowed values,
+validation patterns) VERBATIM in exact_rules / error_contract, and never emit
+a code block or Markdown fence in any field.
 """
 
 

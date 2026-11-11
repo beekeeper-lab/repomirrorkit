@@ -70,6 +70,7 @@ INVENTORY_ARTIFACT = "inventory.json"
 PROFILE_ARTIFACT = "profile.json"
 SURFACES_ARTIFACT = "surfaces.json"
 ENRICHED_SURFACES_ARTIFACT = "surfaces-enriched.json"
+FINDINGS_ARTIFACT = "sensitive-findings.json"
 
 # surface_type discriminator → concrete class. Types with nested
 # structures get dedicated field decoding below.

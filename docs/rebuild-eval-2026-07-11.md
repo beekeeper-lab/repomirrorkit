@@ -1,6 +1,6 @@
 # Rebuild-eval — first frontier-vs-local comparison (2026-07-11)
 
-First run of the BEAN-080 rebuild-and-score loop (Forge WP-3.5 / IMP-09 §4).
+First run of the BEAN-088 rebuild-and-score loop (Forge WP-3.5 / IMP-09 §4).
 One fixture, harvested once, rebuilt by two lanes from the requirement
 artifacts **alone**, each re-harvested and scored by the tier-1 surface
 re-extraction diff.

@@ -43,7 +43,7 @@ class TestContractDrivenBeanSections:
             and '"id": 1' in text
             and "Example success response (201)" in text
         )
-        assert "| 400 | name required |" in text
+        assert "| `400` | name required |" in text
         assert "TODO: Add example" not in text and "TODO: Define error" not in text
 
     def test_secret_like_config_defaults_are_withheld(self) -> None:

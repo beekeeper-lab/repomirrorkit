@@ -128,10 +128,10 @@ def main() -> None:
 )
 @click.option(
     "--fail-on-fidelity/--no-fail-on-fidelity",
-    default=False,
+    default=None,
     help="Fail with exit code 4 if fidelity (recreation-readiness) gates "
-    "fail. See reports/coverage.md for the per-metric breakdown.",
-    show_default=True,
+    "fail. See reports/coverage.md for the per-metric breakdown. "
+    "[default: off; on in --mirror mode]",
 )
 @click.option(
     "--log-level",
@@ -205,6 +205,30 @@ def main() -> None:
     "(http://localhost:11434). May also be set via HARVESTER_LLM_BASE_URL. "
     "When set, ANTHROPIC_API_KEY is not required.",
 )
+@click.option(
+    "--mirror",
+    is_flag=True,
+    default=False,
+    help="Mirror mode (BEAN-080): emit a self-contained requirements "
+    "package. Requires ANTHROPIC_API_KEY (fails fast without it), turns "
+    "--fail-on-fidelity on by default, and removes the cloned source "
+    "(repo/, including .git) after a fully successful run.",
+)
+@click.option(
+    "--keep-source",
+    is_flag=True,
+    default=False,
+    help="Keep the cloned working copy (repo/) after the run. Overrides "
+    "the cleanup implied by --mirror or --cleanup.",
+)
+@click.option(
+    "--cleanup",
+    "cleanup_flag",
+    is_flag=True,
+    default=False,
+    help="Remove the cloned source (repo/, including .git) after a fully "
+    "successful run, without enabling full --mirror mode.",
+)
 def harvest(
     repo: str,
     ref: str | None,
@@ -216,7 +240,7 @@ def harvest(
     resume: bool,
     from_stage: str | None,
     fail_on_gaps: bool,
-    fail_on_fidelity: bool,
+    fail_on_fidelity: bool | None,
     log_level: str,
     llm_enabled: bool,
     llm_model: str,
@@ -226,6 +250,9 @@ def harvest(
     llm_max_turns: int,
     llm_budget_usd: float,
     llm_base_url: str | None,
+    mirror: bool,
+    keep_source: bool,
+    cleanup_flag: bool,
 ) -> None:
     """Run the requirements harvester against a repository."""
     # API key is sourced from the environment only — never accepted on
@@ -256,6 +283,10 @@ def harvest(
             llm_concurrency=llm_concurrency,
             llm_max_turns=llm_max_turns,
             llm_budget_usd=llm_budget_usd,
+            mirror=mirror,
+            keep_source=keep_source,
+            # None lets HarvestConfig resolve the mirror-mode default.
+            cleanup=True if cleanup_flag else None,
         )
     except ConfigValidationError as exc:
         click.echo(f"Error: {exc}", err=True)
@@ -277,11 +308,27 @@ def harvest(
     click.echo(f"Gaps found: {result.gap_count}")
     click.echo(f"Coverage gates: {'PASSED' if result.coverage_passed else 'FAILED'}")
     click.echo(f"Fidelity gates: {'PASSED' if result.fidelity_passed else 'FAILED'}")
+    if result.cleanup_performed:
+        click.echo("Source removed: repo/ (including .git) — see state.json")
 
-    if not result.coverage_passed and fail_on_gaps:
+    # BEAN-083: loud operator warning when secrets/PII were redacted from the
+    # captured literals. Exit code is intentionally unchanged (the harvest
+    # still succeeded).
+    if result.sensitive_findings_count > 0:
+        n = result.sensitive_findings_count
+        click.echo(
+            f"⚠ {n} sensitive value(s) were found in the source repo and "
+            "redacted — see reports/sensitive-findings.md. Secrets in source "
+            "are a bad practice; rotate any real credentials.",
+            err=True,
+        )
+    # BEAN-083: seam for a future --fail-on-secrets gate
+
+    if not result.coverage_passed and config.fail_on_gaps:
         sys.exit(EXIT_GAPS_FOUND)
 
-    if not result.fidelity_passed and fail_on_fidelity:
+    # config.fail_on_fidelity is resolved (None → mirror) by HarvestConfig.
+    if not result.fidelity_passed and config.fail_on_fidelity:
         sys.exit(EXIT_FIDELITY_FAILED)
 
     sys.exit(EXIT_SUCCESS)

@@ -1,8 +1,8 @@
-# BEAN-080: Rebuild-and-Score Executor — Tier-1 Surface Diff
+# BEAN-088: Rebuild-and-Score Executor — Tier-1 Surface Diff
 
 | Field | Value |
 |-------|-------|
-| **Bean ID** | BEAN-080 |
+| **Bean ID** | BEAN-088 |
 | **Status** | Done |
 | **Priority** | High |
 | **Created** | 2026-07-10 |

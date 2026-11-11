@@ -82,6 +82,8 @@ def assemble_project_folder(
     surfaces: SurfaceCollection,
     profile: StackProfile,
     beans: list[WrittenBean] | None = None,
+    provenance: dict[str, object] | None = None,
+    sensitive_findings_count: int = 0,
 ) -> GeneratorResult:
     """Assemble a complete Claude Code project folder.
 
@@ -93,6 +95,11 @@ def assemble_project_folder(
         project_name: Name of the analyzed project.
         surfaces: All extracted surfaces.
         profile: Detected technology stack profile.
+        beans: WrittenBean records for the REQUIREMENTS.md aggregator.
+        provenance: Source-repo provenance (BEAN-080) rendered into the
+            REQUIREMENTS.md header; None omits the provenance block.
+        sensitive_findings_count: BEAN-083 count of redacted secret/PII
+            findings; a one-line rollup is added to REQUIREMENTS.md when > 0.
 
     Returns:
         A GeneratorResult summarizing what was generated.
@@ -216,6 +223,8 @@ def assemble_project_folder(
             profile=profile,
             beans=beans,
             output_dir=output_dir,
+            provenance=provenance,
+            sensitive_findings_count=sensitive_findings_count,
         )
         generated_files.append(requirements_path)
         logger.info(

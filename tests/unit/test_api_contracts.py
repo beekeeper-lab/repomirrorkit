@@ -233,6 +233,111 @@ class TestNonPythonAndEdgeCases:
         assert surface.response_schema == {"unknown": True}
 
 
+# ---------------------------------------------------------------------------
+# BEAN-082: error-contract extraction
+# ---------------------------------------------------------------------------
+
+FLASK_ERRORS_APP = """\
+from flask import Flask, abort, jsonify, request
+
+app = Flask(__name__)
+
+
+@app.route("/api/users/<int:uid>", methods=["GET"])
+def get_user(uid):
+    user = lookup(uid)
+    if user is None:
+        abort(404, "User not found")
+    if not user.active:
+        return jsonify({"error": "User is disabled"}), 403
+    return jsonify({"id": user.id})
+"""
+
+FASTAPI_ERRORS_APP = """\
+from fastapi import APIRouter, HTTPException, status
+
+router = APIRouter()
+
+
+@router.get("/items/{item_id}", status_code=418)
+async def read_item(item_id: int):
+    if item_id < 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    raise HTTPException(400, "Bad item")
+"""
+
+
+class TestFlaskErrorContracts:
+    def test_abort_and_status_tuple_extracted(self, tmp_path: Path) -> None:
+        _write(tmp_path, "app.py", FLASK_ERRORS_APP)
+        surface = _surface("GET", "/api/users/<int:uid>", "app.py", 6)
+
+        populate_python_api_contracts([surface], tmp_path)
+
+        errors = surface.enrichment["error_contract"]
+        by_status = {e["status"]: e for e in errors}
+        assert by_status[404]["response"] == "User not found"
+        assert by_status[404]["condition"] == "user is None"
+        assert by_status[404]["confidence"] == "inferred"
+        # return jsonify({"error": ...}), 403 → status + message from body
+        assert by_status[403]["response"] == "User is disabled"
+        assert by_status[403]["condition"] == "not user.active"
+
+    def test_success_status_tuple_not_an_error(self, tmp_path: Path) -> None:
+        _write(
+            tmp_path,
+            "app.py",
+            '@app.route("/x", methods=["POST"])\n'
+            "def create():\n"
+            "    return jsonify({}), 201\n",
+        )
+        surface = _surface("POST", "/x", "app.py", 1)
+
+        populate_python_api_contracts([surface], tmp_path)
+
+        assert "error_contract" not in surface.enrichment
+
+
+class TestFastAPIErrorContracts:
+    def test_httpexception_and_decorator_status(self, tmp_path: Path) -> None:
+        _write(tmp_path, "api.py", FASTAPI_ERRORS_APP)
+        surface = _surface("GET", "/items/{item_id}", "api.py", 6)
+
+        populate_python_api_contracts([surface], tmp_path)
+
+        errors = surface.enrichment["error_contract"]
+        by_status = {e["status"]: e for e in errors}
+        # status.HTTP_404_NOT_FOUND resolves to 404, detail preserved verbatim.
+        assert by_status[404]["response"] == "Not found"
+        assert by_status[404]["confidence"] == "declared"
+        # Positional HTTPException(400, "Bad item").
+        assert by_status[400]["response"] == "Bad item"
+        # Error status_code on the decorator (>= 400) is captured; a success
+        # default (< 400) would not be.
+        assert 418 in by_status
+        assert by_status[418]["condition"] == "default response status"
+
+
+class TestErrorLiteralChokepoint:
+    def test_error_messages_routed_through_sanitizer(
+        self, tmp_path: Path, monkeypatch: object
+    ) -> None:
+        """Captured error literals must flow through the BEAN-083 chokepoint."""
+        import repo_mirror_kit.harvester.analyzers.api_contracts as mod
+
+        monkeypatch.setattr(  # type: ignore[attr-defined]
+            mod, "sanitize_captured_literal", lambda v: v.upper()
+        )
+        _write(tmp_path, "app.py", FLASK_ERRORS_APP)
+        surface = _surface("GET", "/api/users/<int:uid>", "app.py", 6)
+
+        populate_python_api_contracts([surface], tmp_path)
+
+        responses = {e["response"] for e in surface.enrichment["error_contract"]}
+        assert "USER NOT FOUND" in responses
+        assert "USER IS DISABLED" in responses
+
+
 FLASK_FACTORY = """\
 from flask import Flask, jsonify, request
 
@@ -302,10 +407,13 @@ class TestFlaskStatusAndErrors:
         populate_python_api_contracts([create, pay], tmp_path)
 
         assert create.response_schema["status"] == 201
-        assert {"status": 400, "message": "invalid json"} in create.response_schema[
-            "errors"
-        ]
-        assert {"status": 422} in create.response_schema["errors"]
+        pairs = {
+            (e["status"], e.get("message")) for e in create.response_schema["errors"]
+        }
+        assert (400, "invalid json") in pairs and (422, None) in pairs
+        # the condition-aware view (BEAN-082) rides on the same entries
+        assert any(e.get("condition") for e in create.response_schema["errors"])
+        assert create.enrichment["error_contract"]
         assert pay.response_schema["status"] == 200
         errs = {e["status"]: e.get("message") for e in pay.response_schema["errors"]}
         assert errs == {401: "unauthorized", 404: "not found"}

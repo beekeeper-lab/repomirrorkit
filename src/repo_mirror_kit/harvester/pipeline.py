@@ -8,6 +8,7 @@ for progress reporting. Both the CLI and GUI entry points delegate to
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
@@ -50,6 +51,11 @@ from repo_mirror_kit.harvester.analyzers import (
     refine_api_auth,
 )
 from repo_mirror_kit.harvester.beans.writer import WrittenBean, write_beans
+from repo_mirror_kit.harvester.cleanup import (
+    CleanupError,
+    CleanupResult,
+    remove_source,
+)
 from repo_mirror_kit.harvester.config import HarvestConfig
 from repo_mirror_kit.harvester.detectors.base import StackProfile, run_detection
 from repo_mirror_kit.harvester.features import (
@@ -67,9 +73,11 @@ from repo_mirror_kit.harvester.git_ops import (
     GitNotFoundError,
     GitRefError,
     clone_repository,
+    get_head_sha,
 )
 from repo_mirror_kit.harvester.harvest_logging import configure_logging
 from repo_mirror_kit.harvester.inventory import InventoryResult, scan, write_report
+from repo_mirror_kit.harvester.redaction import SensitiveFinding, redact_surfaces
 from repo_mirror_kit.harvester.reports.coverage import (
     CoverageEvaluation,
     compute_metrics,
@@ -78,6 +86,7 @@ from repo_mirror_kit.harvester.reports.coverage import (
 )
 from repo_mirror_kit.harvester.reports.data_model import write_data_model_report
 from repo_mirror_kit.harvester.reports.fidelity import (
+    MIRROR_FIDELITY_THRESHOLDS,
     FidelityEvaluation,
     compute_fidelity,
 )
@@ -90,13 +99,17 @@ from repo_mirror_kit.harvester.reports.gaps import (
     run_all_gap_queries,
     write_gaps_report,
 )
+from repo_mirror_kit.harvester.reports.sensitive_findings import (
+    write_sensitive_findings_report,
+)
 from repo_mirror_kit.harvester.reports.surface_map import write_surface_map
 from repo_mirror_kit.harvester.reports.traceability import build_traceability_maps
 from repo_mirror_kit.harvester.state import StateManager
 
 logger = structlog.get_logger()
 
-# Ordered stage names matching the spec
+# Ordered stage names matching the spec. Stage H (cleanup, BEAN-080) is
+# appended at runtime only when ``config.cleanup`` is enabled.
 STAGE_NAMES: list[str] = ["A", "B", "C", "C2", "C3", "D", "E", "F", "G"]
 
 # Per-stage domain exception tuples (BEAN-048).
@@ -122,6 +135,10 @@ _STAGE_A_EXCEPTIONS: tuple[type[Exception], ...] = (
 # additionally catches its own internal errors inside :func:`enrich_surfaces`,
 # so by the time control returns here the only escapes are filesystem-shaped.
 _FS_EXCEPTIONS: tuple[type[Exception], ...] = (OSError,)
+
+# Stage H (cleanup, BEAN-080) can fail on a violated safety invariant
+# (CleanupError) or ordinary filesystem trouble while deleting.
+_STAGE_H_EXCEPTIONS: tuple[type[Exception], ...] = (CleanupError, OSError)
 
 
 class PipelineEventType(StrEnum):
@@ -187,6 +204,10 @@ class HarvestResult:
     generated_file_count: int = 0
     # BEAN-076: recreation-readiness gates (depth, not existence).
     fidelity_passed: bool = True
+    # BEAN-080: whether Stage H removed the cloned source (repo/ + .git).
+    cleanup_performed: bool = False
+    # BEAN-083: count of redacted secret/PII findings (0 when none found).
+    sensitive_findings_count: int = 0
     error_stage: str | None = None
     error_message: str | None = None
     output_dir: Path | None = None
@@ -194,6 +215,14 @@ class HarvestResult:
 
 # Minimum % of beans free of TODO placeholders when LLM enrichment ran.
 ENRICHED_PLACEHOLDER_THRESHOLD = 80.0
+
+
+def _redacted_copy(
+    surfaces: SurfaceCollection,
+) -> tuple[SurfaceCollection, list[SensitiveFinding]]:
+    """Deep copy of *surfaces* with secrets/PII redacted, plus the findings."""
+    copy_ = copy.deepcopy(surfaces)
+    return copy_, redact_surfaces(copy_)
 
 
 def _config_fingerprint(config: HarvestConfig) -> str:
@@ -251,6 +280,9 @@ class HarvestPipeline:
 
         state = StateManager(output_dir)
 
+        # BEAN-080: Stage H (cleanup) participates only when enabled.
+        stage_names = [*STAGE_NAMES, "H"] if config.cleanup else list(STAGE_NAMES)
+
         if config.resume:
             loaded = state.load()
             if loaded:
@@ -261,9 +293,9 @@ class HarvestPipeline:
                 )
             else:
                 logger.info("pipeline_no_prior_state_starting_fresh")
-                state.initialize(STAGE_NAMES)
+                state.initialize(stage_names)
         else:
-            state.initialize(STAGE_NAMES)
+            state.initialize(stage_names)
 
         # BEAN-060: stage outputs are persisted under <out>/state/ and
         # rehydrated on resume when their hash and the config fingerprint match.
@@ -285,19 +317,40 @@ class HarvestPipeline:
         inventory_result: InventoryResult | None = None
         profile: StackProfile | None = None
         surfaces: SurfaceCollection | None = None
+        sensitive_findings: list[SensitiveFinding] = []
         beans: list[WrittenBean] = []
         evaluation: CoverageEvaluation | None = None
         gap_report: GapReport | None = None
         generator_result: GeneratorResult | None = None
+        cleanup_result: CleanupResult | None = None
 
         try:
             # --- Stage A: Clone & Normalize ---
-            if not state.is_stage_done("A"):
+            repo_dir = output_dir / "repo"
+            if not state.is_stage_done("A") or not repo_dir.is_dir():
+                # Fresh run, or a resume whose working copy is gone (e.g.
+                # removed by Stage H cleanup, BEAN-080) — re-clone instead
+                # of failing in Stage B on the missing workdir.
+                if state.is_stage_done("A"):
+                    logger.info(
+                        "resume_workdir_missing_recloning",
+                        workdir=str(repo_dir),
+                    )
                 self._emit(PipelineEventType.STAGE_START, "A", "Cloning repository")
                 try:
                     clone_result = self._run_stage_a(config, output_dir)
                 except _STAGE_A_EXCEPTIONS as exc:
                     return self._handle_stage_error("A", exc, state, output_dir)
+                self._warn_on_head_drift(config, state, clone_result)
+                # BEAN-080: provenance keeps source_refs meaningful after
+                # the working copy is removed.
+                state.record_provenance(
+                    {
+                        "repo_url": config.repo,
+                        "ref": config.ref,
+                        "head_sha": clone_result.head_sha,
+                    }
+                )
                 state.complete_stage("A")
                 self._emit(
                     PipelineEventType.STAGE_COMPLETE,
@@ -308,10 +361,21 @@ class HarvestPipeline:
                 logger.info("stage_skipped_resume", stage="A")
                 # Reconstruct workdir for resumed runs
                 clone_result = CloneResult(
-                    repo_dir=output_dir / "repo",
+                    repo_dir=repo_dir,
                     skipped_symlinks=[],
                     normalized_files=0,
+                    head_sha=get_head_sha(repo_dir),
                 )
+                # Backfill provenance for state files written before
+                # BEAN-080 recorded it.
+                if state.get_provenance() is None:
+                    state.record_provenance(
+                        {
+                            "repo_url": config.repo,
+                            "ref": config.ref,
+                            "head_sha": clone_result.head_sha,
+                        }
+                    )
 
             workdir = clone_result.repo_dir
 
@@ -394,11 +458,16 @@ class HarvestPipeline:
                     )
                 except _FS_EXCEPTIONS as exc:
                     return self._handle_stage_error("C", exc, state, output_dir)
+                # Persist a REDACTED copy: state/ must never hold raw
+                # secret/PII literals (BEAN-083). In-memory surfaces stay raw
+                # until the post-enrichment chokepoint so exact values still
+                # reach enrichment.
+                redacted_c, _ = _redacted_copy(surfaces)
                 self._persist(
                     state,
                     state_dir,
                     "C",
-                    {persistence.SURFACES_ARTIFACT: surfaces.to_dict()},
+                    {persistence.SURFACES_ARTIFACT: redacted_c.to_dict()},
                 )
             state.complete_stage("C")
             self._emit(
@@ -436,11 +505,15 @@ class HarvestPipeline:
                     or os.environ.get("ANTHROPIC_API_KEY")
                 )
             )
+            rehydrated_findings: list[SensitiveFinding] = []
             cached = self._rehydrate(
                 state,
                 resume_ok,
                 "C2",
-                [persistence.ENRICHED_SURFACES_ARTIFACT],
+                [
+                    persistence.ENRICHED_SURFACES_ARTIFACT,
+                    persistence.FINDINGS_ARTIFACT,
+                ],
                 state_dir,
             )
             if cached is not None:
@@ -448,17 +521,29 @@ class HarvestPipeline:
                 surfaces = persistence.surface_collection_from_dict(
                     cached[persistence.ENRICHED_SURFACES_ARTIFACT]
                 )
+                rehydrated_findings = [
+                    SensitiveFinding(**f)
+                    for f in cached[persistence.FINDINGS_ARTIFACT].get("findings", [])
+                ]
             else:
                 state.invalidate_from("C2")
                 try:
                     surfaces = self._run_stage_c2(surfaces, config, workdir)
                 except _FS_EXCEPTIONS as exc:
                     return self._handle_stage_error("C2", exc, state, output_dir)
+                # Persist the REDACTED enriched surfaces plus the findings
+                # metadata (so a resume can still report them).
+                redacted_c2, c2_findings = _redacted_copy(surfaces)
                 self._persist(
                     state,
                     state_dir,
                     "C2",
-                    {persistence.ENRICHED_SURFACES_ARTIFACT: surfaces.to_dict()},
+                    {
+                        persistence.ENRICHED_SURFACES_ARTIFACT: redacted_c2.to_dict(),
+                        persistence.FINDINGS_ARTIFACT: {
+                            "findings": [f.to_dict() for f in c2_findings]
+                        },
+                    },
                 )
             state.complete_stage("C2")
             self._emit(
@@ -466,6 +551,17 @@ class HarvestPipeline:
                 "C2",
                 "LLM enrichment complete",
             )
+
+            # --- BEAN-083: Redaction post-pass ---
+            # Single authoritative chokepoint: redact secret/PII literals on
+            # the SurfaceCollection in place, AFTER enrichment and BEFORE beans
+            # (Stage E) or any other artifact is written, so everything
+            # downstream is already-redacted. Findings carry metadata only.
+            sensitive_findings = redact_surfaces(surfaces) or rehydrated_findings
+            # Stage C wrote surface-map.{md,json} from the pre-redaction
+            # surfaces; re-emit it so the on-disk map is redacted too.
+            if sensitive_findings:
+                write_surface_map(output_dir, surfaces, profile)
 
             # --- Stage C3: Feature clustering (deterministic, always runs) ---
             self._emit(
@@ -529,7 +625,13 @@ class HarvestPipeline:
             )
             try:
                 evaluation, gap_report, fidelity = self._run_stage_f(
-                    surfaces, beans, inventory_result, workdir, output_dir
+                    config,
+                    surfaces,
+                    beans,
+                    inventory_result,
+                    workdir,
+                    output_dir,
+                    sensitive_findings,
                 )
             except _FS_EXCEPTIONS as exc:
                 return self._handle_stage_error("F", exc, state, output_dir)
@@ -554,7 +656,13 @@ class HarvestPipeline:
             )
             try:
                 generator_result = self._run_stage_g(
-                    config, surfaces, profile, beans, output_dir
+                    config,
+                    surfaces,
+                    profile,
+                    beans,
+                    output_dir,
+                    state,
+                    len(sensitive_findings),
                 )
             except _FS_EXCEPTIONS as exc:
                 return self._handle_stage_error("G", exc, state, output_dir)
@@ -565,6 +673,39 @@ class HarvestPipeline:
                 "Project folder generation complete",
                 {"generated_files": len(generator_result.generated_files)},
             )
+
+            # --- Stage H: Source Cleanup (BEAN-080, optional) ---
+            # Reached only when Stages A-G all succeeded — any earlier
+            # failure returns before this point, so a failed run always
+            # keeps its working copy for debugging.
+            if config.cleanup:
+                self._emit(
+                    PipelineEventType.STAGE_START,
+                    "H",
+                    "Removing cloned source (mirror cleanup)",
+                )
+                try:
+                    cleanup_result = self._run_stage_h(output_dir, state)
+                except _STAGE_H_EXCEPTIONS as exc:
+                    return self._handle_stage_error("H", exc, state, output_dir)
+                state.record_cleanup(
+                    {
+                        "removed": cleanup_result.removed,
+                        "files_removed": cleanup_result.files_removed,
+                        "bytes_freed": cleanup_result.bytes_freed,
+                        "stray_git_removed": cleanup_result.stray_git_removed,
+                    }
+                )
+                state.complete_stage("H")
+                self._emit(
+                    PipelineEventType.STAGE_COMPLETE,
+                    "H",
+                    "Cloned source removed",
+                    {
+                        "files_removed": cleanup_result.files_removed,
+                        "bytes_freed": cleanup_result.bytes_freed,
+                    },
+                )
 
         except (OSError, MemoryError) as exc:
             # Last-resort catch for catastrophic-but-not-bug failures that
@@ -606,6 +747,8 @@ class HarvestPipeline:
             gap_count=gap_report.total_gaps,
             generated_file_count=gen_file_count,
             fidelity_passed=fidelity.all_passed,
+            cleanup_performed=cleanup_result is not None and cleanup_result.removed,
+            sensitive_findings_count=len(sensitive_findings),
             output_dir=output_dir,
         )
 
@@ -926,26 +1069,33 @@ class HarvestPipeline:
 
     def _run_stage_f(
         self,
+        config: HarvestConfig,
         surfaces: SurfaceCollection,
         beans: list[WrittenBean],
         inventory: InventoryResult,
         workdir: Path,
         output_dir: Path,
+        sensitive_findings: list[SensitiveFinding],
     ) -> tuple[CoverageEvaluation, GapReport, FidelityEvaluation]:
         """Stage F: coverage gates, fidelity gates, gaps, data-model report."""
         metrics = compute_metrics(surfaces, beans, inventory)
         evaluation = evaluate_thresholds(metrics)
         # BEAN-076: fidelity (recreation-readiness) metrics ride along in
-        # the same coverage reports.
-        # With enrichment active, TODO placeholders in beans are a real
-        # defect, so the placeholder gate is enforced instead of informational.
-        thresholds = (
-            {"placeholder_free_beans": ENRICHED_PLACEHOLDER_THRESHOLD}
-            if getattr(self, "_llm_active", False)
-            else None
+        # the same coverage reports. BEAN-080: mirror mode selects the
+        # mirror threshold profile. With enrichment active, TODO placeholders
+        # in beans are a real defect, so the placeholder gate is enforced
+        # instead of informational (the mirror profile, if stricter, wins).
+        thresholds: dict[str, float] = (
+            dict(MIRROR_FIDELITY_THRESHOLDS) if config.mirror else {}
         )
+        if getattr(self, "_llm_active", False):
+            thresholds.setdefault(
+                "placeholder_free_beans", ENRICHED_PLACEHOLDER_THRESHOLD
+            )
         fidelity = compute_fidelity(
-            surfaces, beans_dir=output_dir / "beans", thresholds=thresholds
+            surfaces,
+            beans_dir=output_dir / "beans",
+            thresholds=thresholds or None,
         )
         write_coverage_reports(output_dir, evaluation, fidelity=fidelity)
         self._emit(
@@ -966,6 +1116,11 @@ class HarvestPipeline:
         # collection has no models.
         write_data_model_report(surfaces, output_dir, workdir=workdir)
 
+        # BEAN-083: surface redaction findings to the operator. Skip writing
+        # the report entirely when nothing was found (nothing to act on).
+        if sensitive_findings:
+            write_sensitive_findings_report(output_dir, sensitive_findings)
+
         return evaluation, gap_report, fidelity
 
     def _run_stage_g(
@@ -975,17 +1130,67 @@ class HarvestPipeline:
         profile: StackProfile,
         beans: list[WrittenBean],
         output_dir: Path,
+        state: StateManager,
+        sensitive_findings_count: int,
     ) -> GeneratorResult:
         """Stage G: generate Claude Code project folder + REQUIREMENTS.md."""
         # Derive project name from the repo URL
         project_name = _derive_project_name(config.repo)
+        # BEAN-080: pass provenance so REQUIREMENTS.md can state which
+        # repo/commit the source_refs point at, and whether the source
+        # tree ships in the package (it does not when cleanup is on).
+        provenance = state.get_provenance()
+        if provenance is not None:
+            provenance = {**provenance, "source_included": not config.cleanup}
         return assemble_project_folder(
-            output_dir, project_name, surfaces, profile, beans=beans
+            output_dir,
+            project_name,
+            surfaces,
+            profile,
+            beans=beans,
+            provenance=provenance,
+            sensitive_findings_count=sensitive_findings_count,
         )
+
+    def _run_stage_h(
+        self,
+        output_dir: Path,
+        state: StateManager,
+    ) -> CleanupResult:
+        """Stage H: remove the cloned source (BEAN-080)."""
+        return remove_source(output_dir, state)
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _warn_on_head_drift(
+        self,
+        config: HarvestConfig,
+        state: StateManager,
+        clone_result: CloneResult,
+    ) -> None:
+        """Warn when a re-clone resolved a different HEAD than recorded.
+
+        Only meaningful when no ``--ref`` pins the checkout: recorded
+        source_refs (line numbers) may no longer match the new HEAD.
+        """
+        provenance = state.get_provenance()
+        recorded = provenance.get("head_sha") if provenance else None
+        if (
+            config.ref is None
+            and isinstance(recorded, str)
+            and clone_result.head_sha
+            and recorded != clone_result.head_sha
+        ):
+            logger.warning(
+                "resume_head_drift",
+                recorded_sha=recorded,
+                current_sha=clone_result.head_sha,
+                msg="Re-cloned HEAD differs from the recorded harvest "
+                "commit; previously recorded source line numbers may "
+                "have drifted.",
+            )
 
     def _emit(
         self,

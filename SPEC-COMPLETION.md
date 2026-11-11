@@ -23,7 +23,7 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 
 - [x] **0.1** Commit or revert the uncommitted `.gitignore` change; decide whether `.agentic/` and `.claude/worktrees/` get ignored. *Verify:* `git status` clean.
 - [x] **0.2** (060 is a WIP checkpoint, handled in 3.1; 067/072 branches had no work, built in 4.4/6.1; local-llm-endpoint cherry-picked) Merge the open bean branches into `test` ( check `git branch --no-merged test`). Resolve conflicts in `surfaces.py` / `pipeline.py` by keeping additions append-only. *Verify:* full suite green on `test`; `git branch --no-merged test` shows only intentional leftovers.
-- [x] **0.3** Merge `bean/local-rebuild-score-executor` (BEAN-080) into `test`. *Verify:* suite green; `requirements-harvester rebuild --help` works.
+- [x] **0.3** Merge `bean/local-rebuild-score-executor` (BEAN-088; was numbered BEAN-080 before the origin merge) into `test`. *Verify:* suite green; `requirements-harvester rebuild --help` works.
 - [-] **0.4** (deferred: orchestration policy serves the Stage G experiment, not the rebuild goal) Finish BEAN-079 (Stage G policy parameterization + telemetry hooks). *Verify:* its bean acceptance criteria all checked; suite green; set bean status to Done in `ai/beans/_index.md`.
 - [ ] **0.5** (PENDING USER: pushing `test` and opening a PR to `main` is outward-facing and was not done) Promote `test` to `main` (PR). *Verify:* `main` contains BEAN-059..080 work; CI green.
 - [x] **0.6** Update `ai/beans/_index.md` and the memory file so statuses match reality (060, 067, 072 etc.).
@@ -95,7 +95,7 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 | Date | Task | Result | Commit |
 |------|------|--------|--------|
 | 2026-11-11 | — | Spec created. Baseline: 1,863 tests green; ts-next fidelity gate failing. | — |
-| 2026-11-11 | 0.1-0.3 | Merged BEAN-080 + local-llm-endpoint into `test`; suite 1,872 green. 0.4 deferred (not on critical path). 0.5/0.6 pending final merge to main. | test |
+| 2026-11-11 | 0.1-0.3 | Merged BEAN-088 (rebuild executor) + local-llm-endpoint into `test`; suite 1,872 green. 0.4 deferred (not on critical path). 0.5/0.6 pending final merge to main. | test |
 | 2026-11-11 | 1.1-1.4 | Flask verb shorthand, tuple methods, factory routes, Blueprint/APIRouter prefix resolution, python-flask-factory fixture + e2e test. 1,880 tests green. 1.5 folded into 7.3. | bean/BEAN-089 |
 | 2026-11-11 | 2.1/2.2 | 2.1 blocked (Ollama not responding; no key). 2.2: placeholder gate enforced at 80% when enrichment active; LLM client 120s timeout added. | test |
 | 2026-11-11 | 3.1 | BEAN-060 done: stage B/C/C2 persisted + rehydrated with hash/fingerprint guards, --from-stage, beans always regenerate; 6 integration tests. | bean/BEAN-060-resume-v2 |
