@@ -1,8 +1,8 @@
-# BEAN-085: JS/TS ORM Model Extraction (Mongoose, Drizzle, Sequelize define, Knex)
+# BEAN-093: JS/TS ORM Model Extraction (Mongoose, Drizzle, Sequelize define, Knex)
 
 | Field | Value |
 |-------|-------|
-| **Bean ID** | BEAN-085 |
+| **Bean ID** | BEAN-093 |
 | **Status** | Unapproved |
 | **Priority** | High |
 | **Created** | 2026-11-11 |

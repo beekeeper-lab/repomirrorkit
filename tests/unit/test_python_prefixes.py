@@ -1,4 +1,4 @@
-"""Tests for Blueprint / APIRouter prefix resolution (BEAN-081)."""
+"""Tests for Blueprint / APIRouter prefix resolution (BEAN-089)."""
 
 from __future__ import annotations
 

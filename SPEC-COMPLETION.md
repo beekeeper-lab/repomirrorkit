@@ -72,7 +72,7 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 - [x] **7.1** BEAN-077 golden parity fixtures: request/response captures for both fixture apps. *Verify:* replay passes against the original apps.
 - [x] **7.2** BEAN-078 behavioral parity scoring: run the rebuilt app and replay the golden requests, plus Gherkin pass-rate and schema diff, layout-agnostic. *Verify:* score computed for a known-good and a known-bad rebuild; they differ sharply.
 - [x] **7.3** (done on the two runnable API fixtures: Flask→Node/Express 100%, Express→FastAPI 100% vs 25% baseline; see docs/rebuild-eval-2026-11-11.md. The Next.js fixture is not runnable here, so it was not rebuilt; UI parity is unscored) Cross-stack rebuild: rebuild the Flask fixture in a different stack (e.g. Node/Express) and the Next fixture in a different stack (e.g. FastAPI + HTML), from the output dir alone. *Verify:* behavioral parity ≥ 90% on both. Record in `docs/rebuild-eval-<date>.md`.
-- [x] **7.4** (microblog; docs/real-world-triage-microblog.md; BEAN-082..086) Add one larger real-world repo (medium, open source) as a third fixture to expose idiom gaps the toy fixtures hide. *Verify:* harvest completes; gaps triaged into new beans.
+- [x] **7.4** (microblog; docs/real-world-triage-microblog.md; BEAN-090..086) Add one larger real-world repo (medium, open source) as a third fixture to expose idiom gaps the toy fixtures hide. *Verify:* harvest completes; gaps triaged into new beans.
 - [x] **7.5** (.github/workflows/ci.yml + scripts/fidelity-gate.sh; red-path proven by tests/integration/test_fidelity_gate.py; the workflow itself has not run on GitHub) Fidelity gates run in CI and fail on regression. *Verify:* CI config committed; a deliberately broken extractor turns it red.
 
 ## Phase 8 — Hardening and docs
@@ -96,7 +96,7 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[-]` dropped (reason in log)
 |------|------|--------|--------|
 | 2026-11-11 | — | Spec created. Baseline: 1,863 tests green; ts-next fidelity gate failing. | — |
 | 2026-11-11 | 0.1-0.3 | Merged BEAN-080 + local-llm-endpoint into `test`; suite 1,872 green. 0.4 deferred (not on critical path). 0.5/0.6 pending final merge to main. | test |
-| 2026-11-11 | 1.1-1.4 | Flask verb shorthand, tuple methods, factory routes, Blueprint/APIRouter prefix resolution, python-flask-factory fixture + e2e test. 1,880 tests green. 1.5 folded into 7.3. | bean/BEAN-081 |
+| 2026-11-11 | 1.1-1.4 | Flask verb shorthand, tuple methods, factory routes, Blueprint/APIRouter prefix resolution, python-flask-factory fixture + e2e test. 1,880 tests green. 1.5 folded into 7.3. | bean/BEAN-089 |
 | 2026-11-11 | 2.1/2.2 | 2.1 blocked (Ollama not responding; no key). 2.2: placeholder gate enforced at 80% when enrichment active; LLM client 120s timeout added. | test |
 | 2026-11-11 | 3.1 | BEAN-060 done: stage B/C/C2 persisted + rehydrated with hash/fingerprint guards, --from-stage, beans always regenerate; 6 integration tests. | bean/BEAN-060-resume-v2 |
 | 2026-11-11 | 3.2 | BEAN-061: tree-sitter (js/ts/tsx/c#) loader + helpers in harvester/parsing, ADR-001, 12 tests. | bean/BEAN-061-tree-sitter |

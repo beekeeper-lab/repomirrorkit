@@ -1,8 +1,8 @@
-# BEAN-084: Feature Clustering for Action-Named Routes (Blueprint / Module Affinity)
+# BEAN-092: Feature Clustering for Action-Named Routes (Blueprint / Module Affinity)
 
 | Field | Value |
 |-------|-------|
-| **Bean ID** | BEAN-084 |
+| **Bean ID** | BEAN-092 |
 | **Status** | Unapproved |
 | **Priority** | Medium |
 | **Created** | 2026-11-11 |

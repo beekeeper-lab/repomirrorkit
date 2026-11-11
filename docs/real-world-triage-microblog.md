@@ -22,11 +22,11 @@ A held-out, medium-sized, MIT-licensed Flask app (users, posts, followers, messa
 
 | Bean | Gap | Observed effect |
 |------|-----|-----------------|
-| BEAN-082 | HTML page routes (`render_template`/`redirect`) typed as APIs with unknown responses | `api_response_contracts` 8.6% |
-| BEAN-083 | SQLAlchemy Core association tables (`followers`) | N:M table missing from DDL/ER |
-| BEAN-084 | Feature clustering splits action-named routes into one-route features | 20 features, many of size 1–3 |
-| BEAN-085 | JS/TS ORMs (Mongoose, Drizzle, Sequelize define) | no models → no DB bundle/mapping for those stacks |
-| BEAN-086 | Template ↔ form ↔ context tracing | template screens show no fields; duplicates with WTForms screens |
+| BEAN-090 | HTML page routes (`render_template`/`redirect`) typed as APIs with unknown responses | `api_response_contracts` 8.6% |
+| BEAN-091 | SQLAlchemy Core association tables (`followers`) | N:M table missing from DDL/ER |
+| BEAN-092 | Feature clustering splits action-named routes into one-route features | 20 features, many of size 1–3 |
+| BEAN-093 | JS/TS ORMs (Mongoose, Drizzle, Sequelize define) | no models → no DB bundle/mapping for those stacks |
+| BEAN-094 | Template ↔ form ↔ context tracing | template screens show no fields; duplicates with WTForms screens |
 
 Not attempted: i18n catalogs, pagination behaviour, background-task semantics (RQ), search backend integration — these need the agentic enrichment pass (BEAN-068) run live.
 

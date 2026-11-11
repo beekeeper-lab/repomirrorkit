@@ -137,7 +137,7 @@ def test_pipeline_ts_next_fixture(
 def test_pipeline_flask_factory_fixture(
     local_git_repo: Callable[[str], Path], tmp_path: Path
 ) -> None:
-    """BEAN-081: blueprint prefixes, verb shorthand and factory routes resolve."""
+    """BEAN-089: blueprint prefixes, verb shorthand and factory routes resolve."""
     repo = local_git_repo("python-flask-factory")
     out = tmp_path / "harvest-out"
 
