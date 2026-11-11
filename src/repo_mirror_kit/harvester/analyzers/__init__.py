@@ -3,6 +3,9 @@ from __future__ import annotations
 from repo_mirror_kit.harvester.analyzers.api_contracts import (
     populate_python_api_contracts,
 )
+from repo_mirror_kit.harvester.analyzers.api_contracts_js import (
+    populate_js_api_contracts,
+)
 from repo_mirror_kit.harvester.analyzers.apis import analyze_api_endpoints
 from repo_mirror_kit.harvester.analyzers.auth import analyze_auth
 from repo_mirror_kit.harvester.analyzers.behavioral_spec import analyze_behavioral_spec
@@ -87,5 +90,6 @@ __all__ = [
     "analyze_ui_flows",
     "analyze_uncovered_files",
     "find_uncovered_files",
+    "populate_js_api_contracts",
     "populate_python_api_contracts",
 ]

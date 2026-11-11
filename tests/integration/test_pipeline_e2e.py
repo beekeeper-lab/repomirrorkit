@@ -152,3 +152,29 @@ def test_pipeline_flask_factory_fixture(
         ("POST", "/api/items/"),
         ("DELETE", "/api/items/{item_id}"),
     }
+
+
+@pytest.mark.integration
+def test_pipeline_ts_next_contracts_and_fidelity(
+    local_git_repo: Callable[[str], Path], tmp_path: Path
+) -> None:
+    """BEAN-063: Next.js route handlers get contracts; fidelity gate passes."""
+    from openapi_spec_validator import validate
+
+    repo = local_git_repo("ts-next")
+    out = tmp_path / "harvest-out"
+
+    result = _run_pipeline(repo, out)
+
+    assert result.success
+    contract = json.loads((out / "api-contract.json").read_text())
+    validate(contract)
+    get = contract["paths"]["/api/users"]["get"]
+    schema = get["responses"]["200"]["content"]["application/json"]["schema"]
+    assert schema["type"] == "array"
+    assert set(schema["items"]["properties"]) == {"id", "name"}
+    post = contract["paths"]["/api/users"]["post"]
+    assert "201" in post["responses"]
+    assert "x-harvester-gap" not in get and "x-harvester-gap" not in post
+    coverage = json.loads((out / "reports" / "coverage.json").read_text())
+    assert coverage["fidelity"]["all_passed"] is True

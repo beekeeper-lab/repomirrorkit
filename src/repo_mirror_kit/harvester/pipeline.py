@@ -41,6 +41,7 @@ from repo_mirror_kit.harvester.analyzers import (
     analyze_ui_flows,
     analyze_uncovered_files,
     find_uncovered_files,
+    populate_js_api_contracts,
     populate_python_api_contracts,
 )
 from repo_mirror_kit.harvester.beans.writer import WrittenBean, write_beans
@@ -688,6 +689,7 @@ class HarvestPipeline:
 
         apis = analyze_api_endpoints(workdir, inventory, profile)
         contracts_populated = populate_python_api_contracts(apis, workdir)
+        contracts_populated += populate_js_api_contracts(apis, workdir)
         self._emit(
             PipelineEventType.PROGRESS_UPDATE,
             "C",
